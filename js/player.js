@@ -51,6 +51,8 @@ function plOnPlayerReady(event) {
     plLog("plOnPlayerReady") ; // : " + JSON.stringify(event));
     event.target.setVolume(0);
     event.target.playVideo();
+
+    setTimeout( () => plToggleYtFullscreen(true), 5*1000 );
 }
 
 var plEvent; // for debugging mostly
@@ -64,8 +66,7 @@ function plOnPlayerStateChange(event) {
 $(document).keypress(function(event) {
     plLog("Document KeyPress: " + event.which);
     if (event.which == "f".charCodeAt()) {
-        isFullscreen = !isFullscreen;
-        plToggleYtFullscreen(isFullscreen);
+        plToggleYtFullscreen(!isFullscreen);
     } else if (event.which == "1".charCodeAt()) {
         plHighlightVideo(1);
     } else if (event.which == "2".charCodeAt()) {
@@ -76,6 +77,7 @@ $(document).keypress(function(event) {
 });
 
 function plToggleYtFullscreen(goToFullscreen) {
+    isFullscreen = goToFullscreen;
     if (goToFullscreen) {
         $("#pl-video1").hide();
         $("#pl-video2").hide();
