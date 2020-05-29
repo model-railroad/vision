@@ -1,9 +1,11 @@
 "use strict";
 
 
-const plPlaylistId = "PLjmlvzL_NxLp8GZfdG0cQkg5IwD_PF5Pc";
+const plPlaylistId = "PLjmlvzL_NxLrHU26aSPU5S1Z_iu3vRky-";
 var plPlayer;
-var plPlayerWidth;
+var plGridSize;
+var plPlayerSize;
+var isFullscreen = false;
 
 function plLog(s) {
     console.log(s);
@@ -16,11 +18,16 @@ function plInit() {
 function onYouTubeIframeAPIReady() {
     plLog("onYouTubeIframeAPIReady");
 
-    plPlayerWidth = window.innerWidth / 2;
+    //plGridSize = [$("#pl-grid").width(), $("#pl-grid").height()];
+    plGridSize = [window.innerWidth, window.innerHeight];
+    plPlayerSize = [$("#pl-yt-player").width(), $("#pl-yt-player").height()];
+    plLog("@@ plGridSize: " + plGridSize + ", playerSize: " + plPlayerSize);
+
+    isFullscreen = false;
     plPlayer = new YT.Player("pl-yt-player", {
         // Initial size, or call plPlayer.setSize(w,h) later
-        width: plPlayerWidth,
-        height: plPlayerWidth * 9 / 16,  
+        width: plPlayerSize[0],
+        height: plPlayerSize[1],
         // Player options
         playerVars: {
             listType: "playlist",
@@ -44,10 +51,6 @@ function plOnPlayerReady(event) {
     plLog("plOnPlayerReady") ; // : " + JSON.stringify(event));
     event.target.setVolume(0);
     event.target.playVideo();
-
-    // For demo/test purposes, switch to full screen after a few seconds
-    // and a global key handler maps "f" to restore it to the quater size.
-    setTimeout( function() { plPlayer.setSize(window.innerWidth, window.innerHeight) }, 5*1000 );
 }
 
 var plEvent; // for debugging mostly
@@ -61,9 +64,52 @@ function plOnPlayerStateChange(event) {
 $(document).keypress(function(event) {
     plLog("Document KeyPress: " + event.which);
     if (event.which == "f".charCodeAt()) {
-        plPlayer.setSize(plPlayerWidth, plPlayerWidth * 9 / 16);
+        isFullscreen = !isFullscreen;
+        plToggleYtFullscreen(isFullscreen);
+    } else if (event.which == "1".charCodeAt()) {
+        plHighlightVideo(1);
+    } else if (event.which == "2".charCodeAt()) {
+        plHighlightVideo(2);
+    } else if (event.which == "3".charCodeAt()) {
+        plHighlightVideo(3);
     }
 });
+
+function plToggleYtFullscreen(goToFullscreen) {
+    if (goToFullscreen) {
+        $("#pl-video1").hide();
+        $("#pl-video2").hide();
+        $("#pl-video3").hide();
+        var sx = plPlayerSize[0];
+        var dx = plGridSize[0] - sx;
+        var sy = plPlayerSize[1];
+        var dy = plGridSize[1] - sy;
+        $({value:0}).animate({value:1}, { 
+            step: (val) => plPlayer.setSize(sx + dx * val, sy + dy * val),
+            complete: () => plPlayer.setSize(plGridSize[0], plGridSize[1]),
+        })
+    } else {
+        var sx = plGridSize[0];
+        var dx = plPlayerSize[0] - sx;
+        var sy = plGridSize[1];
+        var dy = plPlayerSize[1] - sy;
+        $({value:0}).animate({value:1}, { 
+            step: (val) => plPlayer.setSize(sx + dx * val, sy + dy * val),
+            complete: () => {
+                plPlayer.setSize(plPlayerSize[0], plPlayerSize[1])
+                $("#pl-video1").show();
+                $("#pl-video2").show();
+                $("#pl-video3").show();
+            }
+        })
+    }
+}
+
+function plHighlightVideo(index123) {
+    var elem = $("#pl-video" + index123);
+    elem.css("border-color", "yellow");
+    setTimeout( () => elem.css("border-color", "darkgreen"), 5000);
+}
 
 // ---
 

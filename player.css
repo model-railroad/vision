@@ -1,0 +1,47 @@
+body {
+    margin: 0 !important;
+    background-color: black;
+}
+
+#pl-center {
+    width: 100%;
+    height: 100%;
+    background-color: yellowgreen;
+}
+
+#pl-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 49.4% 49.4%;
+    grid-gap: 10px;
+    background-color: darkgreen;
+}
+
+#pl-yt-player {
+    margin: 0px;
+    z-index: 2;
+}
+
+#pl-video1 {
+    width: 100%;
+    border-style: solid;
+    border-color: darkgreen;
+    border-width: 5px;
+    z-index: 1;
+}
+
+#pl-video2 {
+    width: 100%;
+    border-style: solid;
+    border-color: darkgreen;
+    border-width: 5px;
+    z-index: 1;
+}
+
+#pl-video3 {
+    width: 100%;
+    border-style: solid;
+    border-color: darkgreen;
+    border-width: 5px;
+    z-index: 1;
+}
