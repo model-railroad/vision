@@ -2,10 +2,13 @@
 
 
 const plPlaylistId = "PLjmlvzL_NxLrHU26aSPU5S1Z_iu3vRky-";
+var plStartInShuffle = true; // we shuffle *after* the 1st video plays.
 var plPlayer;
 var plGridSize;
 var plPlayerSize;
-var isFullscreen = false;
+var plFullscreen = false;
+var plShuffle = true;
+var plEvent; // for debugging mostly
 
 function plLog(s) {
     console.log(s);
@@ -23,7 +26,7 @@ function onYouTubeIframeAPIReady() {
     plPlayerSize = [$("#pl-yt-player").width(), $("#pl-yt-player").height()];
     plLog("@@ plGridSize: " + plGridSize + ", playerSize: " + plPlayerSize);
 
-    isFullscreen = false;
+    plFullscreen = false;
     plPlayer = new YT.Player("pl-yt-player", {
         // Initial size, or call plPlayer.setSize(w,h) later
         width: plPlayerSize[0],
@@ -32,7 +35,7 @@ function onYouTubeIframeAPIReady() {
         playerVars: {
             listType: "playlist",
             list: plPlaylistId,
-            autoplay: 1,
+            autoplay: 0,
             controls: 0,
             fs: 0, // fullscreen button
             iv_load_policy: 0, // video annotations not shown
@@ -48,34 +51,54 @@ function onYouTubeIframeAPIReady() {
 }
 
 function plOnPlayerReady(event) {
-    plLog("plOnPlayerReady") ; // : " + JSON.stringify(event));
-    event.target.setVolume(0);
+    plLog("plOnPlayerReady state=" + plPlayer.getPlayerState()) ; // : " + JSON.stringify(event));
+    plEvent = event;
+    event.target.mute();
     event.target.playVideo();
 }
 
-var plEvent; // for debugging mostly
 function plOnPlayerStateChange(event) {
-    plLog("plOnPlayerStateChange") ; // : " + JSON.stringify(event));
+    var state = plPlayer.getPlayerState();
+    plLog("plOnPlayerStateChange state=" + state); // : " + JSON.stringify(event));
+    plLog("Playing: " + plEvent.target.playerInfo.videoData.title);
     plEvent = event;
 
-    plLog("Playing: " + plEvent.target.playerInfo.videoData.title);
+    // Set the initial shuffle once the first video starts playing, with a little
+    // delay. Without the delay, it seems to work half of the time.
+    if (plStartInShuffle && state == 1 /*playing*/) {
+        plStartInShuffle = false;
+        setTimeout( () => plSetShuffle(true) , 1000);
+    }
 }
 
 $(document).keypress(function(event) {
     plLog("Document KeyPress: " + event.which);
-    if (event.which == "f".charCodeAt()) {
-        isFullscreen = !isFullscreen;
-        plToggleYtFullscreen(isFullscreen);
+    if (event.which == "s".charCodeAt()) {
+        plSetShuffle(!plShuffle);
+    } else if (event.which == "f".charCodeAt() || event.which == "u".charCodeAt()) {
+        plSetFullscreen(!plFullscreen);
     } else if (event.which == "1".charCodeAt()) {
         plHighlightVideo(1);
     } else if (event.which == "2".charCodeAt()) {
         plHighlightVideo(2);
     } else if (event.which == "3".charCodeAt()) {
         plHighlightVideo(3);
+    } else if (event.which == "n".charCodeAt()) {
+        plPlayer.nextVideo();
+    } else if (event.which == "p".charCodeAt()) {
+        plPlayer.previousVideo();
     }
 });
 
-function plToggleYtFullscreen(goToFullscreen) {
+function plSetShuffle(shuffle) {
+    plLog("plShuffle " + shuffle);
+    plShuffle = shuffle;
+    plPlayer.setShuffle(shuffle);
+}
+
+function plSetFullscreen(goToFullscreen) {
+    plLog("plFullscreen " + goToFullscreen);
+    plFullscreen = goToFullscreen;
     if (goToFullscreen) {
         $("#pl-video1").hide();
         $("#pl-video2").hide();
