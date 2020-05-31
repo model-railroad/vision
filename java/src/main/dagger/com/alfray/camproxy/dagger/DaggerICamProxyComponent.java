@@ -2,6 +2,10 @@ package com.alfray.camproxy.dagger;
 
 import com.alfray.camproxy.CamProxy;
 import com.alfray.camproxy.CamProxy_MembersInjector;
+import com.alfray.camproxy.CommandLineArgs;
+import com.alfray.camproxy.CommandLineArgs_Factory;
+import com.alfray.camproxy.cam.CamerasProcessor;
+import com.alfray.camproxy.cam.CamerasProcessor_Factory;
 import com.alfray.camproxy.util.ILogger;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import dagger.internal.DoubleCheck;
@@ -19,6 +23,10 @@ import javax.inject.Provider;
 public final class DaggerICamProxyComponent implements ICamProxyComponent {
   private Provider<ILogger> providesLoggerProvider;
 
+  private Provider<CommandLineArgs> commandLineArgsProvider;
+
+  private Provider<CamerasProcessor> camerasProcessorProvider;
+
   private DaggerICamProxyComponent() {
 
     initialize();
@@ -35,6 +43,8 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
   @SuppressWarnings("unchecked")
   private void initialize() {
     this.providesLoggerProvider = DoubleCheck.provider(LoggerModule_ProvidesLoggerFactory.create());
+    this.commandLineArgsProvider = DoubleCheck.provider(CommandLineArgs_Factory.create(providesLoggerProvider));
+    this.camerasProcessorProvider = DoubleCheck.provider(CamerasProcessor_Factory.create(providesLoggerProvider));
   }
 
   @Override
@@ -44,6 +54,8 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
   @CanIgnoreReturnValue
   private CamProxy injectCamProxy(CamProxy instance) {
     CamProxy_MembersInjector.injectMLogger(instance, providesLoggerProvider.get());
+    CamProxy_MembersInjector.injectMCommandLineArgs(instance, commandLineArgsProvider.get());
+    CamProxy_MembersInjector.injectMCamerasProcessor(instance, camerasProcessorProvider.get());
     return instance;
   }
 
