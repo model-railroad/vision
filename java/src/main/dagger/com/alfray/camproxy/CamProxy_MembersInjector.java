@@ -1,6 +1,6 @@
 package com.alfray.camproxy;
 
-import com.alfray.camproxy.cam.CamerasProcessor;
+import com.alfray.camproxy.cam.Cameras;
 import com.alfray.camproxy.util.ILogger;
 import dagger.MembersInjector;
 import dagger.internal.InjectedFieldSignature;
@@ -20,26 +20,24 @@ public final class CamProxy_MembersInjector implements MembersInjector<CamProxy>
 
   private final Provider<CommandLineArgs> mCommandLineArgsProvider;
 
-  private final Provider<CamerasProcessor> mCamerasProcessorProvider;
+  private final Provider<Cameras> mCamerasProvider;
 
   public CamProxy_MembersInjector(Provider<ILogger> mLoggerProvider,
-      Provider<CommandLineArgs> mCommandLineArgsProvider,
-      Provider<CamerasProcessor> mCamerasProcessorProvider) {
+      Provider<CommandLineArgs> mCommandLineArgsProvider, Provider<Cameras> mCamerasProvider) {
     this.mLoggerProvider = mLoggerProvider;
     this.mCommandLineArgsProvider = mCommandLineArgsProvider;
-    this.mCamerasProcessorProvider = mCamerasProcessorProvider;
+    this.mCamerasProvider = mCamerasProvider;
   }
 
   public static MembersInjector<CamProxy> create(Provider<ILogger> mLoggerProvider,
-      Provider<CommandLineArgs> mCommandLineArgsProvider,
-      Provider<CamerasProcessor> mCamerasProcessorProvider) {
-    return new CamProxy_MembersInjector(mLoggerProvider, mCommandLineArgsProvider, mCamerasProcessorProvider);}
+      Provider<CommandLineArgs> mCommandLineArgsProvider, Provider<Cameras> mCamerasProvider) {
+    return new CamProxy_MembersInjector(mLoggerProvider, mCommandLineArgsProvider, mCamerasProvider);}
 
   @Override
   public void injectMembers(CamProxy instance) {
     injectMLogger(instance, mLoggerProvider.get());
     injectMCommandLineArgs(instance, mCommandLineArgsProvider.get());
-    injectMCamerasProcessor(instance, mCamerasProcessorProvider.get());
+    injectMCameras(instance, mCamerasProvider.get());
   }
 
   @InjectedFieldSignature("com.alfray.camproxy.CamProxy.mLogger")
@@ -52,9 +50,8 @@ public final class CamProxy_MembersInjector implements MembersInjector<CamProxy>
     instance.mCommandLineArgs = mCommandLineArgs;
   }
 
-  @InjectedFieldSignature("com.alfray.camproxy.CamProxy.mCamerasProcessor")
-  public static void injectMCamerasProcessor(CamProxy instance,
-      CamerasProcessor mCamerasProcessor) {
-    instance.mCamerasProcessor = mCamerasProcessor;
+  @InjectedFieldSignature("com.alfray.camproxy.CamProxy.mCameras")
+  public static void injectMCameras(CamProxy instance, Cameras mCameras) {
+    instance.mCameras = mCameras;
   }
 }

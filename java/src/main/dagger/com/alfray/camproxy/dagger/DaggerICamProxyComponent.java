@@ -4,8 +4,12 @@ import com.alfray.camproxy.CamProxy;
 import com.alfray.camproxy.CamProxy_MembersInjector;
 import com.alfray.camproxy.CommandLineArgs;
 import com.alfray.camproxy.CommandLineArgs_Factory;
-import com.alfray.camproxy.cam.CamerasProcessor;
-import com.alfray.camproxy.cam.CamerasProcessor_Factory;
+import com.alfray.camproxy.cam.CamInfoFactory;
+import com.alfray.camproxy.cam.CamInfoFactory_Factory;
+import com.alfray.camproxy.cam.CamOutputGeneratorFactory;
+import com.alfray.camproxy.cam.CamOutputGeneratorFactory_Factory;
+import com.alfray.camproxy.cam.Cameras;
+import com.alfray.camproxy.cam.Cameras_Factory;
 import com.alfray.camproxy.util.ILogger;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import dagger.internal.DoubleCheck;
@@ -25,7 +29,11 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
 
   private Provider<CommandLineArgs> commandLineArgsProvider;
 
-  private Provider<CamerasProcessor> camerasProcessorProvider;
+  private Provider<CamOutputGeneratorFactory> camOutputGeneratorFactoryProvider;
+
+  private Provider<CamInfoFactory> camInfoFactoryProvider;
+
+  private Provider<Cameras> camerasProvider;
 
   private DaggerICamProxyComponent() {
 
@@ -44,7 +52,9 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
   private void initialize() {
     this.providesLoggerProvider = DoubleCheck.provider(LoggerModule_ProvidesLoggerFactory.create());
     this.commandLineArgsProvider = DoubleCheck.provider(CommandLineArgs_Factory.create(providesLoggerProvider));
-    this.camerasProcessorProvider = DoubleCheck.provider(CamerasProcessor_Factory.create(providesLoggerProvider));
+    this.camOutputGeneratorFactoryProvider = CamOutputGeneratorFactory_Factory.create(providesLoggerProvider);
+    this.camInfoFactoryProvider = CamInfoFactory_Factory.create(camOutputGeneratorFactoryProvider);
+    this.camerasProvider = DoubleCheck.provider(Cameras_Factory.create(camInfoFactoryProvider, providesLoggerProvider));
   }
 
   @Override
@@ -55,7 +65,7 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
   private CamProxy injectCamProxy(CamProxy instance) {
     CamProxy_MembersInjector.injectMLogger(instance, providesLoggerProvider.get());
     CamProxy_MembersInjector.injectMCommandLineArgs(instance, commandLineArgsProvider.get());
-    CamProxy_MembersInjector.injectMCamerasProcessor(instance, camerasProcessorProvider.get());
+    CamProxy_MembersInjector.injectMCameras(instance, camerasProvider.get());
     return instance;
   }
 
