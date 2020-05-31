@@ -1,0 +1,8 @@
+src/dagger
+.idea/
+bin/
+gen/
+out/
+build/
+.gradle/
+*.iml

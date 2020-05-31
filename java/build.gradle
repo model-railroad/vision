@@ -1,0 +1,63 @@
+apply plugin: "java"
+apply plugin: "idea"
+
+group   "org.alfray.camproxy"
+version "0.1-SNAPSHOT"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile                 "com.google.dagger:dagger:2.28"
+    annotationProcessor     "com.google.dagger:dagger-compiler:2.28"
+    testAnnotationProcessor "com.google.dagger:dagger-compiler:2.28"
+
+    compile             "com.google.auto.factory:auto-factory:1.0-beta7"
+    annotationProcessor "com.google.auto.factory:auto-factory:1.0-beta7"
+
+    testCompile "junit:junit:4.12"
+    testCompile "com.google.truth:truth:1.0.1"
+    testCompile "org.mockito:mockito-core:3.3.3"
+    testCompile "com.google.guava:guava:29.0-jre"
+}
+
+// Change location of dagger generated files and map it in IJ.
+def generatedDaggerDir = new File(project.projectDir.absolutePath, "src/dagger/java")
+compileJava {
+    doFirst { generatedDaggerDir.mkdirs() }
+    options.compilerArgs += [ "-s", generatedDaggerDir ]
+}
+
+idea {
+    module {
+        generatedSourceDirs += generatedDaggerDir
+    }
+}
+
+// Rules to build a self-contained deployment fat jar with a specified entry point.
+jar {
+    manifest {
+        attributes(
+                "Main-Class": "com.alfray.camproxy.Main",
+        )
+    }
+}
+
+// Build a "fat" jar with all the dependencies. C.f. http://stackoverflow.com/questions/4871656
+task fatJar(type: Jar) {
+    manifest.from jar.manifest
+    classifier = "all"
+    from {
+        configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
+    with jar
+}
+
+artifacts {
+    archives fatJar
+}
