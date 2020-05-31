@@ -1,4 +1,5 @@
-src/dagger
+src/dagger/
+src/main/dagger/
 .idea/
 bin/
 gen/
