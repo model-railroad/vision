@@ -1,5 +1,9 @@
 package com.alfray.camproxy;
 
+import com.alfray.camproxy.dagger.DaggerICamProxyComponent;
+import com.alfray.camproxy.dagger.ICamProxyComponent;
+import com.alfray.camproxy.util.ILogger;
+
 import javax.inject.Inject;
 
 public class CamProxy {
@@ -7,7 +11,8 @@ public class CamProxy {
 
     private final ICamProxyComponent mComponent;
 
-    @Inject Logger mLogger;
+    @Inject
+    ILogger mLogger;
 
     public CamProxy() {
         mComponent = DaggerICamProxyComponent.factory().createComponent();

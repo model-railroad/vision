@@ -1,11 +1,12 @@
-package com.alfray.camproxy;
+package com.alfray.camproxy.dagger;
 
+import com.alfray.camproxy.CamProxy;
 import dagger.Component;
 
 import javax.inject.Singleton;
 
 @Singleton
-@Component
+@Component(modules = { LoggerModule.class })
 public interface ICamProxyComponent {
 
     void inject(CamProxy camProxy);

@@ -23,14 +23,31 @@ dependencies {
 }
 
 // Change location of dagger generated files and map it in IJ.
-def generatedDaggerDir = new File(project.projectDir.absolutePath, "src/dagger/java")
+def generatedDaggerDir = new File(project.projectDir.absolutePath, "src/main/dagger")
 compileJava {
-    doFirst { generatedDaggerDir.mkdirs() }
+    doFirst {
+        generatedDaggerDir.mkdirs()
+    }
+    // Javac javadoc: "-s dir: Specify the directory where to place generated source files"
     options.compilerArgs += [ "-s", generatedDaggerDir ]
+}
+
+clean {
+    delete generatedDaggerDir
+}
+
+sourceSets {
+    main {
+        // Append generatedDaggerDir to the srcDir. This actually breaks javac per issue
+        // JDK-8067747 as it results in sources built twice (annotation processor then javac).
+        // java.srcDir generatedDaggerDir <-- don't do that.
+    }
 }
 
 idea {
     module {
+        // Tell IJ about our new generated source dir.
+        // Tip: In Project pane > src/main/dagger > Mark Directory > Mark Generated Source Root.
         generatedSourceDirs += generatedDaggerDir
     }
 }

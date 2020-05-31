@@ -1,19 +1,16 @@
-package com.alfray.camproxy;
+package com.alfray.camproxy.util;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+public class SoutLogger implements ILogger {
 
-@Singleton
-public class Logger {
-
-    @Inject
-    public Logger() {
+    public SoutLogger() {
     }
 
+    @Override
     public void log(String msg) {
         System.out.println(msg);
     }
 
+    @Override
     public void log(String tag, String msg) {
         log(tag + ": " + msg);
     }
