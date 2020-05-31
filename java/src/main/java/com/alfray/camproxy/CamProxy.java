@@ -40,7 +40,6 @@ public class CamProxy {
             mCameras.stop();
         }
 
-
         mLogger.log(TAG, "End");
     }
 

@@ -50,8 +50,16 @@ public class Cameras {
 
     public void stop() {
         for (CamInfo camInfo : mCamInfos) {
-            camInfo.getGenerator().stop();
-            camInfo.getGrabber().stop();
+            try {
+                camInfo.getGenerator().stop();
+            } catch (InterruptedException e) {
+                mLogger.log(TAG, "Stopping gen-" + camInfo.getIndex() + ": " + e);
+            }
+            try {
+                camInfo.getGrabber().stop();
+            } catch (InterruptedException e) {
+                mLogger.log(TAG, "Stopping grab-" + camInfo.getIndex() + ": " + e);
+            }
         }
     }
 }
