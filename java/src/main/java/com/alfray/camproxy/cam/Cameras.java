@@ -43,6 +43,7 @@ public class Cameras {
 
     public void start() {
         for (CamInfo camInfo : mCamInfos) {
+            camInfo.getGrabber().start();
             camInfo.getGenerator().start();
         }
     }
@@ -50,6 +51,7 @@ public class Cameras {
     public void stop() {
         for (CamInfo camInfo : mCamInfos) {
             camInfo.getGenerator().stop();
+            camInfo.getGrabber().stop();
         }
     }
 }

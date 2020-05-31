@@ -6,6 +6,8 @@ import com.alfray.camproxy.CommandLineArgs;
 import com.alfray.camproxy.CommandLineArgs_Factory;
 import com.alfray.camproxy.cam.CamInfoFactory;
 import com.alfray.camproxy.cam.CamInfoFactory_Factory;
+import com.alfray.camproxy.cam.CamInputGrabberFactory;
+import com.alfray.camproxy.cam.CamInputGrabberFactory_Factory;
 import com.alfray.camproxy.cam.CamOutputGeneratorFactory;
 import com.alfray.camproxy.cam.CamOutputGeneratorFactory_Factory;
 import com.alfray.camproxy.cam.Cameras;
@@ -28,6 +30,8 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
   private Provider<ILogger> providesLoggerProvider;
 
   private Provider<CommandLineArgs> commandLineArgsProvider;
+
+  private Provider<CamInputGrabberFactory> camInputGrabberFactoryProvider;
 
   private Provider<CamOutputGeneratorFactory> camOutputGeneratorFactoryProvider;
 
@@ -52,8 +56,9 @@ public final class DaggerICamProxyComponent implements ICamProxyComponent {
   private void initialize() {
     this.providesLoggerProvider = DoubleCheck.provider(LoggerModule_ProvidesLoggerFactory.create());
     this.commandLineArgsProvider = DoubleCheck.provider(CommandLineArgs_Factory.create(providesLoggerProvider));
+    this.camInputGrabberFactoryProvider = CamInputGrabberFactory_Factory.create(providesLoggerProvider);
     this.camOutputGeneratorFactoryProvider = CamOutputGeneratorFactory_Factory.create(providesLoggerProvider);
-    this.camInfoFactoryProvider = CamInfoFactory_Factory.create(camOutputGeneratorFactoryProvider);
+    this.camInfoFactoryProvider = CamInfoFactory_Factory.create(camInputGrabberFactoryProvider, camOutputGeneratorFactoryProvider);
     this.camerasProvider = DoubleCheck.provider(Cameras_Factory.create(camInfoFactoryProvider, providesLoggerProvider));
   }
 

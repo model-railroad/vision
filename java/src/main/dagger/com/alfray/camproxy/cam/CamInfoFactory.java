@@ -9,16 +9,24 @@ import javax.inject.Provider;
   comments = "https://github.com/google/auto/tree/master/factory"
 )
 public final class CamInfoFactory {
+  private final Provider<CamInputGrabberFactory> camInputGrabberFactoryProvider;
+
   private final Provider<CamOutputGeneratorFactory> camOutputGeneratorFactoryProvider;
 
   @Inject
-  public CamInfoFactory(Provider<CamOutputGeneratorFactory> camOutputGeneratorFactoryProvider) {
-    this.camOutputGeneratorFactoryProvider = checkNotNull(camOutputGeneratorFactoryProvider, 1);
+  public CamInfoFactory(
+      Provider<CamInputGrabberFactory> camInputGrabberFactoryProvider,
+      Provider<CamOutputGeneratorFactory> camOutputGeneratorFactoryProvider) {
+    this.camInputGrabberFactoryProvider = checkNotNull(camInputGrabberFactoryProvider, 1);
+    this.camOutputGeneratorFactoryProvider = checkNotNull(camOutputGeneratorFactoryProvider, 2);
   }
 
   public CamInfo create(int index, CamConfig config) {
     return new CamInfo(
-        checkNotNull(camOutputGeneratorFactoryProvider.get(), 1), index, checkNotNull(config, 3));
+        checkNotNull(camInputGrabberFactoryProvider.get(), 1),
+        checkNotNull(camOutputGeneratorFactoryProvider.get(), 2),
+        index,
+        checkNotNull(config, 4));
   }
 
   private static <T> T checkNotNull(T reference, int argumentIndex) {
