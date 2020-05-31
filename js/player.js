@@ -16,6 +16,7 @@ function plLog(s) {
 
 function plInit() {
     plLog("@@ init");
+    plSetupCams();
 }
 
 function onYouTubeIframeAPIReady() {
@@ -132,6 +133,10 @@ function plHighlightVideo(index123) {
     var elem = $("#pl-video" + index123);
     elem.css("border-color", "yellow");
     setTimeout( () => elem.css("border-color", "darkgreen"), 5000);
+}
+
+function plSetupCams() {
+    $("#pl-video2").attr("src", "http://192.168.1.86/mjpg/video.mjpg")
 }
 
 // ---
