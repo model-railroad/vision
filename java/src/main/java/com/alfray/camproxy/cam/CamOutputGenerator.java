@@ -5,15 +5,12 @@ import com.alfray.camproxy.util.ILogger;
 import com.alfray.camproxy.util.ThreadLoop;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
-import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.Executors;
 
 /**
  * Several options here:
@@ -49,7 +46,6 @@ public class CamOutputGenerator extends ThreadLoop {
     @Override
     public void start() throws Exception {
         mLogger.log(TAG, "Start");
-
         super.start();
     }
 
@@ -82,7 +78,7 @@ public class CamOutputGenerator extends ThreadLoop {
 
         try {
             mLogger.log(TAG, "[JPEG] frame: " + frame);
-            mDebugDisplay.queue(frame);
+            mDebugDisplay.displayAsync(frame);
 
             BufferedImage image  = mFrameConverter.convert(frame);
 
@@ -91,7 +87,6 @@ public class CamOutputGenerator extends ThreadLoop {
             File file = new File("E:\\Temp\\temp\\1.jpg");
             ImageIO.write(image, "jpg", file);
             mLogger.log(TAG, "JPEG generated: " + file.getPath());
-            mDebugDisplay.requestQuit();
             return true;
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());

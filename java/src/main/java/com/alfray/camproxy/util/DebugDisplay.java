@@ -1,6 +1,5 @@
 package com.alfray.camproxy.util;
 
-import com.alfray.camproxy.CamProxy;
 import com.alfray.camproxy.CommandLineArgs;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
@@ -10,9 +9,9 @@ import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
@@ -22,7 +21,6 @@ public class DebugDisplay {
 
     private final ILogger mLogger;
     private final CommandLineArgs mCommandLineArgs;
-    private final Queue<Frame> mFrameQueue = new ConcurrentLinkedDeque<>();
 
     private boolean mQuit;
     private CanvasFrame mDisplay;
@@ -34,11 +32,12 @@ public class DebugDisplay {
     }
 
     public void start() {
+        mQuit = false;
+
         if (mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
             mDisplay = new CanvasFrame("Test video");
             mDisplay.setSize(1280, 720);
 
-            mQuit = false;
             mDisplay.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
             mDisplay.addWindowListener(new WindowAdapter() {
                 @Override
@@ -53,9 +52,7 @@ public class DebugDisplay {
     }
 
     public void requestQuit() {
-        if (mDisplay != null) {
-            mQuit = true;
-        }
+        mQuit = true;
     }
 
     public void stop() {
@@ -65,26 +62,29 @@ public class DebugDisplay {
         }
     }
 
-
-    public void queue(Frame frame) {
-        mFrameQueue.offer(frame);
+    public void displayAsync(Frame frame) {
+        SwingUtilities.invokeLater(() -> mDisplay.showImage(frame));
     }
 
-    public void waitTillClosed() {
-        while (!mQuit) {
-            try {
-                SwingUtilities.invokeAndWait(() -> {
-                    Frame frame = mFrameQueue.poll();
-                    if (frame != null) {
-                        mLogger.log(TAG, "Display Image");
-                        mDisplay.showImage(frame);
-                    }
-                });
+    public void consoleWait() {
+        mLogger.log(TAG, "Start loop");
 
-                Thread.sleep(300 /*ms*/);
-            } catch (InterruptedException | InvocationTargetException e) {
-                mLogger.log(TAG, e.toString());
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        mLogger.log(TAG, "Press Enter to quit...");
+
+        try {
+            while (!mQuit && !reader.ready()) {
+                mLogger.log(TAG, "loop");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    mLogger.log(TAG, e.toString());
+                }
             }
+        } catch (IOException e) {
+            mLogger.log(TAG, e.toString());
         }
+
+        mLogger.log(TAG, "End loop");
     }
 }

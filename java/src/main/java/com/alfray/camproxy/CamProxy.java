@@ -8,7 +8,6 @@ import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
 
 import javax.inject.Inject;
-import java.util.Scanner;
 
 public class CamProxy {
     private static final String TAG = CamProxy.class.getSimpleName();
@@ -38,12 +37,7 @@ public class CamProxy {
         try {
             mDebugDisplay.start();
             mCameras.start();
-
-            if (mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
-                mDebugDisplay.waitTillClosed();
-            } else {
-                waitForEnter();
-            }
+            mDebugDisplay.consoleWait();
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());
         } finally {
@@ -52,11 +46,5 @@ public class CamProxy {
         }
 
         mLogger.log(TAG, "End");
-    }
-
-    private void waitForEnter() {
-        Scanner input = new Scanner(System.in);
-        mLogger.log(TAG, "Press Enter to quit...");
-        input.nextLine();
     }
 }
