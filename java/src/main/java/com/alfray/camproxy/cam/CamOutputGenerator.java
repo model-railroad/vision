@@ -60,13 +60,23 @@ public class CamOutputGenerator extends ThreadLoop {
         mLogger.log(TAG, "Thread loop begin");
 
         try {
-            if (generateJpeg()) {
-                Thread.sleep(3600 * 1000);
-            } else {
-                Thread.sleep(5 * 1000);
-            }
+            debugDisplay();
+            Thread.sleep(10 * 1000);
+
+//            if (generateJpeg()) {
+//                Thread.sleep(3600 * 1000);
+//            } else {
+//                Thread.sleep(5 * 1000);
+//            }
         } catch (InterruptedException e) {
             mLogger.log(TAG, "Interrupted");
+        }
+    }
+
+    private void debugDisplay() {
+        Frame frame = mCamInfo.getGrabber().getLastFrame().get();
+        if (frame != null) {
+            mDebugDisplay.displayAsync(frame);
         }
     }
 

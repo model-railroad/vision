@@ -74,7 +74,6 @@ public class DebugDisplay {
 
         try {
             while (!mQuit && !reader.ready()) {
-                mLogger.log(TAG, "loop");
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
