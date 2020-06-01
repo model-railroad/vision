@@ -43,11 +43,11 @@ public class CamOutputGenerator extends ThreadLoop {
         TAG = "CamOut-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
-        mFrameConverter = new Java2DFrameConverter();
+        mFrameConverter = new Java2DFrameConverter(); // hangs when created in a thread
     }
 
     @Override
-    public void start() {
+    public void start() throws Exception {
         mLogger.log(TAG, "Start");
 
         super.start();
@@ -75,33 +75,27 @@ public class CamOutputGenerator extends ThreadLoop {
     }
 
     private boolean generateJpeg() {
-//        BufferedImage image = mCamInfo.getGrabber().getLastImage().get();
-//        if (image == null) {
-//            return false;
-//        }
-
         Frame frame = mCamInfo.getGrabber().getLastFrame().get();
         if (frame == null) {
             return false;
         }
 
+        try {
+            mLogger.log(TAG, "[JPEG] frame: " + frame);
+            mDebugDisplay.queue(frame);
 
-//        try {
-                        mLogger.log(TAG, "[JPEG] frame: " + frame);
-        mDebugDisplay.queue(frame);
-//
-//
-//            BufferedImage image  = mFrameConverter.convert(frame);
-//
-//            mLogger.log(TAG, "[JPEG] image: " + image);
-//
-//            File file = new File("E:\\Temp\\temp\\1.jpg");
-//            ImageIO.write(image, "jpg", file);
-//            mLogger.log(TAG, "JPEG generated: " + file.getPath());
-//            return true;
-//        } catch (Exception e) {
-//            mLogger.log(TAG, e.toString());
-//        }
+            BufferedImage image  = mFrameConverter.convert(frame);
+
+            mLogger.log(TAG, "[JPEG] image: " + image);
+
+            File file = new File("E:\\Temp\\temp\\1.jpg");
+            ImageIO.write(image, "jpg", file);
+            mLogger.log(TAG, "JPEG generated: " + file.getPath());
+            mDebugDisplay.requestQuit();
+            return true;
+        } catch (Exception e) {
+            mLogger.log(TAG, e.toString());
+        }
 
         return false;
     }

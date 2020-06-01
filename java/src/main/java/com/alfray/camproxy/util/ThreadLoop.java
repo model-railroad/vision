@@ -4,7 +4,7 @@ public abstract class ThreadLoop {
     protected Thread mThread;
     protected volatile boolean mQuit;
 
-    public void start() {
+    public void start() throws Exception {
         if (mThread == null) {
             mThread = new Thread(this::_runInThread);
             mQuit = false;

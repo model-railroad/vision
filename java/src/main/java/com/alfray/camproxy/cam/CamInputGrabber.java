@@ -9,7 +9,6 @@ import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.Java2DFrameConverter;
-import org.bytedeco.javacv.Java2DFrameUtils;
 
 import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,7 +28,6 @@ public class CamInputGrabber extends ThreadLoop {
     private final CamInfo mCamInfo;
     private final AtomicReference<BufferedImage> mLastImage = new AtomicReference<>();
     private final AtomicReference<Frame> mLastFrame = new AtomicReference<>();
-    private final Java2DFrameConverter mFrameConverter;
 
     public CamInputGrabber(
             @Provided ILogger logger,
@@ -39,7 +37,6 @@ public class CamInputGrabber extends ThreadLoop {
         TAG = "CamIn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
-        mFrameConverter = new Java2DFrameConverter();
     }
 
     public AtomicReference<BufferedImage> getLastImage() {
@@ -51,8 +48,9 @@ public class CamInputGrabber extends ThreadLoop {
     }
 
     @Override
-    public void start() {
+    public void start() throws Exception {
         mLogger.log(TAG, "Start");
+        FFmpegFrameGrabber.tryLoad(); // must be initialized on main thread
         super.start();
     }
 
@@ -71,10 +69,14 @@ public class CamInputGrabber extends ThreadLoop {
             FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
+            // grabber.setPixelFormat(AV_PIX_FMT_RGB24);
             grabber.start();
             mLogger.log(TAG, "Grabber started");
 
+            // Note: Doc of grab() indicates it reuses the same Frame instance at every call
+            // to avoid allocating memory. For an async/shared usage, it must be cloned first.
             Frame frame;
+
             while (!mQuit && (frame = grabber.grab()) != null) {
                 mFpsMeasurer.tick();
                 mLogger.log(TAG, "frame grabbed at " + grabber.getTimestamp() + " -- " + mFpsMeasurer.getFps() + " fps"
@@ -82,9 +84,7 @@ public class CamInputGrabber extends ThreadLoop {
                         + ", image: " + (frame.image == null ? "NULL" : frame.image.length));
 
 
-                //BufferedImage image = Java2DFrameUtils.toBufferedImage(frame);
-                //mLastImage.set(image);
-                mLastFrame.set(frame);
+                mLastFrame.set(frame.clone());
             }
 
             grabber.flush();

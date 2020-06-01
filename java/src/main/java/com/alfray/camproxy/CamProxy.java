@@ -31,18 +31,21 @@ public class CamProxy {
         mCommandLineArgs.parse(args);
 
         mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_mjpeg.sdp"), // ipcam_h264.sdp"),
+                // mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_mjpeg.sdp"),
+                mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_h264.sdp"),
                 8000));
 
-        mDebugDisplay.start();
-        mCameras.start();
-
         try {
+            mDebugDisplay.start();
+            mCameras.start();
+
             if (mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
                 mDebugDisplay.waitTillClosed();
             } else {
                 waitForEnter();
             }
+        } catch (Exception e) {
+            mLogger.log(TAG, e.toString());
         } finally {
             mCameras.stop();
             mDebugDisplay.stop();

@@ -41,7 +41,7 @@ public class Cameras {
         return null;
     }
 
-    public void start() {
+    public void start() throws Exception {
         for (CamInfo camInfo : mCamInfos) {
             camInfo.getGrabber().start();
             camInfo.getGenerator().start();

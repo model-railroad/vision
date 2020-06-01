@@ -44,11 +44,17 @@ public class DebugDisplay {
                 @Override
                 public void windowClosing(WindowEvent windowEvent) {
                     super.windowClosing(windowEvent);
-                    mQuit = true;
+                    requestQuit();
                 }
             });
 
             mDisplay.setVisible(true);
+        }
+    }
+
+    public void requestQuit() {
+        if (mDisplay != null) {
+            mQuit = true;
         }
     }
 
