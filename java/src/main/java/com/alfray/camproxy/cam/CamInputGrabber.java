@@ -8,7 +8,10 @@ import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
+import org.bytedeco.javacv.Java2DFrameConverter;
+import org.bytedeco.javacv.Java2DFrameUtils;
 
+import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -24,7 +27,9 @@ public class CamInputGrabber extends ThreadLoop {
     private final FpsMeasurer mFpsMeasurer;
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
+    private final AtomicReference<BufferedImage> mLastImage = new AtomicReference<>();
     private final AtomicReference<Frame> mLastFrame = new AtomicReference<>();
+    private final Java2DFrameConverter mFrameConverter;
 
     public CamInputGrabber(
             @Provided ILogger logger,
@@ -34,6 +39,11 @@ public class CamInputGrabber extends ThreadLoop {
         TAG = "CamIn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
+        mFrameConverter = new Java2DFrameConverter();
+    }
+
+    public AtomicReference<BufferedImage> getLastImage() {
+        return mLastImage;
     }
 
     public AtomicReference<Frame> getLastFrame() {
@@ -59,14 +69,28 @@ public class CamInputGrabber extends ThreadLoop {
 
         try {
             FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
+            grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
+            grabber.setTimeout(5*1000); // milliseconds
             grabber.start();
+            mLogger.log(TAG, "Grabber started");
 
             Frame frame;
             while (!mQuit && (frame = grabber.grab()) != null) {
                 mFpsMeasurer.tick();
-                mLogger.log(TAG, "frame grabbed at " + grabber.getTimestamp() + " -- " + mFpsMeasurer.getFps() + " fps");
+                mLogger.log(TAG, "frame grabbed at " + grabber.getTimestamp() + " -- " + mFpsMeasurer.getFps() + " fps"
+                        + ", size: "+ frame.imageWidth + "x" + frame.imageHeight
+                        + ", image: " + (frame.image == null ? "NULL" : frame.image.length));
+
+
+                //BufferedImage image = Java2DFrameUtils.toBufferedImage(frame);
+                //mLastImage.set(image);
                 mLastFrame.set(frame);
             }
+
+            grabber.flush();
+            grabber.stop();
+            grabber.release();
+
         } catch (FrameGrabber.Exception e) {
             mLogger.log(TAG, e.toString());
         }

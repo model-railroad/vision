@@ -17,6 +17,10 @@ import java.util.stream.Stream;
 public class CommandLineArgs {
     private static final String TAG = CommandLineArgs.class.getSimpleName();
 
+    public static final String OPT_HELP = "h";
+    public static final String OPT_DEBUG_DISPLAY = "d";
+    public static final String OPT_USER_VALUE = "u";
+
     private final ILogger mLogger;
     private final Options mOptions = new Options();
     private CommandLine mLine;
@@ -25,8 +29,9 @@ public class CommandLineArgs {
     public CommandLineArgs(ILogger logger) {
         mLogger = logger;
 
-        mOptions.addOption("h", "help", false, "This usage help.");
-        mOptions.addOption(Option.builder("u")
+        mOptions.addOption(OPT_HELP, "help", false, "This usage help.");
+        mOptions.addOption(OPT_DEBUG_DISPLAY, "debug", false, "Debug Display.");
+        mOptions.addOption(Option.builder(OPT_USER_VALUE)
                 .longOpt("user")
                 .hasArg()
                 .argName("username")
@@ -51,16 +56,20 @@ public class CommandLineArgs {
             error = true;
         }
 
-        if (error || mLine == null || mLine.hasOption("h")) {
+        if (error || mLine == null || mLine.hasOption(OPT_HELP)) {
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("cam-proxy", mOptions);
             System.exit(1);
         }
     }
 
+    public boolean hasOption(@Nonnull String optName) {
+        return mLine != null && mLine.hasOption(optName);
+    }
+
     @Nonnull
     public String resolve(@Nonnull String input) {
-        input = input.replaceAll("\\$U", mLine.getOptionValue("u", "camop"));
+        input = input.replaceAll("\\$U", mLine.getOptionValue(OPT_USER_VALUE, "camop"));
 
         for (int i = 1; i <= 3; i++) {
             if (mLine.hasOption(Integer.toString(i))) {

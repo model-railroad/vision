@@ -4,6 +4,7 @@ import com.alfray.camproxy.cam.CamConfig;
 import com.alfray.camproxy.cam.Cameras;
 import com.alfray.camproxy.dagger.DaggerICamProxyComponent;
 import com.alfray.camproxy.dagger.ICamProxyComponent;
+import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
 
 import javax.inject.Inject;
@@ -14,8 +15,9 @@ public class CamProxy {
 
     private final ICamProxyComponent mComponent;
 
-    @Inject ILogger mLogger;
     @Inject CommandLineArgs mCommandLineArgs;
+    @Inject DebugDisplay mDebugDisplay;
+    @Inject ILogger mLogger;
     @Inject Cameras mCameras;
 
     public CamProxy() {
@@ -29,15 +31,21 @@ public class CamProxy {
         mCommandLineArgs.parse(args);
 
         mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_h264.sdp"),
+                mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_mjpeg.sdp"), // ipcam_h264.sdp"),
                 8000));
 
+        mDebugDisplay.start();
         mCameras.start();
 
         try {
-            waitForEnter();
+            if (mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
+                mDebugDisplay.waitTillClosed();
+            } else {
+                waitForEnter();
+            }
         } finally {
             mCameras.stop();
+            mDebugDisplay.stop();
         }
 
         mLogger.log(TAG, "End");
