@@ -29,8 +29,8 @@ public class CamProxy {
         mCommandLineArgs.parse(args);
 
         mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("http://$U:$P1@192.168.1.86:554/ipcam_h264.sdp"),
-                1024));
+                mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_h264.sdp"),
+                8000));
 
         mCameras.start();
 
