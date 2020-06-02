@@ -27,14 +27,17 @@ public class CamInfo {
         return mIndex;
     }
 
+    @Nonnull
     public CamConfig getConfig() {
         return mConfig;
     }
 
+    @Nonnull
     public CamInputGrabber getGrabber() {
         return mGrabber;
     }
 
+    @Nonnull
     public CamOutputGenerator getGenerator() {
         return mGenerator;
     }

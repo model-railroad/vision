@@ -18,6 +18,7 @@ public class CommandLineArgs {
     private static final String TAG = CommandLineArgs.class.getSimpleName();
 
     public static final String OPT_HELP = "h";
+    public static final String OPT_HTTP_PORT = "p";
     public static final String OPT_DEBUG_DISPLAY = "d";
     public static final String OPT_USER_VALUE = "u";
 
@@ -31,6 +32,13 @@ public class CommandLineArgs {
 
         mOptions.addOption(OPT_HELP, "help", false, "This usage help.");
         mOptions.addOption(OPT_DEBUG_DISPLAY, "debug", false, "Debug Display.");
+        mOptions.addOption(Option.builder(OPT_HTTP_PORT)
+                .longOpt("port")
+                .hasArg()
+                .type(Integer.class)
+                .argName("port")
+                .desc("Web server port")
+                .build());
         mOptions.addOption(Option.builder(OPT_USER_VALUE)
                 .longOpt("user")
                 .hasArg()
@@ -65,6 +73,11 @@ public class CommandLineArgs {
 
     public boolean hasOption(@Nonnull String optName) {
         return mLine != null && mLine.hasOption(optName);
+    }
+
+    public int getIntOption(@Nonnull String optName, int defVal) {
+        final String defStr = Integer.toString(defVal);
+        return mLine == null ? defVal : Integer.parseInt(mLine.getOptionValue(optName, defStr));
     }
 
     @Nonnull

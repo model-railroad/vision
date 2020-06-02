@@ -10,6 +10,7 @@ import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.Java2DFrameConverter;
 
+import javax.annotation.Nonnull;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -26,7 +27,6 @@ public class CamInputGrabber extends ThreadLoop {
     private final FpsMeasurer mFpsMeasurer;
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
-    private final AtomicReference<BufferedImage> mLastImage = new AtomicReference<>();
     private final AtomicReference<Frame> mLastFrame = new AtomicReference<>();
 
     public CamInputGrabber(
@@ -39,10 +39,7 @@ public class CamInputGrabber extends ThreadLoop {
         mCamInfo = camInfo;
     }
 
-    public AtomicReference<BufferedImage> getLastImage() {
-        return mLastImage;
-    }
-
+    @Nonnull
     public AtomicReference<Frame> getLastFrame() {
         return mLastFrame;
     }

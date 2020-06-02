@@ -1,6 +1,7 @@
 package com.alfray.camproxy.cam;
 
 import com.alfray.camproxy.util.ILogger;
+import com.alfray.camproxy.util.IStartStop;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -10,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
-public class Cameras {
+public class Cameras implements IStartStop {
     private static final String TAG = Cameras.class.getSimpleName();
 
     private final List<CamInfo> mCamInfos = new ArrayList<>();
@@ -44,7 +45,7 @@ public class Cameras {
     public void start() throws Exception {
         for (CamInfo camInfo : mCamInfos) {
             camInfo.getGrabber().start();
-            camInfo.getGenerator().start();
+            //-- don't start generator for now -- camInfo.getGenerator().start();
         }
     }
 

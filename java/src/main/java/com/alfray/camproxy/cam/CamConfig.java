@@ -6,7 +6,7 @@ public class CamConfig {
     private final String mInputUrl;
     private final int mOutputPort;
 
-    public CamConfig(@Nonnull String inputUrl, int outputPort) {
+    public CamConfig(@Nonnull String inputUrl, @Deprecated int outputPort) {
         mInputUrl = inputUrl;
         mOutputPort = outputPort;
     }
@@ -16,6 +16,7 @@ public class CamConfig {
         return mInputUrl;
     }
 
+    @Deprecated
     public int getOutputPort() {
         return mOutputPort;
     }

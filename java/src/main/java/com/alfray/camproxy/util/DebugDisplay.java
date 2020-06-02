@@ -1,9 +1,12 @@
 package com.alfray.camproxy.util;
 
 import com.alfray.camproxy.CommandLineArgs;
+import com.alfray.camproxy.cam.CamInfo;
+import com.alfray.camproxy.cam.Cameras;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
@@ -12,22 +15,28 @@ import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
 @Singleton
-public class DebugDisplay {
+public class DebugDisplay implements IStartStop {
     private static final String TAG = DebugDisplay.class.getSimpleName();
 
     private final ILogger mLogger;
+    private final Cameras mCameras;
     private final CommandLineArgs mCommandLineArgs;
 
     private boolean mQuit;
     private CanvasFrame mDisplay;
 
     @Inject
-    public DebugDisplay(ILogger logger, CommandLineArgs commandLineArgs) {
+    public DebugDisplay(
+            ILogger logger,
+            Cameras cameras,
+            CommandLineArgs commandLineArgs) {
         mLogger = logger;
+        mCameras = cameras;
         mCommandLineArgs = commandLineArgs;
     }
 
@@ -62,8 +71,10 @@ public class DebugDisplay {
         }
     }
 
-    public void displayAsync(Frame frame) {
-        SwingUtilities.invokeLater(() -> mDisplay.showImage(frame));
+    public void displayAsync(@Nullable Frame frame) {
+        if (mDisplay != null && frame != null) {
+            SwingUtilities.invokeLater(() -> mDisplay.showImage(frame));
+        }
     }
 
     public void consoleWait() {
@@ -74,8 +85,15 @@ public class DebugDisplay {
 
         try {
             while (!mQuit && !reader.ready()) {
+                if (mDisplay != null) {
+                    CamInfo cam1 = mCameras.getByIndex(1);
+                    if (cam1 != null) {
+                        displayAsync(cam1.getGrabber().getLastFrame().get());
+                    }
+                }
+
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(100); // 10 fps
                 } catch (InterruptedException e) {
                     mLogger.log(TAG, e.toString());
                 }

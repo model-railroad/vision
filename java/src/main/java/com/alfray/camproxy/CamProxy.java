@@ -2,10 +2,12 @@ package com.alfray.camproxy;
 
 import com.alfray.camproxy.cam.CamConfig;
 import com.alfray.camproxy.cam.Cameras;
+import com.alfray.camproxy.cam.HttpServ;
 import com.alfray.camproxy.dagger.DaggerICamProxyComponent;
 import com.alfray.camproxy.dagger.ICamProxyComponent;
 import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
+import com.alfray.camproxy.util.IStartStop;
 
 import javax.inject.Inject;
 
@@ -18,6 +20,7 @@ public class CamProxy {
     @Inject DebugDisplay mDebugDisplay;
     @Inject ILogger mLogger;
     @Inject Cameras mCameras;
+    @Inject HttpServ mHttpServ;
 
     public CamProxy() {
         mComponent = DaggerICamProxyComponent.factory().createComponent();
@@ -36,15 +39,25 @@ public class CamProxy {
 
         try {
             mDebugDisplay.start();
+            mHttpServ.start();
             mCameras.start();
             mDebugDisplay.consoleWait();
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());
         } finally {
-            mCameras.stop();
-            mDebugDisplay.stop();
+            safeStop(mCameras);
+            safeStop(mHttpServ);
+            safeStop(mDebugDisplay);
         }
 
         mLogger.log(TAG, "End");
+    }
+
+    private void safeStop(IStartStop stoppable) {
+        try {
+            stoppable.stop();
+        } catch (Exception e) {
+            mLogger.log(TAG, "Error stopping " + stoppable.getClass().getSimpleName() + ": " + e.toString());
+        }
     }
 }
