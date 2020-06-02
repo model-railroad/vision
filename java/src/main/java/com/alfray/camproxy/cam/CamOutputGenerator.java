@@ -11,6 +11,7 @@ import org.bytedeco.javacv.Java2DFrameConverter;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Several options here:
@@ -74,14 +75,14 @@ public class CamOutputGenerator extends ThreadLoop {
     }
 
     private void debugDisplay() {
-        Frame frame = mCamInfo.getGrabber().getLastFrame().get();
+        Frame frame = mCamInfo.getGrabber().refreshAndGetFrame();
         if (frame != null) {
             mDebugDisplay.displayAsync(frame);
         }
     }
 
     private boolean generateJpeg() {
-        Frame frame = mCamInfo.getGrabber().getLastFrame().get();
+        Frame frame = mCamInfo.getGrabber().refreshAndGetFrame();
         if (frame == null) {
             return false;
         }

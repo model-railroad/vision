@@ -31,6 +31,7 @@ import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
 public class HttpServ implements IStartStop {
     private static final String TAG = HttpServ.class.getSimpleName();
 
+    // TODO make framerate dynamic via URL, e.g. /mjpeg/cam#[/fps]
     private static final int MPJPEG_FRAME_RATE = 10;
 
     private final ILogger mLogger;
@@ -151,7 +152,7 @@ public class HttpServ implements IStartStop {
         private boolean sendImage(CamInfo cam, HttpServletResponse response) throws IOException {
             if (cam == null) return false;
 
-            Frame frame = cam.getGrabber().getLastFrame().get();
+            Frame frame = cam.getGrabber().refreshAndGetFrame();
             if (frame == null) return false;
 
             BufferedImage image  = mFrameConverter.convert(frame);
@@ -176,7 +177,7 @@ public class HttpServ implements IStartStop {
             }
 
             // Only start with at least one frame to get the initial size.
-            Frame frame = cam.getGrabber().getLastFrame().get();
+            Frame frame = cam.getGrabber().refreshAndGetFrame();
             if (frame == null) return false;
 
             response.setContentType(mMPJpegCodec.mime_type().getString());
@@ -192,17 +193,23 @@ public class HttpServ implements IStartStop {
             recorder.setFormat(mMPJpegCodec.name().getString());
             recorder.setVideoCodec(mMPJpegCodec.video_codec());
             recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P);
-            recorder.setFrameRate(MPJPEG_FRAME_RATE);
+
+            double frameRate = cam.getGrabber().getFrameRate();
+            if (frameRate <= 0) {
+                frameRate = MPJPEG_FRAME_RATE;
+            }
+            recorder.setFrameRate(frameRate);
 
             recorder.start();
 
             try {
                 while (!mDebugDisplay.quitRequested()) {
-                    frame = cam.getGrabber().getLastFrame().get();
+                    frame = cam.getGrabber().refreshAndGetFrame();
                     if (frame != null) {
                         recorder.record(frame);
                     } else {
-                        break;
+                        // Option: lack of frame. Wait or abort the feed. Choose the former right now.
+                        // break;
                     }
                     Thread.sleep(1000 / MPJPEG_FRAME_RATE);
                 }
@@ -217,7 +224,6 @@ public class HttpServ implements IStartStop {
             recorder.stop();
 
             return true;
-//            return false;
         }
     }
 }

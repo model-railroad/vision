@@ -8,10 +8,10 @@ import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.Java2DFrameConverter;
 
-import javax.annotation.Nonnull;
-import java.awt.image.BufferedImage;
+import javax.annotation.Nullable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -28,6 +28,8 @@ public class CamInputGrabber extends ThreadLoop {
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
     private final AtomicReference<Frame> mLastFrame = new AtomicReference<>();
+    private final AtomicReference<CountDownLatch> mFrameLatch = new AtomicReference<>(new CountDownLatch(1));
+    private double mFrameRate;
 
     public CamInputGrabber(
             @Provided ILogger logger,
@@ -39,9 +41,49 @@ public class CamInputGrabber extends ThreadLoop {
         mCamInfo = camInfo;
     }
 
-    @Nonnull
-    public AtomicReference<Frame> getLastFrame() {
-        return mLastFrame;
+    /** Returns the frame rate from the FFMpeg frame grabber. */
+    public double getFrameRate() {
+        return mFrameRate;
+    }
+
+    /** Returns the last cached frame clone. */
+    @Nullable
+    public Frame getLastFrame() {
+        return mLastFrame.get();
+    }
+
+    /** Refreshes and returns a frame, with a 200 ms deadline. */
+    @Nullable
+    public Frame refreshAndGetFrame() {
+        return refreshAndGetFrame(200, TimeUnit.MILLISECONDS); // 5 fps
+    }
+
+    /**
+     * Refreshes and returns a frame. When the deadline expires, returns whatever previous frame
+     * we have. The frames are cloned, and can be used in other threads independantly from the
+     * grabber thread. */
+    @Nullable
+    public Frame refreshAndGetFrame(long waitTime, TimeUnit timeUnit) {
+        CountDownLatch latch = mFrameLatch.get();
+
+        if (latch == null) {
+            // Setting the latch requests a frame refresh.
+            synchronized (mFrameLatch) {
+                mFrameLatch.set(latch = new CountDownLatch(1));
+            }
+        }
+
+        try {
+            latch.await(waitTime, timeUnit);
+        } catch (InterruptedException e) {
+            // Option: Either return null or return the last frame we have? Do the latter for now.
+            return mLastFrame.get();
+        }
+
+        synchronized (mFrameLatch) {
+            mFrameLatch.set(null);
+            return mLastFrame.get();
+        }
     }
 
     @Override
@@ -66,7 +108,6 @@ public class CamInputGrabber extends ThreadLoop {
             FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
-            // grabber.setPixelFormat(AV_PIX_FMT_RGB24);
             grabber.start();
             mLogger.log(TAG, "Grabber started");
 
@@ -76,13 +117,21 @@ public class CamInputGrabber extends ThreadLoop {
 
             while (!mQuit && (frame = grabber.grab()) != null) {
                 mFpsMeasurer.tick();
+                mFrameRate = grabber.getFrameRate();
                 mLogger.log(TAG, "frame grabbed at " + grabber.getTimestamp() + " -- " + mFpsMeasurer.getFps() + " fps"
+                        + " vs " + grabber.getFrameRate() + " fps"
                         + ", size: "+ frame.imageWidth + "x" + frame.imageHeight
                         + ", image: " + (frame.image == null ? "NULL" : frame.image.length)
                         + "\r");
 
-
-                mLastFrame.set(frame.clone());
+                CountDownLatch latch = mFrameLatch.get();
+                if (latch != null && latch.getCount() > 0) {
+                    Frame clone = frame.clone();
+                    synchronized (mFrameLatch) {
+                        mLastFrame.set(clone);
+                        latch.countDown();
+                    }
+                }
             }
 
             grabber.flush();

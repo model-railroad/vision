@@ -92,7 +92,7 @@ public class DebugDisplay implements IStartStop {
                 if (mDisplay != null) {
                     CamInfo cam1 = mCameras.getByIndex(1);
                     if (cam1 != null) {
-                        displayAsync(cam1.getGrabber().getLastFrame().get());
+                        displayAsync(cam1.getGrabber().getLastFrame());
                     }
                 }
 
