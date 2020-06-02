@@ -64,6 +64,10 @@ public class DebugDisplay implements IStartStop {
         mQuit = true;
     }
 
+    public boolean quitRequested() {
+        return mQuit;
+    }
+
     public void stop() {
         if (mDisplay != null) {
             mDisplay.dispose();

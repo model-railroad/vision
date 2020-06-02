@@ -78,7 +78,8 @@ public class CamInputGrabber extends ThreadLoop {
                 mFpsMeasurer.tick();
                 mLogger.log(TAG, "frame grabbed at " + grabber.getTimestamp() + " -- " + mFpsMeasurer.getFps() + " fps"
                         + ", size: "+ frame.imageWidth + "x" + frame.imageHeight
-                        + ", image: " + (frame.image == null ? "NULL" : frame.image.length));
+                        + ", image: " + (frame.image == null ? "NULL" : frame.image.length)
+                        + "\r");
 
 
                 mLastFrame.set(frame.clone());
