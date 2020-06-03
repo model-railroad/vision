@@ -9,6 +9,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.stream.Stream;
@@ -17,14 +18,16 @@ import java.util.stream.Stream;
 public class CommandLineArgs {
     private static final String TAG = CommandLineArgs.class.getSimpleName();
 
+    public static final String OPT_DEBUG_DISPLAY = "d";
     public static final String OPT_HELP = "h";
     public static final String OPT_HTTP_PORT = "p";
-    public static final String OPT_DEBUG_DISPLAY = "d";
     public static final String OPT_USER_VALUE = "u";
+    public static final String OPT_WEB_ROOT = "w";
 
     private final ILogger mLogger;
     private final Options mOptions = new Options();
     private CommandLine mLine;
+    private boolean mParsed;
 
     @Inject
     public CommandLineArgs(ILogger logger) {
@@ -38,6 +41,12 @@ public class CommandLineArgs {
                 .type(Integer.class)
                 .argName("port")
                 .desc("Web server port")
+                .build());
+        mOptions.addOption(Option.builder(OPT_WEB_ROOT)
+                .longOpt("web-root")
+                .hasArg()
+                .argName("path")
+                .desc("Absolute directory for web root (default: use jar embedded web root)")
                 .build());
         mOptions.addOption(Option.builder(OPT_USER_VALUE)
                 .longOpt("user")
@@ -55,6 +64,7 @@ public class CommandLineArgs {
     }
 
     public void parse(@Nonnull String[] arguments) {
+        mParsed = true;
         DefaultParser parser = new DefaultParser();
         boolean error = false;
         try {
@@ -71,11 +81,37 @@ public class CommandLineArgs {
         }
     }
 
+    /**
+     * Indicates whether this boolean option has been defined.
+     * <p/>
+     * WARNING: Do NOT invoke from a dagger constructor! It's too early and the command line
+     * has not been parsed yet.
+     */
     public boolean hasOption(@Nonnull String optName) {
+        if (!mParsed) throw new RuntimeException("Command-line has not been parsed yet.");
         return mLine != null && mLine.hasOption(optName);
     }
 
+    /**
+     * Returns a string option, with a suitable default.
+     * <p/>
+     * WARNING: Do NOT invoke from a dagger constructor! It's too early and the command line
+     * has not been parsed yet.
+     */
+    @Nullable
+    public String getStringOption(@Nonnull String optName, @Nullable String defStr) {
+        if (!mParsed) throw new RuntimeException("Command-line has not been parsed yet.");
+        return mLine == null ? defStr : mLine.getOptionValue(optName, defStr);
+    }
+
+    /**
+     * Returns an integer option, with a suitable default.
+     * <p/>
+     * WARNING: Do NOT invoke from a dagger constructor! It's too early and the command line
+     * has not been parsed yet.
+     */
     public int getIntOption(@Nonnull String optName, int defVal) {
+        if (!mParsed) throw new RuntimeException("Command-line has not been parsed yet.");
         final String defStr = Integer.toString(defVal);
         return mLine == null ? defVal : Integer.parseInt(mLine.getOptionValue(optName, defStr));
     }

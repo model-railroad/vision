@@ -88,10 +88,10 @@ public class HttpCamHandler extends AbstractHandler {
             success = doGet(path, response);
         }
 
-        if (!success) {
-            sendText(response, HttpServletResponse.SC_BAD_REQUEST, "Bad Request");
-        }
-        baseRequest.setHandled(true);
+//        if (!success) {
+//            sendText(response, HttpServletResponse.SC_BAD_REQUEST, "Bad Request");
+//        }
+        baseRequest.setHandled(success);
     }
 
     private final Pattern PATH_IMG_NUMBER = Pattern.compile("/img/([1-9])");

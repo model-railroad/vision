@@ -138,7 +138,7 @@ function plHighlightVideo(index123) {
 }
 
 function plSetupCams() {
-    $("#pl-video2").attr("src", "http://192.168.1.86/mjpg/video.mjpg")
+    $("#pl-video2").attr("src", "/mjpeg/1")
 }
 
 // ---

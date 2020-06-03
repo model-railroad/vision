@@ -3,17 +3,29 @@ package com.alfray.camproxy.cam;
 import com.alfray.camproxy.CommandLineArgs;
 import com.alfray.camproxy.util.ILogger;
 import com.alfray.camproxy.util.IStartStop;
+import org.eclipse.jetty.server.ResourceService;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.util.resource.PathResource;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 
 @Singleton
 public class HttpServ implements IStartStop {
     private static final String TAG = HttpServ.class.getSimpleName();
 
     private final ILogger mLogger;
-    private final Server mServer;
+    private final CommandLineArgs mCommandLineArgs;
+    private final HttpCamHandler mHttpCamHandler;
+    private Server mServer;
 
     @Inject
     public HttpServ(
@@ -22,13 +34,22 @@ public class HttpServ implements IStartStop {
             HttpCamHandler httpCamHandler) {
         mLogger = logger;
 
-        int port = commandLineArgs.getIntOption(CommandLineArgs.OPT_HTTP_PORT, 8080);
-        mServer = new Server(port);
-        mServer.setHandler(httpCamHandler);
+        mCommandLineArgs = commandLineArgs;
+        mHttpCamHandler = httpCamHandler;
     }
 
     public void start() throws Exception {
         mLogger.log(TAG, "Start");
+
+        int port = mCommandLineArgs.getIntOption(CommandLineArgs.OPT_HTTP_PORT, 8080);
+        mServer = new Server(port);
+
+        String webRoot = mCommandLineArgs.getStringOption(mCommandLineArgs.OPT_WEB_ROOT, null);
+        HandlerList handlers = new HandlerList(
+                mHttpCamHandler,
+                createResourceHandler(webRoot));
+
+        mServer.setHandler(handlers);
         mServer.start();
     }
 
@@ -36,4 +57,36 @@ public class HttpServ implements IStartStop {
         mLogger.log(TAG, "Stop");
         mServer.stop();
     }
+
+    private ResourceHandler createResourceHandler(@Nullable String webRoot) {
+
+        // ResourceService can define setPathInfoOnly:
+        // - when true, query is / + request path info (everything from url / to ?)
+        // - when false, query is request servlet path + path info.
+        // Since I do not have any servlet path, this is a no-op.
+        //
+        // The constructed path ( /something ) is then processed by a ResourceFactory.
+        // If the hanlder.setBaseResource is set, it defines the root of the content.
+        // Otherwise a ContextHandler.getCurrentContext() is used (which we do not have here).
+
+        ResourceService res = new ResourceService() {
+            @Override
+            protected void notFound(HttpServletRequest request, HttpServletResponse response) throws IOException {
+                mLogger.log(TAG, "Not Found: " + request);
+                super.notFound(request, response);
+            }
+        };
+
+        res.setPathInfoOnly(false);
+        res.setDirAllowed(false);
+
+        ResourceHandler handler = new ResourceHandler(res);
+        if (webRoot != null) {
+            handler.setBaseResource(new PathResource(new File(webRoot)));
+        }
+
+        mLogger.log(TAG, "Base Resource: " + handler.getBaseResource());
+        return handler;
+    }
+
 }
