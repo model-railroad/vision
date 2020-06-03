@@ -7,7 +7,9 @@ import org.eclipse.jetty.server.ResourceService;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.util.resource.JarResource;
 import org.eclipse.jetty.util.resource.PathResource;
+import org.eclipse.jetty.util.resource.Resource;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -16,6 +18,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
 
 @Singleton
@@ -58,7 +62,7 @@ public class HttpServ implements IStartStop {
         mServer.stop();
     }
 
-    private ResourceHandler createResourceHandler(@Nullable String webRoot) {
+    private ResourceHandler createResourceHandler(@Nullable String webRoot) throws MalformedURLException {
 
         // ResourceService can define setPathInfoOnly:
         // - when true, query is / + request path info (everything from url / to ?)
@@ -81,11 +85,16 @@ public class HttpServ implements IStartStop {
         res.setDirAllowed(false);
 
         ResourceHandler handler = new ResourceHandler(res);
+        URL url;
         if (webRoot != null) {
-            handler.setBaseResource(new PathResource(new File(webRoot)));
+            File file = new File(webRoot);
+            url = file.toURI().toURL();
+        } else {
+            url = this.getClass().getResource("/web");
         }
+        handler.setBaseResource(Resource.newResource(url));
 
-        mLogger.log(TAG, "Base Resource: " + handler.getBaseResource());
+        mLogger.log(TAG, "Web Root Resource: " + handler.getBaseResource());
         return handler;
     }
 

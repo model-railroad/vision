@@ -3,7 +3,7 @@
 
 cd $(dirname "$0")
 DIR=$PWD
-URL="file://${DIR}/player.html"
+URL="file://${DIR}/src/main/resources/web/index.html"
 
 CHROME="google-chrome"
 if [[ ! -f "$CHROME" ]]; then

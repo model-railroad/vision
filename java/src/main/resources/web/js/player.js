@@ -138,7 +138,9 @@ function plHighlightVideo(index123) {
 }
 
 function plSetupCams() {
+    $("#pl-video1").attr("src", "/mjpeg/1")
     $("#pl-video2").attr("src", "/mjpeg/1")
+    $("#pl-video3").attr("src", "/mjpeg/1")
 }
 
 // ---
