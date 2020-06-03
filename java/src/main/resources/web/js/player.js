@@ -103,14 +103,14 @@ function plSetFullscreen(goToFullscreen) {
     plLog("plFullscreen " + goToFullscreen);
     plFullscreen = goToFullscreen;
     if (goToFullscreen) {
-        $("#pl-video1").hide();
-        $("#pl-video2").hide();
-        $("#pl-video3").hide();
+        $("#pl-cell1").hide();
+        $("#pl-cell2").hide();
+        $("#pl-cell3").hide();
         var sx = plPlayerSize[0];
         var dx = plGridSize[0] - sx;
         var sy = plPlayerSize[1];
         var dy = plGridSize[1] - sy;
-        $({value:0}).animate({value:1}, { 
+        $({value:0}).animate({value: 1}, {
             step: (val) => plPlayer.setSize(sx + dx * val, sy + dy * val),
             complete: () => plPlayer.setSize(plGridSize[0], plGridSize[1]),
         })
@@ -123,24 +123,24 @@ function plSetFullscreen(goToFullscreen) {
             step: (val) => plPlayer.setSize(sx + dx * val, sy + dy * val),
             complete: () => {
                 plPlayer.setSize(plPlayerSize[0], plPlayerSize[1])
-                $("#pl-video1").show();
-                $("#pl-video2").show();
-                $("#pl-video3").show();
+                $("#pl-cell1").show();
+                $("#pl-cell2").show();
+                $("#pl-cell3").show();
             }
         })
     }
 }
 
 function plHighlightVideo(index123) {
-    var elem = $("#pl-video" + index123);
+    var elem = $("#pl-cell" + index123);
     elem.css("border-color", "yellow");
     setTimeout( () => elem.css("border-color", "darkgreen"), 5000);
 }
 
 function plSetupCams() {
-    plSetupCamN(1);
-    plSetupCamN(2);
-    plSetupCamN(3);
+    // plSetupCamN(1);
+    // plSetupCamN(2);
+    // plSetupCamN(3);
 }
 
 function plSetupCamN(index) {
@@ -148,7 +148,6 @@ function plSetupCamN(index) {
     e.error( () => {
         e.attr("src", "misc/camera" + index + ".jpg");    
         setTimeout( () => plSetupCamN(index), 500);
-        
     })
     .attr("src", "/mjpeg/1")
 }

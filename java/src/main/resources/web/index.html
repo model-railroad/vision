@@ -12,14 +12,31 @@
 </head>
 
 <body>
-    <div id="pl-center">
-        <div id="pl-grid">
-            <div id="pl-yt-player"></div>
-            <img id="pl-video1" src="misc/camera1.jpg">
-            <img id="pl-video2" src="misc/camera2.jpg">
-            <img id="pl-video3" src="misc/camera3.jpg">
-        </div>
-    </div>
+    <table id="pl-table" class="hcenter">
+        <tr id="pl-row1">
+            <td id="pl-cell0" class="hcenter">
+                <div id="pl-yt-parent">
+                    <img id="pl-video0" src="misc/camera0.jpg">
+                    <div id="pl-yt-player"></div>
+                </div>
+                <span class="caption">Youtube</span>
+            </td>
+            <td id="pl-cell1" class="hcenter">
+                <img id="pl-video1" src="misc/camera1.jpg">
+                <span class="caption">Camera 1</span>
+            </td>
+        </tr>>
+        <tr id="pl-row2">
+            <td id="pl-cell2" class="hcenter">
+                <img id="pl-video2" src="misc/camera2.jpg">
+                <span class="caption">Camera 2</span>
+            </td>
+            <td id="pl-cell3" class="hcenter">
+                <img id="pl-video3" src="misc/camera3.jpg">
+                <span class="caption">Camera 3</span>
+            </td>
+        </tr>>
+    </table>
 
     <script src="js/jquery.min.js"></script>
     <script src="js/player.js"></script>

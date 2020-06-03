@@ -3,45 +3,53 @@ body {
     background-color: black;
 }
 
-#pl-center {
+#pl-table {
     width: 100%;
-    height: 100%;
-    background-color: yellowgreen;
 }
 
-#pl-grid {
-    display: grid;
-    width: 100%;
-    grid-template-columns: 49.4% 49.4%;
-    grid-gap: 10px;
+#pl-cell0 {
+    width: 50%;
+    border: 10px solid darkgreen;
+    border-collapse: collapse;
     background-color: darkgreen;
 }
 
+#pl-cell1, #pl-cell2, #pl-cell3 {
+    width: 50%;
+    border: 10px solid darkgreen;
+    border-collapse: collapse;
+    background-color: darkgreen;
+}
+
+#pl-video0, #pl-video1, #pl-video2, #pl-video3 {
+    width: 100%;
+}
+
+.hcenter {
+    text-align: center;
+}
+
+.fill-height {
+    height: 100%;
+}
+
+.caption {
+    display: block;
+    width: 100%;
+    background-color: black;
+    color: white;
+    text-align: center;
+}
+
+#pl-yt-parent {
+    position: relative;
+    z-index: 1; 
+}
+
 #pl-yt-player {
-    margin: 0px;
+    position: absolute;
+    left: 0px;
+    width: 100%;
+    height: 100%;
     z-index: 2;
-}
-
-#pl-video1 {
-    width: 100%;
-    border-style: solid;
-    border-color: darkgreen;
-    border-width: 5px;
-    z-index: 1;
-}
-
-#pl-video2 {
-    width: 100%;
-    border-style: solid;
-    border-color: darkgreen;
-    border-width: 5px;
-    z-index: 1;
-}
-
-#pl-video3 {
-    width: 100%;
-    border-style: solid;
-    border-color: darkgreen;
-    border-width: 5px;
-    z-index: 1;
 }
