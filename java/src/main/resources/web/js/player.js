@@ -66,6 +66,10 @@ function plOnPlayerStateChange(event) {
     plLog("Playing: " + plEvent.target.playerInfo.videoData.title);
     plEvent = event;
 
+    var title = plEvent.target.playerInfo.videoData.title;
+    title = "[Youtube] " + title;
+    $("#pl-yt-title").text(title);
+
     // Set the initial shuffle once the first video starts playing, with a little
     // delay. Without the delay, it seems to work half of the time.
     if (plStartInShuffle && state == 1 /*playing*/) {
