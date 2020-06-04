@@ -15,7 +15,8 @@ compileJava {
 
 dependencies {
     compile "commons-cli:commons-cli:1.4"
-    compile "org.bytedeco:javacv-platform:1.5.2"
+    compile "org.bytedeco:javacv-platform:1.5.3"
+    compile "org.bytedeco:javacpp-platform:1.5.3"
     // Note: jetty-server:10.0.0.beta0 requires JDK 9.
     compile "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
 

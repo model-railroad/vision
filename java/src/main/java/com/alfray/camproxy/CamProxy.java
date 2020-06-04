@@ -8,6 +8,7 @@ import com.alfray.camproxy.dagger.ICamProxyComponent;
 import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
 import com.alfray.camproxy.util.IStartStop;
+import org.bytedeco.javacpp.Loader;
 
 import javax.inject.Inject;
 

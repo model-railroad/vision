@@ -138,18 +138,18 @@ function plHighlightVideo(index123) {
 }
 
 function plSetupCams() {
-    // plSetupCamN(1);
-    // plSetupCamN(2);
-    // plSetupCamN(3);
+    plSetupCamN(1);
+    plSetupCamN(2);
+    plSetupCamN(3);
 }
 
 function plSetupCamN(index) {
     var e = $("#pl-video" + index);
     e.error( () => {
-        e.attr("src", "misc/camera" + index + ".jpg");    
+        e.attr("src", "no_camera.jpg");    
         setTimeout( () => plSetupCamN(index), 500);
     })
-    .attr("src", "/mjpeg/1")
+    .attr("src", "/mjpeg/" + index)
 }
 
 // ---

@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,6 +36,7 @@ public class HttpCamHandler extends AbstractHandler {
     private final Cameras mCameras;
     private final DebugDisplay mDebugDisplay;
     private final Java2DFrameConverter mFrameConverter;
+    private final Frame mEmptyFrame;
 
     /** mpjpeg = multipart m-jpeg muxer/video codec: https://ffmpeg.org/doxygen/2.8/mpjpeg_8c.html */
     private AVOutputFormat mMPJpegCodec;
@@ -49,6 +51,18 @@ public class HttpCamHandler extends AbstractHandler {
         mDebugDisplay = debugDisplay;
 
         mFrameConverter = new Java2DFrameConverter(); // hangs when created in a thread
+        mEmptyFrame = createFrame(1280, 720);
+    }
+
+    private Frame createFrame(int width, int height) {
+        Frame frame = new Frame(width, height, Frame.DEPTH_UBYTE, 1);
+
+        ByteBuffer buffer = (ByteBuffer) frame.image[0];
+        for (int i = 0, n = buffer.limit(); i < n; i++) {
+            buffer.put((byte) 0x1F);
+        }
+
+        return frame;
     }
 
     @Override
@@ -88,9 +102,6 @@ public class HttpCamHandler extends AbstractHandler {
             success = doGet(path, response);
         }
 
-//        if (!success) {
-//            sendText(response, HttpServletResponse.SC_BAD_REQUEST, "Bad Request");
-//        }
         baseRequest.setHandled(success);
     }
 
@@ -153,7 +164,8 @@ public class HttpCamHandler extends AbstractHandler {
     }
 
     private boolean sendMjpeg(CamInfo cam, HttpServletResponse response) throws IOException {
-        if (cam == null) return false;
+        // Note: Always returns a feed. If there's no real camera or it has no data yet,
+        // returns a feed with only mEmptyFrame till we have actual data.
 
         // mpjpeg = multi-part jpeg
         if (mMPJpegCodec == null) {
@@ -162,13 +174,17 @@ public class HttpCamHandler extends AbstractHandler {
         }
 
         // Only start with at least one frame to get the initial size.
-        Frame frame = cam.getGrabber().refreshAndGetFrame();
-        if (frame == null) return false;
+        Frame frame = null;
+        if (cam != null) {
+            frame = cam.getGrabber().refreshAndGetFrame();
+        }
+        if (frame == null) {
+            frame = mEmptyFrame;
+        }
 
         response.setContentType(mMPJpegCodec.mime_type().getString());
         response.addHeader("Cache-Control", "no-store");
         response.setStatus(HttpServletResponse.SC_OK);
-
 
         mLogger.log(TAG, "MJPEG: Streaming on " + response.getOutputStream());
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(
@@ -179,7 +195,10 @@ public class HttpCamHandler extends AbstractHandler {
         recorder.setVideoCodec(mMPJpegCodec.video_codec());
         recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P);
 
-        double frameRate = cam.getGrabber().getFrameRate();
+        double frameRate = MPJPEG_FRAME_RATE;
+        if (cam != null) {
+            frameRate = cam.getGrabber().getFrameRate();
+        }
         if (frameRate <= 0) {
             frameRate = MPJPEG_FRAME_RATE;
         }
@@ -187,16 +206,22 @@ public class HttpCamHandler extends AbstractHandler {
 
         recorder.start();
 
+        final long sleepTimeMs = (long) (1000 / frameRate);
+        boolean useEmpty = true;
         try {
             while (!mDebugDisplay.quitRequested()) {
-                frame = cam.getGrabber().refreshAndGetFrame();
-                if (frame != null) {
-                    recorder.record(frame);
-                } else {
-                    // Option: lack of frame. Wait or abort the feed. Choose the former right now.
-                    // break;
+                if (cam != null) {
+                    frame = cam.getGrabber().refreshAndGetFrame();
                 }
-                Thread.sleep(1000 / MPJPEG_FRAME_RATE);
+
+                if (useEmpty || frame != null) {
+                    useEmpty = useEmpty && frame == null;
+                    recorder.record(frame == null ? mEmptyFrame : frame);
+                } else {
+                    // Option: lack of frame. Wait or break. Choose the former right now.
+                }
+
+                Thread.sleep(sleepTimeMs);
             }
         } catch (Exception e) {
             // Expected:
