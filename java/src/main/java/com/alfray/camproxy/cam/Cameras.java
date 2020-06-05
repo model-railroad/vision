@@ -45,11 +45,17 @@ public class Cameras implements IStartStop {
     public void start() throws Exception {
         for (CamInfo camInfo : mCamInfos) {
             camInfo.getGrabber().start();
+            camInfo.getAnalyzer().start();
         }
     }
 
     public void stop() {
         for (CamInfo camInfo : mCamInfos) {
+            try {
+                camInfo.getAnalyzer().stop();
+            } catch (InterruptedException e) {
+                mLogger.log(TAG, "Stopping analyzer-" + camInfo.getIndex() + ": " + e);
+            }
             try {
                 camInfo.getGrabber().stop();
             } catch (InterruptedException e) {

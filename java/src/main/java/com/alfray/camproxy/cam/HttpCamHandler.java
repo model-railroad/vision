@@ -3,7 +3,6 @@ package com.alfray.camproxy.cam;
 import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
 import org.bytedeco.ffmpeg.avformat.AVOutputFormat;
-import org.bytedeco.ffmpeg.avutil.AVFrame;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameRecorder;
@@ -26,7 +25,6 @@ import java.util.regex.Pattern;
 import static org.bytedeco.ffmpeg.global.avformat.av_oformat_next;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
-import static org.bytedeco.ffmpeg.global.avutil.av_opt_get_pixel_fmt;
 
 @Singleton
 public class HttpCamHandler extends AbstractHandler {

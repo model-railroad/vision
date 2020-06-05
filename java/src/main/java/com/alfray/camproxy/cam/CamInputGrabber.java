@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
-import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
 
 /**
  * Uses FFMpeg FFmpegFrameGrabber (via JavaCV) to grab frames from the source camera feed.
