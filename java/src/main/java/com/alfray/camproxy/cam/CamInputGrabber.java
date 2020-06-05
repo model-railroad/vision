@@ -14,6 +14,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
+import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
+
 /**
  * Uses FFMpeg FFmpegFrameGrabber (via JavaCV) to grab frames from the source camera feed.
  * Currently supported: any URL that works for FFMpeg. E.g. RTSP with U/P and MJPEG or MP4.
@@ -30,6 +33,7 @@ public class CamInputGrabber extends ThreadLoop {
     private final AtomicReference<Frame> mLastFrame = new AtomicReference<>();
     private final AtomicReference<CountDownLatch> mFrameLatch = new AtomicReference<>(new CountDownLatch(1));
     private double mFrameRate;
+    private int mPixelFormat = AV_PIX_FMT_NONE;
 
     public CamInputGrabber(
             @Provided ILogger logger,
@@ -44,6 +48,10 @@ public class CamInputGrabber extends ThreadLoop {
     /** Returns the frame rate from the FFMpeg frame grabber. */
     public double getFrameRate() {
         return mFrameRate;
+    }
+
+    public int getPixelFormat() {
+        return mPixelFormat;
     }
 
     /** Returns the last cached frame clone. */
@@ -109,7 +117,8 @@ public class CamInputGrabber extends ThreadLoop {
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
             grabber.start();
-            mLogger.log(TAG, "Grabber started");
+            mPixelFormat = grabber.getPixelFormat();
+            mLogger.log(TAG, "Grabber started with video format " + mPixelFormat);
 
             // Note: Doc of grab() indicates it reuses the same Frame instance at every call
             // to avoid allocating memory. For an async/shared usage, it must be cloned first.

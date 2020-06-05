@@ -3,6 +3,7 @@ package com.alfray.camproxy.cam;
 import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
 import org.bytedeco.ffmpeg.avformat.AVOutputFormat;
+import org.bytedeco.ffmpeg.avutil.AVFrame;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameRecorder;
@@ -23,7 +24,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.bytedeco.ffmpeg.global.avformat.av_oformat_next;
+import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
+import static org.bytedeco.ffmpeg.global.avutil.av_opt_get_pixel_fmt;
 
 @Singleton
 public class HttpCamHandler extends AbstractHandler {
@@ -193,11 +196,19 @@ public class HttpCamHandler extends AbstractHandler {
                 frame.imageHeight);
         recorder.setFormat(mMPJpegCodec.name().getString());
         recorder.setVideoCodec(mMPJpegCodec.video_codec());
-        recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P);
+        recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P); // expected for MJPEG
+
+        // Known issue: logs shows
+        // "[swscaler ...] deprecated pixel format used, make sure you did set range correctly"
+        // emitted in libswcaler/utils.c when jpeg srcFormat != jpeg dstFormat
+        // It seems a new swscaler init is done at very frame in record() below, even when passing
+        // the grabber pixel format.
 
         double frameRate = MPJPEG_FRAME_RATE;
+        int grabberPxlFmt = AV_PIX_FMT_NONE;
         if (cam != null) {
             frameRate = cam.getGrabber().getFrameRate();
+            grabberPxlFmt = cam.getGrabber().getPixelFormat();
         }
         if (frameRate <= 0) {
             frameRate = MPJPEG_FRAME_RATE;
@@ -214,9 +225,11 @@ public class HttpCamHandler extends AbstractHandler {
                     frame = cam.getGrabber().refreshAndGetFrame();
                 }
 
-                if (useEmpty || frame != null) {
-                    useEmpty = useEmpty && frame == null;
-                    recorder.record(frame == null ? mEmptyFrame : frame);
+                if (useEmpty && frame == null) {
+                    recorder.record(mEmptyFrame);
+                } else if (frame != null) {
+                    useEmpty = false;
+                    recorder.record(frame, grabberPxlFmt);
                 } else {
                     // Option: lack of frame. Wait or break. Choose the former right now.
                 }

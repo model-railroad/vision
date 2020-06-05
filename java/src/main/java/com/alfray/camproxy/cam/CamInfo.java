@@ -10,17 +10,14 @@ public class CamInfo {
     private final int mIndex;
     private final CamConfig mConfig;
     private final CamInputGrabber mGrabber;
-    private final CamOutputGenerator mGenerator;
 
     public CamInfo(
             @Provided CamInputGrabberFactory camInputGrabberFactory,
-            @Provided CamOutputGeneratorFactory camOutputGeneratorFactory,
             int index,
             @Nonnull CamConfig config) {
         mIndex = index;
         mConfig = config;
         mGrabber = camInputGrabberFactory.create(this);
-        mGenerator = camOutputGeneratorFactory.create(this);
     }
 
     public int getIndex() {
@@ -35,10 +32,5 @@ public class CamInfo {
     @Nonnull
     public CamInputGrabber getGrabber() {
         return mGrabber;
-    }
-
-    @Nonnull
-    public CamOutputGenerator getGenerator() {
-        return mGenerator;
     }
 }

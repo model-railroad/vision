@@ -7,3 +7,5 @@ out/
 build/
 .gradle/
 *.iml
+hs_err*.log
+

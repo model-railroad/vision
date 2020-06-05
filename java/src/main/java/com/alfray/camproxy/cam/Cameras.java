@@ -45,17 +45,11 @@ public class Cameras implements IStartStop {
     public void start() throws Exception {
         for (CamInfo camInfo : mCamInfos) {
             camInfo.getGrabber().start();
-            //-- don't start generator for now -- camInfo.getGenerator().start();
         }
     }
 
     public void stop() {
         for (CamInfo camInfo : mCamInfos) {
-            try {
-                camInfo.getGenerator().stop();
-            } catch (InterruptedException e) {
-                mLogger.log(TAG, "Stopping gen-" + camInfo.getIndex() + ": " + e);
-            }
             try {
                 camInfo.getGrabber().stop();
             } catch (InterruptedException e) {
