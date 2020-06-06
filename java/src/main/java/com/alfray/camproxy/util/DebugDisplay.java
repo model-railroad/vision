@@ -6,7 +6,9 @@ import com.alfray.camproxy.cam.Cameras;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
@@ -17,6 +19,9 @@ import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Collections;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
@@ -30,6 +35,8 @@ public class DebugDisplay implements IStartStop {
     private final ILogger mLogger;
     private final Cameras mCameras;
     private final CommandLineArgs mCommandLineArgs;
+    @GuardedBy("mLineInfo")
+    private final Map<Integer, String> mLineInfo = new TreeMap<>();
 
     private boolean mQuit;
     private CanvasFrame mDisplay;
@@ -75,7 +82,7 @@ public class DebugDisplay implements IStartStop {
     }
 
     public void requestQuit() {
-        mLogger.log(TAG, "Quit Requested");
+        mLogger.log(TAG, "\nQuit Requested");
         mQuit = true;
     }
 
@@ -90,6 +97,12 @@ public class DebugDisplay implements IStartStop {
         }
     }
 
+    public void updateLineInfo(int key, @Nonnull String msg) {
+        synchronized (mLineInfo) {
+            mLineInfo.put(key, msg);
+        }
+    }
+
     public void displayAsync(@Nullable Frame frame, @Nullable Frame mask) {
         if (mToggleMask && mask != null) {
             frame = mask;
@@ -98,6 +111,21 @@ public class DebugDisplay implements IStartStop {
         if (mDisplay != null && _frame != null) {
             SwingUtilities.invokeLater(() -> mDisplay.showImage(_frame));
         }
+    }
+
+    private final StringBuffer _sTempBuf = new StringBuffer();
+    public void displayLineInfo() {
+        _sTempBuf.setLength(0);
+        synchronized (mLineInfo) {
+            for (String info : mLineInfo.values()) {
+                if (_sTempBuf.length() > 0) {
+                    _sTempBuf.append(" || ");
+                }
+                _sTempBuf.append(info);
+            }
+        }
+        _sTempBuf.append('\r');
+        mLogger.log(_sTempBuf.toString());
     }
 
     public void consoleWait() {
@@ -120,6 +148,8 @@ public class DebugDisplay implements IStartStop {
                     }
                 }
 
+                displayLineInfo();
+
                 if (reader.ready()) {
                     char c = (char) reader.read();
                     processKey(c);
@@ -138,7 +168,7 @@ public class DebugDisplay implements IStartStop {
             mLogger.log(TAG, e.toString());
         }
 
-        mLogger.log(TAG, "End loop");
+        mLogger.log(TAG, "\nEnd loop");
     }
 
     private boolean processKey(char c) {

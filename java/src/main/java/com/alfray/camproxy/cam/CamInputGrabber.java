@@ -1,5 +1,6 @@
 package com.alfray.camproxy.cam;
 
+import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.FpsMeasurer;
 import com.alfray.camproxy.util.ILogger;
 import com.alfray.camproxy.util.ThreadLoop;
@@ -24,6 +25,7 @@ import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
  */
 @AutoFactory
 public class CamInputGrabber extends ThreadLoop {
+    private final DebugDisplay mDebugDisplay;
     private final String TAG;
 
     private final FpsMeasurer mFpsMeasurer;
@@ -37,8 +39,10 @@ public class CamInputGrabber extends ThreadLoop {
     public CamInputGrabber(
             @Provided ILogger logger,
             @Provided FpsMeasurer fpsMeasurer,
+            @Provided DebugDisplay debugDisplay,
             CamInfo camInfo) {
         mFpsMeasurer = fpsMeasurer;
+        mDebugDisplay = debugDisplay;
         TAG = "CamIn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
@@ -113,6 +117,8 @@ public class CamInputGrabber extends ThreadLoop {
 
         FFmpegFrameGrabber grabber = null;
         try {
+            mDebugDisplay.updateLineInfo(1, "Grab: Connecting...");
+
             grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
@@ -127,12 +133,13 @@ public class CamInputGrabber extends ThreadLoop {
             while (!mQuit && (frame = grabber.grab()) != null) {
                 mFpsMeasurer.tick();
                 mFrameRate = grabber.getFrameRate();
-                mLogger.log(TAG, "frame grabbed at " + grabber.getTimestamp()
-                        + " -- " + ((int) (100*mFpsMeasurer.getFps())/100) + " fps"
-                        + " vs " + grabber.getFrameRate() + " fps"
-                        + ", size: "+ frame.imageWidth + "x" + frame.imageHeight
-                        + ", image: " + (frame.image == null ? "NULL" : frame.image.length)
-                        + "\r");
+
+                mDebugDisplay.updateLineInfo(1,
+                        String.format("Grab: %.2f vs %.2f fps, img %d x %d",
+                                mFpsMeasurer.getFps(),
+                                grabber.getFrameRate(),
+                                frame.imageWidth,
+                                frame.imageHeight));
 
                 CountDownLatch latch = mFrameLatch.get();
                 if (latch != null && latch.getCount() > 0) {
