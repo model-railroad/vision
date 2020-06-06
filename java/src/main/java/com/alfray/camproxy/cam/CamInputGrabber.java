@@ -67,7 +67,7 @@ public class CamInputGrabber extends ThreadLoop {
 
     /**
      * Refreshes and returns a frame. When the deadline expires, returns whatever previous frame
-     * we have. The frames are cloned, and can be used in other threads independantly from the
+     * we have. The frames are cloned, and can be used in other threads independently from the
      * grabber thread. */
     @Nullable
     public Frame refreshAndGetFrame(long waitTime, TimeUnit timeUnit) {

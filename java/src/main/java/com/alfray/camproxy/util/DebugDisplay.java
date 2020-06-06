@@ -90,8 +90,11 @@ public class DebugDisplay implements IStartStop {
         }
     }
 
-    public void displayAsync(@Nullable final Frame frame, @Nullable final Frame mask) {
-        Frame _frame = mask != null ? mask : frame;
+    public void displayAsync(@Nullable Frame frame, @Nullable Frame mask) {
+        if (mToggleMask && mask != null) {
+            frame = mask;
+        }
+        final Frame _frame = frame;
         if (mDisplay != null && _frame != null) {
             SwingUtilities.invokeLater(() -> mDisplay.showImage(_frame));
         }
@@ -139,7 +142,6 @@ public class DebugDisplay implements IStartStop {
     }
 
     private boolean processKey(char c) {
-
         switch (c) {
         case '?':
         case 'h':
@@ -158,11 +160,10 @@ public class DebugDisplay implements IStartStop {
         case '3':
             mLogger.log(TAG, "Select cam: " + c);
             break;
-        case KeyEvent.CHAR_UNDEFINED:
-            // ignore silently
-            break;
         default:
             mLogger.log(TAG, "Key ignored: '" + c + "' int: " + (int)c);
+        case KeyEvent.CHAR_UNDEFINED:
+            // ignore silently
             return false; // not consumed
         }
 

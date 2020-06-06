@@ -6,6 +6,7 @@ import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.opencv_core.CvSize;
 import org.bytedeco.opencv.opencv_core.IplImage;
 import org.bytedeco.opencv.opencv_core.Mat;
@@ -55,11 +56,12 @@ public class CamAnalyzer extends ThreadLoop {
     /** Get a clone of the last output, if any. */
     @Nullable
     public Frame getLastFrame() {
-        Frame frame = null;
         if (mOutput != null) {
-            frame = mMatConverter.convert(mOutput).clone();
+            synchronized (mOutput) {
+                return mMatConverter.convert(mOutput).clone();
+            }
         }
-        return frame;
+        return null;
     }
 
     @Override
@@ -126,9 +128,21 @@ public class CamAnalyzer extends ThreadLoop {
         }
 
         // Apply background substractor
-        mSubtractor.apply(source, mOutput);
+        synchronized (mOutput) {
+            mSubtractor.apply(source, mOutput);
+        }
 
-        // Remove noise on the output ==> not useful for us
-        // -- morphologyEx(mOutput, mOutput, MORPH_OPEN, mKernel);
+        // Compute "score" for this output frame
+        int nz = opencv_core.countNonZero(mOutput);
+        int npx = frame.imageWidth * frame.imageHeight;
+        double noisePercent1 = 100.0 * nz / npx;
+
+        // Remove noise on the output ==> not useful for us?
+        morphologyEx(mOutput, mOutput, MORPH_OPEN, mKernel);
+
+        nz = opencv_core.countNonZero(mOutput);
+        double noisePercent2 = 100.0 * nz / npx;
+
+        mLogger.log(TAG, String.format("Diff Score: %.2f %% vs %.2f %%", noisePercent1, noisePercent2));
     }
 }
