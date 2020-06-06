@@ -36,8 +36,9 @@ public class HttpCamHandler extends AbstractHandler {
     private final ILogger mLogger;
     private final Cameras mCameras;
     private final DebugDisplay mDebugDisplay;
-    private final Java2DFrameConverter mFrameConverter;
-    private final Frame mEmptyFrame;
+
+    private Java2DFrameConverter mFrameConverter;
+    private Frame mEmptyFrame;
 
     /** mpjpeg = multipart m-jpeg muxer/video codec: https://ffmpeg.org/doxygen/2.8/mpjpeg_8c.html */
     private AVOutputFormat mMPJpegCodec;
@@ -50,9 +51,16 @@ public class HttpCamHandler extends AbstractHandler {
         mLogger = logger;
         mCameras = cameras;
         mDebugDisplay = debugDisplay;
+    }
 
+    @Override
+    protected void doStart() throws Exception {
+        super.doStart();
+        // Most JavaCV objects must be allocated on the main thread
+        // and after the dagger constructor.
         mFrameConverter = new Java2DFrameConverter(); // hangs when created in a thread
         mEmptyFrame = createFrame(1280, 720);
+        initMjpegCodec();
     }
 
     private Frame createFrame(int width, int height) {
@@ -64,12 +72,6 @@ public class HttpCamHandler extends AbstractHandler {
         }
 
         return frame;
-    }
-
-    @Override
-    protected void doStart() throws Exception {
-        super.doStart();
-        initMjpegCodec();
     }
 
     private void initMjpegCodec() throws FrameRecorder.Exception {
@@ -192,57 +194,61 @@ public class HttpCamHandler extends AbstractHandler {
                 response.getOutputStream(),
                 frame.imageWidth,
                 frame.imageHeight);
-        recorder.setFormat(mMPJpegCodec.name().getString());
-        recorder.setVideoCodec(mMPJpegCodec.video_codec());
-        recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P); // expected for MJPEG
-
-        // Known issue: logs shows
-        // "[swscaler ...] deprecated pixel format used, make sure you did set range correctly"
-        // emitted in libswcaler/utils.c when jpeg srcFormat != jpeg dstFormat
-        // It seems a new swscaler init is done at very frame in record() below, even when passing
-        // the grabber pixel format.
-
-        double frameRate = MPJPEG_FRAME_RATE;
-        int grabberPxlFmt = AV_PIX_FMT_NONE;
-        if (cam != null) {
-            frameRate = cam.getGrabber().getFrameRate();
-            grabberPxlFmt = cam.getGrabber().getPixelFormat();
-        }
-        if (frameRate <= 0) {
-            frameRate = MPJPEG_FRAME_RATE;
-        }
-        recorder.setFrameRate(frameRate);
-
-        recorder.start();
-
-        final long sleepTimeMs = (long) (1000 / frameRate);
-        boolean useEmpty = true;
         try {
-            while (!mDebugDisplay.quitRequested()) {
-                if (cam != null) {
-                    frame = cam.getGrabber().refreshAndGetFrame();
-                }
+            recorder.setFormat(mMPJpegCodec.name().getString());
+            recorder.setVideoCodec(mMPJpegCodec.video_codec());
+            recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P); // expected for MJPEG
 
-                if (useEmpty && frame == null) {
-                    recorder.record(mEmptyFrame);
-                } else if (frame != null) {
-                    useEmpty = false;
-                    recorder.record(frame, grabberPxlFmt);
-                } else {
-                    // Option: lack of frame. Wait or break. Choose the former right now.
-                }
+            // Known issue: logs shows
+            // "[swscaler ...] deprecated pixel format used, make sure you did set range correctly"
+            // emitted in libswcaler/utils.c when jpeg srcFormat != jpeg dstFormat
+            // It seems a new swscaler init is done at very frame in record() below, even when passing
+            // the grabber pixel format.
 
-                Thread.sleep(sleepTimeMs);
+            double frameRate = MPJPEG_FRAME_RATE;
+            int grabberPxlFmt = AV_PIX_FMT_NONE;
+            if (cam != null) {
+                frameRate = cam.getGrabber().getFrameRate();
+                grabberPxlFmt = cam.getGrabber().getPixelFormat();
             }
-        } catch (Exception e) {
-            // Expected:
-            // jetty.io.EofException when HTTP stream reader is closed.
-            // InterruptedException from Thread.sleep
-            mLogger.log(TAG, "MJPEG: " + e.toString());
-        }
+            if (frameRate <= 0) {
+                frameRate = MPJPEG_FRAME_RATE;
+            }
+            recorder.setFrameRate(frameRate);
 
-        mLogger.log(TAG, "MJPEG: End Streaming");
-        recorder.stop();
+            recorder.start();
+
+            final long sleepTimeMs = (long) (1000 / frameRate);
+            boolean useEmpty = true;
+            try {
+                while (!mDebugDisplay.quitRequested()) {
+                    if (cam != null) {
+                        frame = cam.getGrabber().refreshAndGetFrame();
+                    }
+
+                    if (useEmpty && frame == null) {
+                        recorder.record(mEmptyFrame);
+                    } else if (frame != null) {
+                        useEmpty = false;
+                        recorder.record(frame, grabberPxlFmt);
+                    } else {
+                        // Option: lack of frame. Wait or break. Choose the former right now.
+                    }
+
+                    Thread.sleep(sleepTimeMs);
+                }
+            } catch (Exception e) {
+                // Expected:
+                // jetty.io.EofException when HTTP stream reader is closed.
+                // InterruptedException from Thread.sleep
+                mLogger.log(TAG, "MJPEG: " + e.toString());
+            }
+
+            mLogger.log(TAG, "MJPEG: End Streaming");
+        } finally {
+            recorder.stop();
+            recorder.release();
+        }
 
         return true;
     }

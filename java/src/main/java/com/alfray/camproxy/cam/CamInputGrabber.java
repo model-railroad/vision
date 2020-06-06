@@ -111,8 +111,9 @@ public class CamInputGrabber extends ThreadLoop {
         mLogger.log(TAG, "Thread loop begin");
         mFpsMeasurer.reset();
 
+        FFmpegFrameGrabber grabber = null;
         try {
-            FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
+            grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
             grabber.start();
@@ -144,11 +145,18 @@ public class CamInputGrabber extends ThreadLoop {
             }
 
             grabber.flush();
-            grabber.stop();
-            grabber.release();
 
         } catch (FrameGrabber.Exception e) {
             mLogger.log(TAG, e.toString());
+        } finally {
+            if (grabber != null) {
+                try {
+                    grabber.stop();
+                } catch (FrameGrabber.Exception ignore) {}
+                try {
+                    grabber.release();
+                } catch (FrameGrabber.Exception ignore) {}
+            }
         }
     }
 }
