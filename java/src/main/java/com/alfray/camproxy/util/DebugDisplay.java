@@ -5,15 +5,13 @@ import com.alfray.camproxy.cam.CamInfo;
 import com.alfray.camproxy.cam.Cameras;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.bytedeco.opencv.global.opencv_core;
-import org.bytedeco.opencv.opencv_core.Mat;
-import org.opencv.core.Core;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
@@ -35,7 +33,7 @@ public class DebugDisplay implements IStartStop {
 
     private boolean mQuit;
     private CanvasFrame mDisplay;
-    private OpenCVFrameConverter.ToMat mMatConverter;
+    private boolean mToggleMask;
 
     @Inject
     public DebugDisplay(
@@ -62,14 +60,22 @@ public class DebugDisplay implements IStartStop {
                     requestQuit();
                 }
             });
+            mDisplay.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent keyEvent) {
+                    if (processKey(keyEvent.getKeyChar())) {
+                        keyEvent.consume();
+                    }
+                    super.keyPressed(keyEvent);
+                }
+            });
 
             mDisplay.setVisible(true);
         }
-
-        mMatConverter = new OpenCVFrameConverter.ToMat();
     }
 
     public void requestQuit() {
+        mLogger.log(TAG, "Quit Requested");
         mQuit = true;
     }
 
@@ -85,29 +91,9 @@ public class DebugDisplay implements IStartStop {
     }
 
     public void displayAsync(@Nullable final Frame frame, @Nullable final Frame mask) {
-        if (mDisplay != null && frame != null) {
-            SwingUtilities.invokeLater(() -> {
-                Frame _frame = frame;
-                if (mask != null) {
-//                    Frame dest = _frame.clone();
-//                    Mat output = mMatConverter.convert(dest);
-//                    Mat input = mMatConverter.convert(frame);
-                    Mat mmask = mMatConverter.convert(mask);
-
-                    int nz = opencv_core.countNonZero(mmask);
-                    int npx = mask.imageHeight * mask.imageWidth;
-                    double noisePercent = 100.0 * nz / npx;
-                    mLogger.log(TAG, "Mask Non-zero: " + nz + " => " + noisePercent);
-
-                    if (noisePercent > 10) {
-                        _frame = mask;
-                    }
-//                    // opencv_core.multiply(input, mmask, output);
-//                    input.copyTo(output, mmask);
-//                    _frame = dest;
-                }
-                mDisplay.showImage(_frame);
-            });
+        Frame _frame = mask != null ? mask : frame;
+        if (mDisplay != null && _frame != null) {
+            SwingUtilities.invokeLater(() -> mDisplay.showImage(_frame));
         }
     }
 
@@ -115,12 +101,12 @@ public class DebugDisplay implements IStartStop {
         mLogger.log(TAG, "Start loop");
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        mLogger.log(TAG, "Press Enter to quit...");
+        mLogger.log(TAG, "Press q+enter to quit, ?+enter for more options");
 
         final long sleepMs = 1000 / ANALYZER_FPS;
 
         try {
-            while (!mQuit && !reader.ready()) {
+            while (!mQuit) {
                 long startMs = System.currentTimeMillis();
                 if (mDisplay != null) {
                     CamInfo cam1 = mCameras.getByIndex(1);
@@ -129,6 +115,11 @@ public class DebugDisplay implements IStartStop {
                         Frame frame = cam1.getGrabber().getLastFrame();
                         displayAsync(frame, mask);
                     }
+                }
+
+                if (reader.ready()) {
+                    char c = (char) reader.read();
+                    processKey(c);
                 }
 
                 long deltaMs = System.currentTimeMillis() - startMs;
@@ -145,5 +136,36 @@ public class DebugDisplay implements IStartStop {
         }
 
         mLogger.log(TAG, "End loop");
+    }
+
+    private boolean processKey(char c) {
+
+        switch (c) {
+        case '?':
+        case 'h':
+            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, m=toggle mask on/off, 1/2/3=show cam N");
+            break;
+        case 27:
+        case 'q':
+            requestQuit();
+            break;
+        case 'm':
+            mToggleMask = !mToggleMask;
+            mLogger.log(TAG, "Mask toggled " + (mToggleMask ? "on" : "off"));
+            break;
+        case '1':
+        case '2':
+        case '3':
+            mLogger.log(TAG, "Select cam: " + c);
+            break;
+        case KeyEvent.CHAR_UNDEFINED:
+            // ignore silently
+            break;
+        default:
+            mLogger.log(TAG, "Key ignored: '" + c + "' int: " + (int)c);
+            return false; // not consumed
+        }
+
+        return true; // consumed
     }
 }
