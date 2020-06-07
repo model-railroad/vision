@@ -19,6 +19,7 @@ import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
@@ -103,13 +104,15 @@ public class DebugDisplay implements IStartStop {
         }
     }
 
-    public void displayAsync(@Nullable Frame frame, @Nullable Frame mask) {
-        if (mToggleMask && mask != null) {
-            frame = mask;
+    public void displayAsync(@Nullable Frame frame) {
+        if (mDisplay != null && frame != null) {
+            SwingUtilities.invokeLater(() -> mDisplay.showImage(frame));
         }
-        final Frame _frame = frame;
-        if (mDisplay != null && _frame != null) {
-            SwingUtilities.invokeLater(() -> mDisplay.showImage(_frame));
+    }
+
+    public void displaySync(@Nullable Frame frame) throws InvocationTargetException, InterruptedException {
+        if (mDisplay != null && frame != null) {
+            SwingUtilities.invokeAndWait(() -> mDisplay.showImage(frame));
         }
     }
 
@@ -142,9 +145,13 @@ public class DebugDisplay implements IStartStop {
                 if (mDisplay != null) {
                     CamInfo cam1 = mCameras.getByIndex(1);
                     if (cam1 != null) {
-                        Frame mask = cam1.getAnalyzer().getLastFrame();
-                        Frame frame = cam1.getGrabber().getLastFrame();
-                        displayAsync(frame, mask);
+                        Frame frame;
+                        if (mToggleMask) {
+                            frame = cam1.getAnalyzer().getLastFrame();
+                        } else {
+                            frame = cam1.getGrabber().getLastFrame();
+                        }
+                        displaySync(frame);
                     }
                 }
 
@@ -164,7 +171,7 @@ public class DebugDisplay implements IStartStop {
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             mLogger.log(TAG, e.toString());
         }
 

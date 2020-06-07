@@ -11,7 +11,6 @@ import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.opencv_core.CvSize;
 import org.bytedeco.opencv.opencv_core.IplImage;
 import org.bytedeco.opencv.opencv_core.Mat;
-import org.bytedeco.opencv.opencv_core.Size;
 import org.bytedeco.opencv.opencv_video.BackgroundSubtractorMOG2;
 
 import javax.annotation.Nonnull;
@@ -20,10 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.bytedeco.opencv.global.opencv_core.cvCreateImage;
-import static org.bytedeco.opencv.global.opencv_imgproc.MORPH_ELLIPSE;
-import static org.bytedeco.opencv.global.opencv_imgproc.MORPH_OPEN;
-import static org.bytedeco.opencv.global.opencv_imgproc.getStructuringElement;
-import static org.bytedeco.opencv.global.opencv_imgproc.morphologyEx;
+import static org.bytedeco.opencv.global.opencv_imgproc.medianBlur;
 import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractorMOG2;
 
 /**
@@ -65,7 +61,7 @@ public class CamAnalyzer extends ThreadLoop {
     public Frame getLastFrame() {
         if (mOutput != null) {
             try {
-                mCountDownLatch.await(500, TimeUnit.MILLISECONDS);
+                mCountDownLatch.await(2*1000/ANALYZER_FPS, TimeUnit.MILLISECONDS);
             } catch (InterruptedException ignore) {}
             mCountDownLatch = new CountDownLatch(1);
 
@@ -88,8 +84,6 @@ public class CamAnalyzer extends ThreadLoop {
         double 	varThreshold = 16;      // default: 16
         boolean detectShadows = false;  // default: true
         mSubtractor = createBackgroundSubtractorMOG2(history, varThreshold, detectShadows);
-
-        mKernel = getStructuringElement(MORPH_ELLIPSE, new Size(3, 3));
 
         super.start();
     }
@@ -152,21 +146,16 @@ public class CamAnalyzer extends ThreadLoop {
         int npx = frame.imageWidth * frame.imageHeight;
         double noisePercent1 = 100.0 * nz / npx;
 
-        // Remove noise on the output ==> very effective for us
-//        morphologyEx(mOutput, mOutput, MORPH_OPEN, mKernel);
-//        nz = opencv_core.countNonZero(mOutput);
-        double noisePercent2 = 100.0 * nz / npx;
 
-        // Median blur of "salf & pepper" removal
+        // Median blur for "salt & pepper" removal
         medianBlur(mOutput, mOutput, 5);
         nz = opencv_core.countNonZero(mOutput);
-        double noisePercent3 = 100.0 * nz / npx;
+        double noisePercent2 = 100.0 * nz / npx;
 
         mCountDownLatch.countDown();
 
-        return String.format("%.2f %% > %.2f %% > %.2f %%",
+        return String.format("%.2f %% > %.2f %%",
                         noisePercent1,
-                        noisePercent2,
-                        noisePercent3);
+                        noisePercent2);
     }
 }
