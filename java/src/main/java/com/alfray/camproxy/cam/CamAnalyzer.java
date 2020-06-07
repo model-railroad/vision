@@ -11,12 +11,13 @@ import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.opencv_core.CvSize;
 import org.bytedeco.opencv.opencv_core.IplImage;
 import org.bytedeco.opencv.opencv_core.Mat;
-import org.bytedeco.opencv.opencv_video.BackgroundSubtractorMOG2;
+import org.bytedeco.opencv.opencv_video.BackgroundSubtractor;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.bytedeco.opencv.global.opencv_core.cvCreateImage;
 import static org.bytedeco.opencv.global.opencv_imgproc.medianBlur;
@@ -36,15 +37,14 @@ public class CamAnalyzer extends ThreadLoop {
 
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
-    private CountDownLatch mCountDownLatch = new CountDownLatch(1);
+    private final double mMotionThreshold;
+    private final AtomicBoolean mMotionDetected = new AtomicBoolean();
 
-    private Frame mLastFrame;
-    private double mFrameRate;
+    private CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private OpenCVFrameConverter.ToMat mMatConverter;
-    private BackgroundSubtractorMOG2 mSubtractor;
+    private BackgroundSubtractor mSubtractor;
     private IplImage mOutputImage;
     private Mat mOutput;
-    private Mat mKernel;
 
     public CamAnalyzer(
             @Provided ILogger logger,
@@ -54,6 +54,11 @@ public class CamAnalyzer extends ThreadLoop {
         TAG = "CamAn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
+        mMotionThreshold = camInfo.getConfig().getMotionThreshold();
+    }
+
+    public boolean isMotionDetected() {
+        return mMotionDetected.getAndSet(false);
     }
 
     /** Get a clone of the last output, if any. */
@@ -154,8 +159,14 @@ public class CamAnalyzer extends ThreadLoop {
 
         mCountDownLatch.countDown();
 
-        return String.format("%.2f %% > %.2f %%",
+        boolean hasMotion = noisePercent2 >= mMotionThreshold;
+        mMotionDetected.set(hasMotion);
+
+        return String.format("%.2f %% %s %.2f >= %.2f %%",
                         noisePercent1,
-                        noisePercent2);
+                hasMotion ? "!!" : "..",
+                noisePercent2,
+                mMotionThreshold
+                );
     }
 }

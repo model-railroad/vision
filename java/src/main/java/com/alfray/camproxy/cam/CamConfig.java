@@ -4,11 +4,11 @@ import javax.annotation.Nonnull;
 
 public class CamConfig {
     private final String mInputUrl;
-    private final int mOutputPort;
+    private final double mMotionThreshold;
 
-    public CamConfig(@Nonnull String inputUrl, @Deprecated int outputPort) {
+    public CamConfig(@Nonnull String inputUrl, double motionThreshold) {
         mInputUrl = inputUrl;
-        mOutputPort = outputPort;
+        mMotionThreshold = motionThreshold;
     }
 
     @Nonnull
@@ -16,8 +16,7 @@ public class CamConfig {
         return mInputUrl;
     }
 
-    @Deprecated
-    public int getOutputPort() {
-        return mOutputPort;
+    public double getMotionThreshold() {
+        return mMotionThreshold;
     }
 }

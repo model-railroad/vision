@@ -2,6 +2,11 @@ package com.alfray.camproxy.cam;
 
 import com.alfray.camproxy.util.DebugDisplay;
 import com.alfray.camproxy.util.ILogger;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.bytedeco.ffmpeg.avformat.AVOutputFormat;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
@@ -19,6 +24,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,6 +43,7 @@ public class HttpCamHandler extends AbstractHandler {
     private final ILogger mLogger;
     private final Cameras mCameras;
     private final DebugDisplay mDebugDisplay;
+    private final ObjectMapper mJsonMapper;
 
     private Java2DFrameConverter mFrameConverter;
     private Frame mEmptyFrame;
@@ -47,9 +55,11 @@ public class HttpCamHandler extends AbstractHandler {
     public HttpCamHandler(
             ILogger logger,
             Cameras cameras,
+            ObjectMapper jsonMapper,
             DebugDisplay debugDisplay) {
         mLogger = logger;
         mCameras = cameras;
+        mJsonMapper = jsonMapper;
         mDebugDisplay = debugDisplay;
     }
 
@@ -98,11 +108,14 @@ public class HttpCamHandler extends AbstractHandler {
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
         // handle(target) (renamed "path" here) is /...everything till ? or #
-        mLogger.log(TAG, "Handle path: " + path + ", request: " + baseRequest);
 
         boolean success = false;
         if (baseRequest.getMethod().equals("GET")) {
             success = doGet(path, response);
+        }
+
+        if (!success) {
+            mLogger.log(TAG, "Not Handled: path: " + path + ", request: " + baseRequest);
         }
 
         baseRequest.setHandled(success);
@@ -115,6 +128,11 @@ public class HttpCamHandler extends AbstractHandler {
         if (path.equals("/qqq")) {
             sendText(response, HttpServletResponse.SC_OK, "Quitting");
             mDebugDisplay.requestQuit();
+            return true;
+        }
+
+        if (path.equals("/status")) {
+            sendStatus(response);
             return true;
         }
 
@@ -139,6 +157,17 @@ public class HttpCamHandler extends AbstractHandler {
         }
 
         return false;
+    }
+
+    private void sendStatus(HttpServletResponse response) throws IOException {
+        Map<String, Boolean> status = new TreeMap<>();
+
+        mCameras.forEachCamera(cam -> {
+            status.put("cam" + cam.getIndex(), cam.getAnalyzer().isMotionDetected());
+        });
+
+        String text = mJsonMapper.writeValueAsString(status).replaceAll("\r", "");
+        sendText(response, HttpServletResponse.SC_OK, text);
     }
 
     private boolean sendText(HttpServletResponse response, int code, String msg) throws IOException {

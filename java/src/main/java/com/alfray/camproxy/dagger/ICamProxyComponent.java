@@ -6,7 +6,7 @@ import dagger.Component;
 import javax.inject.Singleton;
 
 @Singleton
-@Component(modules = { LoggerModule.class })
+@Component(modules = { LoggerModule.class, JsonModule.class })
 public interface ICamProxyComponent {
 
     void inject(CamProxy camProxy);

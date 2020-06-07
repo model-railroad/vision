@@ -33,10 +33,10 @@ public class CamProxy {
 
         mCommandLineArgs.parse(args);
 
+        // TODO this is intended to be pulled off some configuration file or command line.
         mCameras.add(new CamConfig(
-                // mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.1.86:554/ipcam_mjpeg.sdp"),
                 mCommandLineArgs.resolve("rtsp://$U:$P1@192.168.3.86:554/ipcam_h264.sdp"),
-                8000));
+                0.3));
 
         try {
             mDebugDisplay.start();

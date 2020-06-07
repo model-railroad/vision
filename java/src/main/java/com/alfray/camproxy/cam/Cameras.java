@@ -9,6 +9,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Singleton
 public class Cameras implements IStartStop {
@@ -30,6 +31,10 @@ public class Cameras implements IStartStop {
         CamInfo info = mCamInfoFactory.create(1 + mCamInfos.size(), camConfig);
         mCamInfos.add(info);
         mLogger.log(TAG, "Add Cam #" + info.getIndex() + " for " + info.getConfig().getInputUrl());
+    }
+
+    public void forEachCamera(@Nonnull Consumer<CamInfo> consumer) {
+        mCamInfos.forEach(consumer);
     }
 
     @Nullable
