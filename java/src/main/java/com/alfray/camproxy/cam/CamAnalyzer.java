@@ -120,9 +120,10 @@ public class CamAnalyzer extends ThreadLoop {
                 mDebugDisplay.updateLineInfo(key, String.format("%s [%d ms]", info, computeMs));
 
                 long deltaMs = System.currentTimeMillis() - startMs;
+                deltaMs = sleepMs - deltaMs;
                 if (deltaMs > 0) {
                     try {
-                        Thread.sleep(sleepMs);
+                        Thread.sleep(deltaMs);
                     } catch (InterruptedException e) {
                         mLogger.log(TAG, e.toString());
                     }

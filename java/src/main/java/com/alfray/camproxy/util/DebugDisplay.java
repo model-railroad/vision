@@ -29,7 +29,7 @@ public class DebugDisplay implements IStartStop {
     private static final String TAG = DebugDisplay.class.getSimpleName();
 
     // The display does not need to run at the full input/output feed fps.
-    private static final int ANALYZER_FPS = 10;
+    private static final int DEBUG_DISPLAY_FPS = 10;
 
     private final ILogger mLogger;
     private final Cameras mCameras;
@@ -55,28 +55,29 @@ public class DebugDisplay implements IStartStop {
     public void start() {
         mQuit = false;
 
+        mDisplay = new CanvasFrame("Test video");
+        mDisplay.setSize(1280, 720);
+
+        mDisplay.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        mDisplay.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent windowEvent) {
+                super.windowClosing(windowEvent);
+                requestQuit();
+            }
+        });
+        mDisplay.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent keyEvent) {
+                if (processKey(keyEvent.getKeyChar())) {
+                    keyEvent.consume();
+                }
+                super.keyPressed(keyEvent);
+            }
+        });
+
         if (mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
-            mDisplay = new CanvasFrame("Test video");
-            mDisplay.setSize(1280, 720);
-
-            mDisplay.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-            mDisplay.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent windowEvent) {
-                    super.windowClosing(windowEvent);
-                    requestQuit();
-                }
-            });
-            mDisplay.addKeyListener(new KeyAdapter() {
-                @Override
-                public void keyPressed(KeyEvent keyEvent) {
-                    if (processKey(keyEvent.getKeyChar())) {
-                        keyEvent.consume();
-                    }
-                    super.keyPressed(keyEvent);
-                }
-            });
-
+            // Start visible in --debug mode
             mDisplay.setVisible(true);
         }
     }
@@ -111,7 +112,11 @@ public class DebugDisplay implements IStartStop {
 
     public void displaySync(@Nullable Frame frame) throws InvocationTargetException, InterruptedException {
         if (mDisplay != null && frame != null) {
-            SwingUtilities.invokeAndWait(() -> mDisplay.showImage(frame));
+            SwingUtilities.invokeAndWait(() -> {
+                if (mDisplay != null && mDisplay.isVisible()) {
+                    mDisplay.showImage(frame);
+                }
+            });
         }
     }
 
@@ -136,12 +141,13 @@ public class DebugDisplay implements IStartStop {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         mLogger.log(TAG, "Press q+enter to quit, ?+enter for more options");
 
-        final long sleepMs = 1000 / ANALYZER_FPS;
+        final long sleepMs = 1000 / DEBUG_DISPLAY_FPS;
+        long lastDelta = 0;
 
         try {
             while (!mQuit) {
                 long startMs = System.currentTimeMillis();
-                if (mDisplay != null) {
+                if (mDisplay != null && mDisplay.isVisible()) {
                     CamInfo cam1 = mCameras.getByIndex(mCameraIndex);
                     if (cam1 != null) {
                         Frame frame;
@@ -156,15 +162,27 @@ public class DebugDisplay implements IStartStop {
 
                 displayLineInfo();
 
+                // This does not work very well.
+//                mLogger.log(TAG, "Reader Ready :" + reader.ready() + " -- delta " + lastDelta);
                 if (reader.ready()) {
                     char c = (char) reader.read();
                     processKey(c);
+//                    String line = reader.readLine();
+//                    mLogger.log(TAG, "Reader Line : '" + line + "'");
+//                    if (line != null) {
+//                        line = line.trim();
+//                        if (line.length() > 0) {
+//                            processKey(line.charAt(0));
+//                        }
+//                    }
                 }
 
                 long deltaMs = System.currentTimeMillis() - startMs;
+                deltaMs = sleepMs - deltaMs;
                 if (deltaMs > 0) {
                     try {
-                        Thread.sleep(sleepMs);
+                        Thread.sleep(deltaMs);
+                        lastDelta = sleepMs;
                     } catch (InterruptedException e) {
                         mLogger.log(TAG, e.toString());
                     }
@@ -181,11 +199,19 @@ public class DebugDisplay implements IStartStop {
         switch (c) {
         case '?':
         case 'h':
-            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, m=toggle mask on/off, 1/2/3=show cam N");
+            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, d=disply on/off, m=toggle mask on/off, 1/2/3=show cam N");
             break;
         case 27:
         case 'q':
             requestQuit();
+            break;
+        case 'd':
+            if (mDisplay != null) {
+                mDisplay.setVisible(!mDisplay.isVisible());
+                mLogger.log(TAG, "Display toggled " + (mDisplay.isVisible() ? "on" : "off"));
+            } else {
+                mLogger.log(TAG, "No display.");
+            }
             break;
         case 'm':
             mToggleMask = !mToggleMask;
