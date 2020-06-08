@@ -14,24 +14,24 @@ compileJava {
 }
 
 dependencies {
-    implementation "commons-cli:commons-cli:1.4"
-    implementation "org.bytedeco:javacv-platform:1.5.3"
-    implementation "org.bytedeco:javacpp-platform:1.5.3"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.10.2"
+    compile "commons-cli:commons-cli:1.4"
+    compile "org.bytedeco:javacv-platform:1.5.3"
+    compile "org.bytedeco:javacpp-platform:1.5.3"
+    compile "com.fasterxml.jackson.core:jackson-databind:2.10.2"
     // Note: jetty-server:10.0.0.beta0 requires JDK 9.
-    implementation "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
+    compile "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
 
-    implementation          "com.google.dagger:dagger:2.28"
+    compile                 "com.google.dagger:dagger:2.28"
     annotationProcessor     "com.google.dagger:dagger-compiler:2.28"
     testAnnotationProcessor "com.google.dagger:dagger-compiler:2.28"
 
-    implementation      "com.google.auto.factory:auto-factory:1.0-beta7"
+    compile             "com.google.auto.factory:auto-factory:1.0-beta7"
     annotationProcessor "com.google.auto.factory:auto-factory:1.0-beta7"
 
-    testImplementation "junit:junit:4.12"
-    testImplementation "com.google.truth:truth:1.0.1"
-    testImplementation "org.mockito:mockito-core:3.3.3"
-    testImplementation "com.google.guava:guava:29.0-jre"
+    testCompile "junit:junit:4.12"
+    testCompile "com.google.truth:truth:1.0.1"
+    testCompile "org.mockito:mockito-core:3.3.3"
+    testCompile "com.google.guava:guava:29.0-jre"
 }
 
 // Change location of dagger generated files and map it in IJ.
@@ -73,7 +73,9 @@ jar {
     }
 }
 
-// Build a "fat" jar with all the dependencies. C.f. http://stackoverflow.com/questions/4871656
+// Build a "fat" jar with all the dependencies that are marked using "compile".
+// C.f. http://stackoverflow.com/questions/4871656
+// Update: this ignore these marked with the new "implementation".
 task fatJar(type: Jar) {
     manifest.from jar.manifest
     classifier = "all"
