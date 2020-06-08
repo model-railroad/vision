@@ -10,6 +10,7 @@ var plFullscreen = false;
 var plShuffle = true;
 var plEvent; // for debugging mostly
 var plHighlights = {};
+var plHasMotion;
 
 function plLog(s) {
     console.log(s);
@@ -217,7 +218,10 @@ function plProcessStatus(status) {
         hasMotion = hasMotion || on;
         plHighlightVideo(i, on, false);
     }
-    plSetFullscreen(!hasMotion);
+    if (hasMotion != plHasMotion) {
+        plHasMotion = hasMotion;
+        plSetFullscreen(!hasMotion);
+    }
 }
 
 // ---
