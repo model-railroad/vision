@@ -104,6 +104,7 @@ public class CamAnalyzer extends ThreadLoop {
         mLogger.log(TAG, "Thread loop begin");
 
         final long sleepMs = 1000 / ANALYZER_FPS;
+        final int key = mCamInfo.getIndex() * 2;
 
         try {
             while (!mQuit) {
@@ -116,7 +117,7 @@ public class CamAnalyzer extends ThreadLoop {
                 }
 
                 computeMs = System.currentTimeMillis() - computeMs;
-                mDebugDisplay.updateLineInfo(2, String.format("Diff: %s [%d ms]", info, computeMs));
+                mDebugDisplay.updateLineInfo(key, String.format("%s [%d ms]", info, computeMs));
 
                 long deltaMs = System.currentTimeMillis() - startMs;
                 if (deltaMs > 0) {
@@ -147,14 +148,14 @@ public class CamAnalyzer extends ThreadLoop {
         mSubtractor.apply(source, mOutput);
 
         // Compute "score" for this output frame
-        int nz = opencv_core.countNonZero(mOutput);
+        // int nz = opencv_core.countNonZero(mOutput);
         int npx = frame.imageWidth * frame.imageHeight;
-        double noisePercent1 = 100.0 * nz / npx;
+        // double noisePercent1 = 100.0 * nz / npx;
 
 
         // Median blur for "salt & pepper" removal
         medianBlur(mOutput, mOutput, 5);
-        nz = opencv_core.countNonZero(mOutput);
+        int nz = opencv_core.countNonZero(mOutput);
         double noisePercent2 = 100.0 * nz / npx;
 
         mCountDownLatch.countDown();
@@ -162,9 +163,8 @@ public class CamAnalyzer extends ThreadLoop {
         boolean hasMotion = noisePercent2 >= mMotionThreshold;
         mMotionDetected.set(hasMotion);
 
-        return String.format("%.2f %% %s %.2f >= %.2f %%",
-                        noisePercent1,
-                hasMotion ? "!!" : "..",
+        return String.format("%s %.2f >= %.2f%%",
+                hasMotion ? "/\\" : "..",
                 noisePercent2,
                 mMotionThreshold
                 );

@@ -17,10 +17,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -42,6 +40,7 @@ public class DebugDisplay implements IStartStop {
     private boolean mQuit;
     private CanvasFrame mDisplay;
     private boolean mToggleMask;
+    private int mCameraIndex = 1;
 
     @Inject
     public DebugDisplay(
@@ -143,7 +142,7 @@ public class DebugDisplay implements IStartStop {
             while (!mQuit) {
                 long startMs = System.currentTimeMillis();
                 if (mDisplay != null) {
-                    CamInfo cam1 = mCameras.getByIndex(1);
+                    CamInfo cam1 = mCameras.getByIndex(mCameraIndex);
                     if (cam1 != null) {
                         Frame frame;
                         if (mToggleMask) {
@@ -196,9 +195,14 @@ public class DebugDisplay implements IStartStop {
         case '2':
         case '3':
             mLogger.log(TAG, "Select cam: " + c);
+            int index = Integer.parseInt(Character.toString(c));
+            if (mCameras.getByIndex(index) != null) {
+                mCameraIndex = index;
+            }
             break;
         default:
             mLogger.log(TAG, "Key ignored: '" + c + "' int: " + (int)c);
+        case KeyEvent.VK_ENTER:
         case KeyEvent.CHAR_UNDEFINED:
             // ignore silently
             return false; // not consumed

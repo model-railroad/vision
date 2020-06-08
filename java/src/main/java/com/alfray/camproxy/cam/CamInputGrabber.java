@@ -115,31 +115,37 @@ public class CamInputGrabber extends ThreadLoop {
         mLogger.log(TAG, "Thread loop begin");
         mFpsMeasurer.reset();
 
+        final int key = mCamInfo.getIndex() * 2 - 1;
+        final String info = "Cam" + mCamInfo.getIndex() + ": ";
+
         FFmpegFrameGrabber grabber = null;
         try {
-            mDebugDisplay.updateLineInfo(1, "Grab: Connecting...");
+            mDebugDisplay.updateLineInfo(key, info + "Connecting...");
 
             grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
             grabber.start();
             mPixelFormat = grabber.getPixelFormat();
-            mLogger.log(TAG, "Grabber started with video format " + mPixelFormat);
+            mFrameRate = grabber.getFrameRate();
+            mLogger.log(TAG, "Grabber started with video format " + mPixelFormat
+                    + ", framerate " + mFrameRate + " fps"
+                    + ", size " + grabber.getImageWidth() + "x" + grabber.getImageHeight());
 
             // Note: Doc of grab() indicates it reuses the same Frame instance at every call
             // to avoid allocating memory. For an async/shared usage, it must be cloned first.
+            // When the codec looses the connection, it still returns the same frame, however
+            // its timestamp is unchanged.
             Frame frame;
+            long timestamp = -1;
 
-            while (!mQuit && (frame = grabber.grab()) != null) {
-                mFpsMeasurer.tick();
-                mFrameRate = grabber.getFrameRate();
+            while (!mQuit && (frame = grabber.grabImage()) != null) {
+                if (timestamp != frame.timestamp) {
+                    mFpsMeasurer.tick();
+                }
 
-                mDebugDisplay.updateLineInfo(1,
-                        String.format("Grab: %.2f vs %.2f fps, img %d x %d",
-                                mFpsMeasurer.getFps(),
-                                grabber.getFrameRate(),
-                                frame.imageWidth,
-                                frame.imageHeight));
+                mDebugDisplay.updateLineInfo(key, info + String.format("%6.1f fps", mFpsMeasurer.getFps()));
+                timestamp = frame.timestamp;
 
                 CountDownLatch latch = mFrameLatch.get();
                 if (latch != null && latch.getCount() > 0) {
