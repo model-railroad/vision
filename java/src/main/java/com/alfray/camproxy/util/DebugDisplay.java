@@ -142,7 +142,6 @@ public class DebugDisplay implements IStartStop {
         mLogger.log(TAG, "Press q+enter to quit, ?+enter for more options");
 
         final long sleepMs = 1000 / DEBUG_DISPLAY_FPS;
-        long lastDelta = 0;
 
         try {
             while (!mQuit) {
@@ -162,19 +161,10 @@ public class DebugDisplay implements IStartStop {
 
                 displayLineInfo();
 
-                // This does not work very well.
-//                mLogger.log(TAG, "Reader Ready :" + reader.ready() + " -- delta " + lastDelta);
+                // This is definitely... underwhelming but works well enough in a terminal.
                 if (reader.ready()) {
                     char c = (char) reader.read();
                     processKey(c);
-//                    String line = reader.readLine();
-//                    mLogger.log(TAG, "Reader Line : '" + line + "'");
-//                    if (line != null) {
-//                        line = line.trim();
-//                        if (line.length() > 0) {
-//                            processKey(line.charAt(0));
-//                        }
-//                    }
                 }
 
                 long deltaMs = System.currentTimeMillis() - startMs;
@@ -182,7 +172,6 @@ public class DebugDisplay implements IStartStop {
                 if (deltaMs > 0) {
                     try {
                         Thread.sleep(deltaMs);
-                        lastDelta = sleepMs;
                     } catch (InterruptedException e) {
                         mLogger.log(TAG, e.toString());
                     }

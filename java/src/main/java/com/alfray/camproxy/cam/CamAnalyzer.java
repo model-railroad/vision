@@ -103,7 +103,8 @@ public class CamAnalyzer extends ThreadLoop {
     protected void _runInThreadLoop() {
         mLogger.log(TAG, "Thread loop begin");
 
-        final long sleepMs = 1000 / ANALYZER_FPS;
+        double targetFps = 0;
+        long sleepMs = 1000 / ANALYZER_FPS;
         final int key = mCamInfo.getIndex() * 2;
 
         try {
@@ -112,6 +113,14 @@ public class CamAnalyzer extends ThreadLoop {
                 String info = "";
                 Frame frame = mCamInfo.getGrabber().refreshAndGetFrame(sleepMs, TimeUnit.MILLISECONDS);
                 long computeMs = System.currentTimeMillis();
+                if (targetFps <= 0) {
+                    // We only need to process frames at 1/2 or 1/3 the original
+                    // so slow down if 1/3 is less than our default 10 fps value.
+                    targetFps = (int)(mCamInfo.getGrabber().getFrameRate() / 3);
+                    if (targetFps > 0 && targetFps < ANALYZER_FPS) {
+                        sleepMs = (long) (1000 / targetFps);
+                    }
+                }
                 if (frame != null) {
                     info = processFrame(frame);
                 }

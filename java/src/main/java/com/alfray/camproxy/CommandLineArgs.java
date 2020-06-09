@@ -23,6 +23,7 @@ public class CommandLineArgs {
     public static final String OPT_HTTP_PORT = "p";
     public static final String OPT_USER_VALUE = "u";
     public static final String OPT_WEB_ROOT = "w";
+    public static final String OPT_SIZE_WIDTH = "s"; // can't be w/width or p/pixesl...
 
     private final ILogger mLogger;
     private final Options mOptions = new Options();
@@ -41,6 +42,13 @@ public class CommandLineArgs {
                 .type(Integer.class)
                 .argName("port")
                 .desc("Web server port")
+                .build());
+        mOptions.addOption(Option.builder(OPT_SIZE_WIDTH)
+                .longOpt("size")
+                .hasArg()
+                .type(Integer.class)
+                .argName("pixels")
+                .desc("Size/width of the 16:9 camera feed (analysis+output)")
                 .build());
         mOptions.addOption(Option.builder(OPT_WEB_ROOT)
                 .longOpt("web-root")
