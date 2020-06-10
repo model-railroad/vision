@@ -2,6 +2,8 @@
 
 
 const plPlaylistId = "PLjmlvzL_NxLrHU26aSPU5S1Z_iu3vRky-";
+const plRetry = true; // set to false when debugging locally
+const plFullLockDelayMs = 5*1000; // don't toggle FS fo that delay
 var plStartInShuffle = true; // we shuffle *after* the 1st video plays.
 var plPlayer;
 var plFullSize;
@@ -11,6 +13,7 @@ var plShuffle = true;
 var plEvent; // for debugging mostly
 var plHighlights = {};
 var plHasMotion;
+var plFullToggleTs = 0;
 
 function plLog(s) {
     console.log(s);
@@ -24,8 +27,8 @@ function plInit() {
 function onYouTubeIframeAPIReady() {
     plLog("onYouTubeIframeAPIReady");
 
-    //plFullSize = [$("#pl-grid").width(), $("#pl-grid").height()];
-    plFullSize = [window.innerWidth, window.innerHeight];
+    // Note: -20 due to the border:10px on table cells.
+    plFullSize = [$("#pl-table").width()-20, $("#pl-table").height()-20];
     plPlayerSize = [$("#pl-yt-player").width(), $("#pl-yt-player").height()];
     plLog("@@ plFullSize: " + plFullSize + ", playerSize: " + plPlayerSize);
 
@@ -105,54 +108,63 @@ function plSetShuffle(shuffle) {
     plPlayer.setShuffle(shuffle);
 }
 
+// Returns true if actually switched, false if it did not.
 function plSetFullscreen(goToFullscreen) {
     if (plFullscreen == goToFullscreen) {
-        return;
+        return true;
     }
-    plLog("plFullscreen " + goToFullscreen);
+    var now = Date.now();
+    plLog("plFullscreen " + goToFullscreen + " // delta: " + (now - plFullToggleTs));
+    if (plFullToggleTs > 0 && now - plFullToggleTs < plFullLockDelayMs) {
+        return false;
+    }
+    plFullToggleTs = now;
     plFullscreen = goToFullscreen;
 
-    // Animated version (currently not working with <table>):
-    // if (goToFullscreen) {
-    //     $("#pl-cell1").hide();
-    //     $("#pl-cell2").hide();
-    //     $("#pl-cell3").hide();
-    //     var sx = plPlayerSize[0];
-    //     var dx = plFullSize[0] - sx;
-    //     var sy = plPlayerSize[1];
-    //     var dy = plFullSize[1] - sy;
-    //     $({value:0}).animate({value: 1}, {
-    //         step: (val) => plPlayer.setSize(sx + dx * val, sy + dy * val),
-    //         start: () => $("#pl-yt-player").css("position", "fixed"),
-    //         complete: () => plPlayer.setSize(plFullSize[0], plFullSize[1]),
-    //     })
-    // } else {
-    //     var sx = plFullSize[0];
-    //     var dx = plPlayerSize[0] - sx;
-    //     var sy = plFullSize[1];
-    //     var dy = plPlayerSize[1] - sy;
-    //     $({value:0}).animate({value:1}, { 
-    //         step: (val) => plPlayer.setSize(sx + dx * val, sy + dy * val),
-    //         complete: () => {
-    //             $("#pl-yt-player").css("position", "absolute");
-    //             plPlayer.setSize(plPlayerSize[0], plPlayerSize[1])
-    //             $("#pl-cell1").show();
-    //             $("#pl-cell2").show();
-    //             $("#pl-cell3").show();
-    //         }
-    //     })
-    // }
+    // Animated version:
+    var p = $("#pl-cell0");
+    if (goToFullscreen) {
+        var sx = plPlayerSize[0];
+        var dx = plFullSize[0] - sx;
+        var sy = plPlayerSize[1];
+        var dy = plFullSize[1] - sy;
+        $({value:0}).animate({value: 1}, {
+            step: (val) => {
+                p.width(sx + dx * val);
+                p.height(sy + dy * val);
+            },
+            start: () => p.css("position", "fixed"),
+            complete: () => plPlayer.setSize(plFullSize[0], plFullSize[1]),
+        })
+    } else {
+        var sx = plFullSize[0];
+        var dx = plPlayerSize[0] - sx;
+        var sy = plFullSize[1];
+        var dy = plPlayerSize[1] - sy;
+        $({value:0}).animate({value:1}, { 
+            step: (val) => {
+                p.width(sx + dx * val);
+                p.height(sy + dy * val);
+            },
+            complete: () => {
+                p.css("position", "absolute");
+                plPlayer.setSize(plPlayerSize[0], plPlayerSize[1])
+            }
+        })
+    }
 
     // Non-animated version:
-    if (goToFullscreen) {
-        plLog("Switch to size: " + plFullSize);
-        $("#pl-yt-player").css("position", "fixed");
-        plPlayer.setSize(plFullSize[0], plFullSize[1]);
-    } else {
-        plLog("Switch to size: " + plPlayerSize);
-        $("#pl-yt-player").css("position", "absolute");
-        plPlayer.setSize(plPlayerSize[0], plPlayerSize[1]);
-    }
+    // if (goToFullscreen) {
+    //     plLog("Switch to size: " + plFullSize);
+    //     $("#pl-yt-player").css("position", "fixed");
+    //     plPlayer.setSize(plFullSize[0], plFullSize[1]);
+    // } else {
+    //     plLog("Switch to size: " + plPlayerSize);
+    //     $("#pl-yt-player").css("position", "absolute");
+    //     plPlayer.setSize(plPlayerSize[0], plPlayerSize[1]);
+    // }
+
+    return true;
 }
 
 function plHighlightVideo(index123, highlight, auto_off) {
@@ -181,8 +193,10 @@ function plSetupCams() {
 function plSetupCamN(index) {
     var e = $("#pl-video" + index);
     e.error( () => {
-        e.attr("src", "no_camera.jpg");    
-        setTimeout( () => plSetupCamN(index), 500);
+        e.attr("src", "no_camera.jpg");
+        if (plRetry) {
+            setTimeout( () => plSetupCamN(index), 500);
+        }
     })
     .attr("src", "/mjpeg/" + index)
 }
@@ -195,8 +209,10 @@ function plCheckMotionStatus() {
         contentType: "application/json",
         error: (xhr, status, error) => {
             plLog("Status failed: " + error);
-            // Retry in 2 seconds
-            setTimeout( () => plCheckMotionStatus(), 2*1000 );
+            if (plRetry) {
+                // Retry in 2 seconds
+                setTimeout( () => plCheckMotionStatus(), 2*1000 );
+            }
         },
         success: (result, status, xhr) => {
             // plLog("Status OK: " + JSON.stringify(result));
@@ -219,8 +235,9 @@ function plProcessStatus(status) {
         plHighlightVideo(i, on, false);
     }
     if (hasMotion != plHasMotion) {
-        plHasMotion = hasMotion;
-        plSetFullscreen(!hasMotion);
+        if (plSetFullscreen(!hasMotion)) {
+            plHasMotion = hasMotion;
+        }
     }
 }
 

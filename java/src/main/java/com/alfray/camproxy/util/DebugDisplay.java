@@ -76,10 +76,8 @@ public class DebugDisplay implements IStartStop {
             }
         });
 
-        if (mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
-            // Start visible in --debug mode
-            mDisplay.setVisible(true);
-        }
+        // Start visible in --debug mode
+        mDisplay.setVisible(mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY));
     }
 
     public void requestQuit() {

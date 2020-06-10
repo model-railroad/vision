@@ -154,7 +154,9 @@ public class CamInputGrabber extends ThreadLoop {
                     + ", framerate " + mFrameRate + " fps"
                     + ", size " + grabber.getImageWidth() + "x" + grabber.getImageHeight());
 
-            mFpsMeasurer.setFrameRate(mFrameRate);
+            // Don't limit, try to grab as fast as possible.
+            // -- mFpsMeasurer.setFrameRate(mFrameRate);
+
             final Rect sourceRect = computeSourceRect(grabber.getImageWidth(), grabber.getImageHeight(), OUTPUT_ASPECT_RATIO);
 
             // Note: Doc of grab() indicates it reuses the same Frame instance at every call
