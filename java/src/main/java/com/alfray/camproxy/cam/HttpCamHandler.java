@@ -28,8 +28,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.bytedeco.ffmpeg.global.avformat.av_oformat_next;
+import static org.bytedeco.ffmpeg.global.avutil.AV_LOG_ERROR;
+import static org.bytedeco.ffmpeg.global.avutil.AV_LOG_WARNING;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
+import static org.bytedeco.ffmpeg.global.avutil.av_log_set_level;
 
 @Singleton
 public class HttpCamHandler extends AbstractHandler {
@@ -246,8 +249,14 @@ public class HttpCamHandler extends AbstractHandler {
             // Known issue: logs shows
             // "[swscaler ...] deprecated pixel format used, make sure you did set range correctly"
             // emitted in libswcaler/utils.c when jpeg srcFormat != jpeg dstFormat
+            // https://ffmpeg.org/doxygen/3.1/libswscale_2utils_8c_source.html  -- line 1179.
+            // https://ffmpeg.org/doxygen/2.8/log_8c_source.html -- line 358 for av_log().
             // It seems a new swscaler init is done at very frame in record() below, even when passing
             // the grabber pixel format.
+            // It logs with level AV_LOG_WARNING. A workaround is to change level to ERROR.
+            // (can't do it just when recording the frame as there will be other threads
+            // serving the other cameras at the same time, and we don't want to sync that block).
+            av_log_set_level(AV_LOG_ERROR);
 
             double frameRate = MPJPEG_FRAME_RATE;
             int grabberPxlFmt = AV_PIX_FMT_NONE;
@@ -300,6 +309,7 @@ public class HttpCamHandler extends AbstractHandler {
 
             mLogger.log(TAG, "MJPEG: End Streaming");
         } finally {
+            av_log_set_level(AV_LOG_WARNING);
             recorder.stop();
             recorder.release();
         }
@@ -337,12 +347,6 @@ public class HttpCamHandler extends AbstractHandler {
         try {
             recorder.setFormat(_toString(mH264Codec.name()));
             recorder.setVideoCodec(mH264Codec.video_codec());
-
-            // Known issue: logs shows
-            // "[swscaler ...] deprecated pixel format used, make sure you did set range correctly"
-            // emitted in libswcaler/utils.c when jpeg srcFormat != jpeg dstFormat
-            // It seems a new swscaler init is done at very frame in record() below, even when passing
-            // the grabber pixel format.
 
             double frameRate = H264_FRAME_RATE;
             if (cam != null) {
