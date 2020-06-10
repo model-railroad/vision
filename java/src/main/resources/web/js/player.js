@@ -3,6 +3,7 @@
 
 const plPlaylistId = "PLjmlvzL_NxLrHU26aSPU5S1Z_iu3vRky-";
 const plRetry = true; // set to false when debugging locally
+const plUseMjpeg = true;
 const plFullLockDelayMs = 5*1000; // don't toggle FS fo that delay
 var plStartInShuffle = true; // we shuffle *after* the 1st video plays.
 var plPlayer;
@@ -192,13 +193,26 @@ function plSetupCams() {
 
 function plSetupCamN(index) {
     var e = $("#pl-video" + index);
-    e.error( () => {
-        e.attr("src", "no_camera.jpg");
-        if (plRetry) {
-            setTimeout( () => plSetupCamN(index), 500);
-        }
-    })
-    .attr("src", "/mjpeg/" + index)
+
+    if (plUseMjpeg) {
+        e.error( () => {
+            e.attr("src", "no_camera.jpg");
+            if (plRetry) {
+                setTimeout( () => plSetupCamN(index), 500);
+            }
+        })
+        .attr("src", "/mjpeg/" + index)
+    
+    } else {
+        // Experimental. May not work.
+        e.error( () => {
+            e.attr("src", "no_camera.mp4");
+            if (plRetry) {
+                setTimeout( () => plSetupCamN(index), 500);
+            }
+        })
+        .attr("src", "/h264/" + index)
+    }
 }
 
 function plCheckMotionStatus() {

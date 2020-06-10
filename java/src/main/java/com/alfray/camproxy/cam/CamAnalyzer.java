@@ -105,7 +105,7 @@ public class CamAnalyzer extends ThreadLoop {
 
         double targetFps = 0;
         long sleepMs = 1000 / ANALYZER_FPS;
-        final int key = mCamInfo.getIndex() * 2;
+        final String key = String.format("%db", mCamInfo.getIndex());
 
         try {
             while (!mQuit) {
@@ -126,7 +126,7 @@ public class CamAnalyzer extends ThreadLoop {
                 }
 
                 computeMs = System.currentTimeMillis() - computeMs;
-                mDebugDisplay.updateLineInfo(key, String.format("%s [%d ms]", info, computeMs));
+                mDebugDisplay.updateLineInfo(key, String.format(" %s [%d ms]", info, computeMs));
 
                 long deltaMs = System.currentTimeMillis() - startMs;
                 deltaMs = sleepMs - deltaMs;

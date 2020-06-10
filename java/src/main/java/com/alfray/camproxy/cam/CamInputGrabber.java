@@ -78,8 +78,8 @@ public class CamInputGrabber extends ThreadLoop {
 
     /** Refreshes and returns a frame, with a 200 ms deadline. */
     @Nullable
-    public Frame refreshAndGetFrame() {
-        return refreshAndGetFrame(200, TimeUnit.MILLISECONDS); // 5 fps
+    public Frame refreshAndGetFrame(long deadlineMs) {
+        return refreshAndGetFrame(deadlineMs, TimeUnit.MILLISECONDS); // 5 fps
     }
 
     /**
@@ -133,8 +133,8 @@ public class CamInputGrabber extends ThreadLoop {
         mLogger.log(TAG, "Thread loop begin");
         mFpsMeasurer.reset();
 
-        final int key = mCamInfo.getIndex() * 2 - 1;
-        final String info = "Cam" + mCamInfo.getIndex() + ": ";
+        final String key = String.format("%da", mCamInfo.getIndex());
+        final String info = " | Cam" + mCamInfo.getIndex() + ": ";
 
         final int outputWidth = mCommandLineArgs.getIntOption(CommandLineArgs.OPT_SIZE_WIDTH, DEFAULT_WIDTH);
         final int outputHeight = (int) (outputWidth / OUTPUT_ASPECT_RATIO);

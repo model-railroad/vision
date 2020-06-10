@@ -35,7 +35,7 @@ public class DebugDisplay implements IStartStop {
     private final Cameras mCameras;
     private final CommandLineArgs mCommandLineArgs;
     @GuardedBy("mLineInfo")
-    private final Map<Integer, String> mLineInfo = new TreeMap<>();
+    private final Map<String, String> mLineInfo = new TreeMap<>();
 
     private boolean mQuit;
     private CanvasFrame mDisplay;
@@ -96,7 +96,7 @@ public class DebugDisplay implements IStartStop {
         }
     }
 
-    public void updateLineInfo(int key, @Nonnull String msg) {
+    public void updateLineInfo(String key, @Nonnull String msg) {
         synchronized (mLineInfo) {
             mLineInfo.put(key, msg);
         }
@@ -123,9 +123,9 @@ public class DebugDisplay implements IStartStop {
         _sTempBuf.setLength(0);
         synchronized (mLineInfo) {
             for (String info : mLineInfo.values()) {
-                if (_sTempBuf.length() > 0) {
-                    _sTempBuf.append(" || ");
-                }
+                //if (_sTempBuf.length() > 0) {
+                //    _sTempBuf.append(" || ");
+                //}
                 _sTempBuf.append(info);
             }
         }
