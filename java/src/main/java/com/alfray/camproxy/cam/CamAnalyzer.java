@@ -1,6 +1,7 @@
 package com.alfray.camproxy.cam;
 
 import com.alfray.camproxy.util.DebugDisplay;
+import com.alfray.camproxy.util.FpsMeasurer;
 import com.alfray.camproxy.util.ILogger;
 import com.alfray.camproxy.util.ThreadLoop;
 import com.google.auto.factory.AutoFactory;
@@ -104,39 +105,34 @@ public class CamAnalyzer extends ThreadLoop {
         mLogger.log(TAG, "Thread loop begin");
 
         double targetFps = 0;
-        long sleepMs = 1000 / ANALYZER_FPS;
         final String key = String.format("%db", mCamInfo.getIndex());
 
+        FpsMeasurer fpsMeasurer = new FpsMeasurer();
+        fpsMeasurer.setFrameRate(ANALYZER_FPS);
+        long loopMs = fpsMeasurer.getLoopMs();
+        long extraMs = -1;
         try {
             while (!mQuit) {
-                long startMs = System.currentTimeMillis();
+                fpsMeasurer.startTick();
                 String info = "";
-                Frame frame = mCamInfo.getGrabber().refreshAndGetFrame(sleepMs, TimeUnit.MILLISECONDS);
-                long computeMs = System.currentTimeMillis();
-                if (targetFps <= 0) {
+                Frame frame = mCamInfo.getGrabber().refreshAndGetFrame(loopMs, TimeUnit.MILLISECONDS);
+                if (targetFps <= 0 && frame != null) {
                     // We only need to process frames at 1/2 or 1/3 the original
                     // so slow down if 1/3 is less than our default 10 fps value.
-                    targetFps = (int)(mCamInfo.getGrabber().getFrameRate() / 3);
-                    if (targetFps > 0 && targetFps < ANALYZER_FPS) {
-                        sleepMs = (long) (1000 / targetFps);
-                    }
+                    targetFps = Math.min(ANALYZER_FPS, (int)(mCamInfo.getGrabber().getFrameRate() / 3));
+                    fpsMeasurer.setFrameRate(targetFps);
+                    loopMs = fpsMeasurer.getLoopMs();
                 }
+                long computeMs = System.currentTimeMillis();
                 if (frame != null) {
                     info = processFrame(frame);
                 }
 
                 computeMs = System.currentTimeMillis() - computeMs;
-                mDebugDisplay.updateLineInfo(key, String.format(" %s [%d ms]", info, computeMs));
+                mDebugDisplay.updateLineInfo(key,
+                        String.format(" %s [%2d%+4d ms]", info, computeMs, extraMs));
 
-                long deltaMs = System.currentTimeMillis() - startMs;
-                deltaMs = sleepMs - deltaMs;
-                if (deltaMs > 0) {
-                    try {
-                        Thread.sleep(deltaMs);
-                    } catch (InterruptedException e) {
-                        mLogger.log(TAG, e.toString());
-                    }
-                }
+                extraMs = fpsMeasurer.endWait();
             }
         } finally {
             mSubtractor.close();

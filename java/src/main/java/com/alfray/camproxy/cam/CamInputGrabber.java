@@ -33,8 +33,9 @@ import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 @AutoFactory
 public class CamInputGrabber extends ThreadLoop {
 
-    private static final int DEFAULT_WIDTH = 640;
     private static final double OUTPUT_ASPECT_RATIO = 16./9;
+    public static final int DEFAULT_WIDTH = 640;
+    public static final int DEFAULT_HEIGHT = (int)(DEFAULT_WIDTH / OUTPUT_ASPECT_RATIO);
 
     private final DebugDisplay mDebugDisplay;
     private final CommandLineArgs mCommandLineArgs;
@@ -42,7 +43,6 @@ public class CamInputGrabber extends ThreadLoop {
 
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
-    private final FpsMeasurer mFpsMeasurer = new FpsMeasurer();
     private final AtomicReference<Frame> mLastFrame = new AtomicReference<>();
     private final AtomicReference<CountDownLatch> mFrameLatch = new AtomicReference<>(new CountDownLatch(1));
     private OpenCVFrameConverter.ToMat mMatConverter;
@@ -131,7 +131,6 @@ public class CamInputGrabber extends ThreadLoop {
     @Override
     protected void _runInThreadLoop() {
         mLogger.log(TAG, "Thread loop begin");
-        mFpsMeasurer.reset();
 
         final String key = String.format("%da", mCamInfo.getIndex());
         final String info = " | Cam" + mCamInfo.getIndex() + ": ";
@@ -154,9 +153,6 @@ public class CamInputGrabber extends ThreadLoop {
                     + ", framerate " + mFrameRate + " fps"
                     + ", size " + grabber.getImageWidth() + "x" + grabber.getImageHeight());
 
-            // Don't limit, try to grab as fast as possible.
-            // -- mFpsMeasurer.setFrameRate(mFrameRate);
-
             final Rect sourceRect = computeSourceRect(grabber.getImageWidth(), grabber.getImageHeight(), OUTPUT_ASPECT_RATIO);
 
             // Note: Doc of grab() indicates it reuses the same Frame instance at every call
@@ -165,17 +161,20 @@ public class CamInputGrabber extends ThreadLoop {
             // its timestamp is unchanged.
             Frame frame;
 
-            while (!mQuit && (frame = grabber.grabImage()) != null) {
-                if (mFpsMeasurer.tick()) {
-                    mDebugDisplay.updateLineInfo(key, info + String.format("%6.1f fps", mFpsMeasurer.getFps()));
+            FpsMeasurer fpsMeasurer = new FpsMeasurer();
+            fpsMeasurer.setFrameRate(mFrameRate);
 
-                    CountDownLatch latch = mFrameLatch.get();
-                    if (latch != null && latch.getCount() > 0) {
-                        Frame clone = cloneAndResize(frame, sourceRect, outputSize);
-                        synchronized (mFrameLatch) {
-                            mLastFrame.set(clone);
-                            latch.countDown();
-                        }
+            while (!mQuit && (frame = grabber.grabImage()) != null) {
+                fpsMeasurer.startTick();
+                mDebugDisplay.updateLineInfo(key,
+                        String.format("%s%6.1f fps", info,fpsMeasurer.getFps()));
+
+                CountDownLatch latch = mFrameLatch.get();
+                if (latch != null && latch.getCount() > 0) {
+                    Frame clone = cloneAndResize(frame, sourceRect, outputSize);
+                    synchronized (mFrameLatch) {
+                        mLastFrame.set(clone);
+                        latch.countDown();
                     }
                 }
             }

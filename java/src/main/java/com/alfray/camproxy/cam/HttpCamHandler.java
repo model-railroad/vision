@@ -46,7 +46,6 @@ public class HttpCamHandler extends AbstractHandler {
     private final Cameras mCameras;
     private final DebugDisplay mDebugDisplay;
     private final ObjectMapper mJsonMapper;
-    private final FpsMeasurer mFpsMeasurer = new FpsMeasurer();
 
     private Java2DFrameConverter mFrameConverter;
 
@@ -232,15 +231,21 @@ public class HttpCamHandler extends AbstractHandler {
             frame = cam.getGrabber().refreshAndGetFrame(500 /*ms*/);
         }
 
+        int frameWidth = frame != null ? frame.imageWidth : CamInputGrabber.DEFAULT_WIDTH;
+        int frameHeight = frame != null ? frame.imageHeight : CamInputGrabber.DEFAULT_HEIGHT;
+        Frame useFrame = createFrame(frameWidth, frameHeight);
+
         response.setContentType(_toString(mMPJpegCodec.mime_type()));
         response.addHeader("Cache-Control", "no-store");
         response.setStatus(HttpServletResponse.SC_OK);
 
         mLogger.log(TAG, "MJPEG: Streaming on " + response.getOutputStream());
+
+
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(
                 response.getOutputStream(),
-                frame.imageWidth,
-                frame.imageHeight);
+                frameWidth,
+                frameHeight);
         try {
             recorder.setFormat(_toString(mMPJpegCodec.name()));
             recorder.setVideoCodec(mMPJpegCodec.video_codec());
@@ -272,13 +277,14 @@ public class HttpCamHandler extends AbstractHandler {
             recorder.start();
 
             final long sleepMs = (long) (1000 / frameRate);
-            Frame useFrame = createFrame(frame.imageWidth, frame.imageHeight);
+            FpsMeasurer fpsMeasurer = new FpsMeasurer();
+            fpsMeasurer.setFrameRate(frameRate);
             try {
+                long extraMs = -1;
                 while (!mDebugDisplay.quitRequested()) {
-                    long startMs = System.currentTimeMillis();
+                    fpsMeasurer.startTick();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);
-                        mFpsMeasurer.tick();
                     }
 
                     // Use previous frame till we get a new one.
@@ -288,17 +294,10 @@ public class HttpCamHandler extends AbstractHandler {
 
                     recorder.record(useFrame);
 
-                    mDebugDisplay.updateLineInfo(key, String.format(" >M %4.1f", mFpsMeasurer.getFps()));
+                    mDebugDisplay.updateLineInfo(key,
+                            String.format(" >M %4.1ff%+3d", fpsMeasurer.getFps(), extraMs));
 
-                    long deltaMs = System.currentTimeMillis() - startMs;
-                    deltaMs = sleepMs - deltaMs;
-                    if (deltaMs > 0) {
-                        try {
-                            Thread.sleep(deltaMs);
-                        } catch (InterruptedException e) {
-                            mLogger.log(TAG, e.toString());
-                        }
-                    }
+                    extraMs = fpsMeasurer.endWait();
                 }
             } catch (Exception e) {
                 // Expected:
@@ -360,13 +359,15 @@ public class HttpCamHandler extends AbstractHandler {
             recorder.start();
 
             final long sleepMs = (long) (1000 / frameRate);
+            FpsMeasurer fpsMeasurer = new FpsMeasurer();
+            fpsMeasurer.setFrameRate(frameRate);
             Frame useFrame = createFrame(frame.imageWidth, frame.imageHeight);
             try {
                 while (!mDebugDisplay.quitRequested()) {
                     long startMs = System.currentTimeMillis();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);
-                        mFpsMeasurer.tick();
+                        fpsMeasurer.startTick();
                     }
 
                     // Use previous frame till we get a new one.
@@ -376,7 +377,8 @@ public class HttpCamHandler extends AbstractHandler {
 
                     recorder.record(useFrame);
 
-                    mDebugDisplay.updateLineInfo(key, String.format(" >H %4.1f", mFpsMeasurer.getFps()));
+                    mDebugDisplay.updateLineInfo(key,
+                            String.format(" >H %4.1f", fpsMeasurer.getFps()));
 
                     long deltaMs = System.currentTimeMillis() - startMs;
                     deltaMs = sleepMs - deltaMs;

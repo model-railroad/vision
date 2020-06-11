@@ -5,7 +5,7 @@ import javax.inject.Inject;
 public class FpsMeasurer {
     private long mLastMs;
     private double mFps;
-    private long mMatchMs;
+    private long mLoopMs;
 
     @Inject
     public FpsMeasurer() {}
@@ -14,30 +14,40 @@ public class FpsMeasurer {
         mLastMs = 0;
     }
 
-    public boolean tick() {
+    public void startTick() {
         long now = System.currentTimeMillis();
 
         if (mLastMs > 0) {
             long deltaMs = now - mLastMs;
-            if (mMatchMs > 0 && deltaMs < mMatchMs) {
-                // not ready for next frame yet
-                return false;
-            }
-            // ready for next frame
-            if (deltaMs > 0) {
-                mFps = 1000.0 / deltaMs;
-            }
+            mFps = 1000.0 / deltaMs;
         }
 
         mLastMs = now;
-        return true;
+    }
+
+    public long endWait() {
+        if (mLastMs <= 0) {
+            return 0;
+        }
+        long deltaMs = System.currentTimeMillis() - mLastMs;
+        deltaMs = mLoopMs - deltaMs;
+        if (deltaMs > 0) {
+            try {
+                Thread.sleep(deltaMs);
+            } catch (InterruptedException ignore) {}
+        }
+        return deltaMs;
     }
 
     public double getFps() {
         return mFps;
     }
 
+    public long getLoopMs() {
+        return mLoopMs;
+    }
+
     public void setFrameRate(double frameRate) {
-        mMatchMs = frameRate <= 0 ? 0 : (long)(1000.0 / frameRate);
+        mLoopMs = frameRate <= 0 ? 0 : (long)(1000.0 / frameRate);
     }
 }
