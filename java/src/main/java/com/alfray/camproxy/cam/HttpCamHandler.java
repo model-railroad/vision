@@ -5,6 +5,7 @@ import com.alfray.camproxy.util.FpsMeasurer;
 import com.alfray.camproxy.util.ILogger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bytedeco.ffmpeg.avformat.AVOutputFormat;
+import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
@@ -29,6 +30,7 @@ import java.util.regex.Pattern;
 
 import static org.bytedeco.ffmpeg.global.avformat.av_oformat_next;
 import static org.bytedeco.ffmpeg.global.avutil.AV_LOG_ERROR;
+import static org.bytedeco.ffmpeg.global.avutil.AV_LOG_INFO;
 import static org.bytedeco.ffmpeg.global.avutil.AV_LOG_WARNING;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_NONE;
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUVJ420P;
@@ -51,6 +53,7 @@ public class HttpCamHandler extends AbstractHandler {
 
     /** mpjpeg = multipart m-jpeg muxer/video codec: https://ffmpeg.org/doxygen/2.8/mpjpeg_8c.html */
     private AVOutputFormat mMPJpegCodec;
+    private AVOutputFormat mMp4Codec;
     private AVOutputFormat mH264Codec;
 
     @Inject
@@ -90,8 +93,15 @@ public class HttpCamHandler extends AbstractHandler {
                             _toString(oformat.long_name()),
                             _toString(oformat.mime_type())));
                 }
-                if ("webm".equals(_toString(oformat.name()))) {
+                if ("h264".equals(_toString(oformat.name()))) {
                     mH264Codec = new AVOutputFormat((oformat));
+                    mLogger.log(TAG, String.format("Codec found: %s (%s) %s",
+                            _toString(oformat.name()),
+                            _toString(oformat.long_name()),
+                            _toString(oformat.mime_type())));
+                }
+                if ("mp4".equals(_toString(oformat.name()))) {
+                    mMp4Codec = new AVOutputFormat((oformat));
                     mLogger.log(TAG, String.format("Codec found: %s (%s) %s",
                             _toString(oformat.name()),
                             _toString(oformat.long_name()),
@@ -168,7 +178,7 @@ public class HttpCamHandler extends AbstractHandler {
         if (m.matches()) {
             try {
                 CamInfo cam = mCameras.getByIndex(Integer.parseInt(m.group(1)));
-                return sendH264(cam, response);
+                return sendMp4(cam, response);
             } catch (NumberFormatException e) {
                 mLogger.log(TAG, "Invalid camera number: " + path);
             }
@@ -241,7 +251,6 @@ public class HttpCamHandler extends AbstractHandler {
 
         mLogger.log(TAG, "MJPEG: Streaming on " + response.getOutputStream());
 
-
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(
                 response.getOutputStream(),
                 frameWidth,
@@ -250,6 +259,7 @@ public class HttpCamHandler extends AbstractHandler {
             recorder.setFormat(_toString(mMPJpegCodec.name()));
             recorder.setVideoCodec(mMPJpegCodec.video_codec());
             recorder.setPixelFormat(AV_PIX_FMT_YUVJ420P); // expected for MJPEG
+            recorder.setVideoQuality(3);
 
             // Known issue: logs shows
             // "[swscaler ...] deprecated pixel format used, make sure you did set range correctly"
@@ -316,12 +326,12 @@ public class HttpCamHandler extends AbstractHandler {
         return true;
     }
 
-    private boolean sendH264(CamInfo cam, HttpServletResponse response) throws IOException {
+    private boolean sendMp4(CamInfo cam, HttpServletResponse response) throws IOException {
         // Note: Always returns a feed. If there's no real camera or it has no data yet,
         // returns a feed with only mEmptyFrame till we have actual data.
 
-        if (mH264Codec == null) {
-            mLogger.log(TAG, "H264 codec not listed in FFMpeg output codec list.");
+        if (mMp4Codec == null || mH264Codec == null) {
+            mLogger.log(TAG, "MP4/H264 codec not listed in FFMpeg output codec list.");
             return false;
         }
 
@@ -333,19 +343,28 @@ public class HttpCamHandler extends AbstractHandler {
             frame = cam.getGrabber().refreshAndGetFrame(500 /*ms*/);
         }
 
-        // response.setContentType("video/H264");
-        response.setContentType(_toString(mH264Codec.mime_type()));
+        int frameWidth = frame != null ? frame.imageWidth : CamInputGrabber.DEFAULT_WIDTH;
+        int frameHeight = frame != null ? frame.imageHeight : CamInputGrabber.DEFAULT_HEIGHT;
+        Frame useFrame = createFrame(frameWidth, frameHeight);
+
+        response.setContentType(_toString(mMp4Codec.mime_type()));
         response.addHeader("Cache-Control", "no-store");
         response.setStatus(HttpServletResponse.SC_OK);
 
         mLogger.log(TAG, "H264: Streaming on " + response.getOutputStream());
+
+        av_log_set_level(AV_LOG_INFO); // for debugging
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(
                 response.getOutputStream(),
-                frame.imageWidth,
-                frame.imageHeight);
+                frameWidth,
+                frameHeight);
         try {
-            recorder.setFormat(_toString(mH264Codec.name()));
+            // Note: The following fails to initialize.
+            recorder.setFormat(_toString(mMp4Codec.name()));
+            // recorder.setFormat(_toString(mH264Codec.name()));
             recorder.setVideoCodec(mH264Codec.video_codec());
+            recorder.setVideoBitrate(1000000);
+            recorder.setVideoOption("preset", "veryfast");
 
             double frameRate = H264_FRAME_RATE;
             if (cam != null) {
@@ -361,13 +380,12 @@ public class HttpCamHandler extends AbstractHandler {
             final long sleepMs = (long) (1000 / frameRate);
             FpsMeasurer fpsMeasurer = new FpsMeasurer();
             fpsMeasurer.setFrameRate(frameRate);
-            Frame useFrame = createFrame(frame.imageWidth, frame.imageHeight);
             try {
+                long extraMs = -1;
                 while (!mDebugDisplay.quitRequested()) {
-                    long startMs = System.currentTimeMillis();
+                    fpsMeasurer.startTick();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);
-                        fpsMeasurer.startTick();
                     }
 
                     // Use previous frame till we get a new one.
@@ -378,17 +396,9 @@ public class HttpCamHandler extends AbstractHandler {
                     recorder.record(useFrame);
 
                     mDebugDisplay.updateLineInfo(key,
-                            String.format(" >H %4.1f", fpsMeasurer.getFps()));
+                            String.format(" >H %4.1ff%+3d", fpsMeasurer.getFps(), extraMs));
 
-                    long deltaMs = System.currentTimeMillis() - startMs;
-                    deltaMs = sleepMs - deltaMs;
-                    if (deltaMs > 0) {
-                        try {
-                            Thread.sleep(deltaMs);
-                        } catch (InterruptedException e) {
-                            mLogger.log(TAG, e.toString());
-                        }
-                    }
+                    extraMs = fpsMeasurer.endWait();
                 }
             } catch (Exception e) {
                 // Expected:

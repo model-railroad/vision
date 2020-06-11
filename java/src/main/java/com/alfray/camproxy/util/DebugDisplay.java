@@ -2,6 +2,7 @@ package com.alfray.camproxy.util;
 
 import com.alfray.camproxy.CommandLineArgs;
 import com.alfray.camproxy.cam.CamInfo;
+import com.alfray.camproxy.cam.CamInputGrabber;
 import com.alfray.camproxy.cam.Cameras;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
@@ -56,7 +57,7 @@ public class DebugDisplay implements IStartStop {
         mQuit = false;
 
         mDisplay = new CanvasFrame("Test video");
-        mDisplay.setSize(1280, 720);
+        mDisplay.setSize(CamInputGrabber.DEFAULT_WIDTH, CamInputGrabber.DEFAULT_HEIGHT);
 
         mDisplay.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         mDisplay.addWindowListener(new WindowAdapter() {
