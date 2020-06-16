@@ -5,7 +5,7 @@ const plPlaylistId = "PLjmlvzL_NxLrHU26aSPU5S1Z_iu3vRky-";
 const plRetry = true; // set to false when debugging locally
 const plUseMjpeg = true;
 const plFullLockDelayMs = 5*1000; // don't toggle FS fo that delay
-var plStartInShuffle = true; // we shuffle *after* the 1st video plays.
+var plStartInShuffle = false; // we shuffle *after* the 1st video plays.
 var plPlayer;
 var plFullSize;
 var plPlayerSize;
@@ -73,6 +73,7 @@ function plOnPlayerStateChange(event) {
     plEvent = event;
 
     var title = plEvent.target.playerInfo.videoData.title;
+    title = title.replace("Randall Museum Model Railroad", "");
     title = "[Youtube] " + title;
     $("#pl-yt-title").text(title);
 
