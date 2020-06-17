@@ -3,25 +3,25 @@ body {
     background-color: black;
 }
 
-#pl-table {
+#tm-table {
     width: 100%;
 }
 
-#pl-cell0 {
+#tm-cell0 {
     width: 50%;
     border: 10px solid darkgreen;
     border-collapse: collapse;
     background-color: darkgreen;
 }
 
-#pl-cell1, #pl-cell2, #pl-cell3 {
+#tm-cell1, #tm-cell2, #tm-cell3 {
     width: 50%;
     border: 10px solid darkgreen;
     border-collapse: collapse;
     background-color: darkgreen;
 }
 
-#pl-video0, #pl-video1, #pl-video2, #pl-video3 {
+#tm-video0, #tm-video1, #tm-video2, #tm-video3 {
     width: 100%;
 }
 
@@ -41,12 +41,12 @@ body {
     text-align: center;
 }
 
-#pl-yt-parent {
+#tm-yt-parent {
     position: relative;
     z-index: 1; 
 }
 
-#pl-yt-player {
+#tm-yt-player {
     position: absolute;
     left: 0px;
     width: 100%;

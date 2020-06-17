@@ -1,7 +1,7 @@
-package com.alfray.camproxy.cam;
+package com.alfray.trainmotion.cam;
 
-import com.alfray.camproxy.util.ILogger;
-import com.alfray.camproxy.util.IStartStop;
+import com.alfray.trainmotion.util.ILogger;
+import com.alfray.trainmotion.util.IStartStop;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

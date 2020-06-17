@@ -1,21 +1,20 @@
-package com.alfray.camproxy;
+package com.alfray.trainmotion;
 
-import com.alfray.camproxy.cam.CamConfig;
-import com.alfray.camproxy.cam.Cameras;
-import com.alfray.camproxy.cam.HttpServ;
-import com.alfray.camproxy.dagger.DaggerICamProxyComponent;
-import com.alfray.camproxy.dagger.ICamProxyComponent;
-import com.alfray.camproxy.util.DebugDisplay;
-import com.alfray.camproxy.util.ILogger;
-import com.alfray.camproxy.util.IStartStop;
-import org.bytedeco.javacpp.Loader;
+import com.alfray.trainmotion.cam.CamConfig;
+import com.alfray.trainmotion.cam.Cameras;
+import com.alfray.trainmotion.cam.HttpServ;
+import com.alfray.trainmotion.dagger.DaggerITrainMotionComponent;
+import com.alfray.trainmotion.dagger.ITrainMotionComponent;
+import com.alfray.trainmotion.util.DebugDisplay;
+import com.alfray.trainmotion.util.ILogger;
+import com.alfray.trainmotion.util.IStartStop;
 
 import javax.inject.Inject;
 
-public class CamProxy {
-    private static final String TAG = CamProxy.class.getSimpleName();
+public class TrainMotion {
+    private static final String TAG = TrainMotion.class.getSimpleName();
 
-    private final ICamProxyComponent mComponent;
+    private final ITrainMotionComponent mComponent;
 
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject DebugDisplay mDebugDisplay;
@@ -23,8 +22,8 @@ public class CamProxy {
     @Inject Cameras mCameras;
     @Inject HttpServ mHttpServ;
 
-    public CamProxy() {
-        mComponent = DaggerICamProxyComponent.factory().createComponent();
+    public TrainMotion() {
+        mComponent = DaggerITrainMotionComponent.factory().createComponent();
         mComponent.inject(this);
     }
 
@@ -35,13 +34,13 @@ public class CamProxy {
 
         // TODO this is intended to be pulled off some configuration file or command line args.
         mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P11$P2@192.168.2.85:554/ipcam_h264.sdp"),
+                mCommandLineArgs.resolve("rtsp://$U:$P11$P2@192.168.$P3.85:554/ipcam_h264.sdp"),
                 0.3));
         mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P12$P2@192.168.2.86:554/ipcam_h264.sdp"),
+                mCommandLineArgs.resolve("rtsp://$U:$P12$P2@192.168.$P3.86:554/ipcam_h264.sdp"),
                 0.3));
         mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P13$P2@192.168.2.87:554/ipcam_h264.sdp"),
+                mCommandLineArgs.resolve("rtsp://$U:$P13$P2@192.168.$P3.87:554/ipcam_h264.sdp"),
                 0.3));
 
         try {

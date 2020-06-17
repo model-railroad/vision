@@ -1,7 +1,7 @@
 apply plugin: "java"
 apply plugin: "idea"
 
-group   "org.alfray.camproxy"
+group   "org.alfray.trainmotion"
 version "0.1-SNAPSHOT"
 
 repositories {
@@ -68,7 +68,7 @@ idea {
 jar {
     manifest {
         attributes(
-                "Main-Class": "com.alfray.camproxy.Main",
+                "Main-Class": "com.alfray.trainmotion.Main",
         )
     }
 }

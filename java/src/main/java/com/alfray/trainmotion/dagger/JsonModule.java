@@ -1,4 +1,4 @@
-package com.alfray.camproxy.dagger;
+package com.alfray.trainmotion.dagger;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.MapperFeature;

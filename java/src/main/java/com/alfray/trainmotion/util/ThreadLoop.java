@@ -1,4 +1,4 @@
-package com.alfray.camproxy.util;
+package com.alfray.trainmotion.util;
 
 public abstract class ThreadLoop {
     protected Thread mThread;

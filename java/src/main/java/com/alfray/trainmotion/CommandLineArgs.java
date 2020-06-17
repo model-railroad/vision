@@ -1,6 +1,6 @@
-package com.alfray.camproxy;
+package com.alfray.trainmotion;
 
-import com.alfray.camproxy.util.ILogger;
+import com.alfray.trainmotion.util.ILogger;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -84,7 +84,7 @@ public class CommandLineArgs {
 
         if (error || mLine == null || mLine.hasOption(OPT_HELP)) {
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("cam-proxy", mOptions);
+            formatter.printHelp("train-motion", mOptions);
             System.exit(1);
         }
     }
@@ -126,11 +126,15 @@ public class CommandLineArgs {
 
     @Nonnull
     public String resolve(@Nonnull String input) {
-        input = input.replaceAll("\\$U", mLine.getOptionValue(OPT_USER_VALUE, "camop"));
+        input = input.replaceAll("\\$U", mLine.getOptionValue(OPT_USER_VALUE, "<missing-user>"));
+        if (input.contains("<missing-user>")) {
+            throw new RuntimeException("Command-line missing required --user parameter");
+        }
 
         for (int i = 1; i <= 3; i++) {
-            if (mLine.hasOption(Integer.toString(i))) {
-                input = input.replaceAll("\\$P" + i, mLine.getOptionValue(Integer.toString(i)));
+            input = input.replaceAll("\\$P" + i, mLine.getOptionValue(Integer.toString(i), "<missing>"));
+            if (input.contains("<missing>")) {
+                throw new RuntimeException("Command-line missing required -" + i + " parameter");
             }
         }
 

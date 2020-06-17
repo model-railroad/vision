@@ -1,11 +1,10 @@
-package com.alfray.camproxy.cam;
+package com.alfray.trainmotion.cam;
 
-import com.alfray.camproxy.util.DebugDisplay;
-import com.alfray.camproxy.util.FpsMeasurer;
-import com.alfray.camproxy.util.ILogger;
+import com.alfray.trainmotion.util.DebugDisplay;
+import com.alfray.trainmotion.util.FpsMeasurer;
+import com.alfray.trainmotion.util.ILogger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bytedeco.ffmpeg.avformat.AVOutputFormat;
-import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;

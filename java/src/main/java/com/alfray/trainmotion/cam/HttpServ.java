@@ -1,14 +1,12 @@
-package com.alfray.camproxy.cam;
+package com.alfray.trainmotion.cam;
 
-import com.alfray.camproxy.CommandLineArgs;
-import com.alfray.camproxy.util.ILogger;
-import com.alfray.camproxy.util.IStartStop;
+import com.alfray.trainmotion.CommandLineArgs;
+import com.alfray.trainmotion.util.ILogger;
+import com.alfray.trainmotion.util.IStartStop;
 import org.eclipse.jetty.server.ResourceService;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.util.resource.JarResource;
-import org.eclipse.jetty.util.resource.PathResource;
 import org.eclipse.jetty.util.resource.Resource;
 
 import javax.annotation.Nullable;
@@ -20,7 +18,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Path;
 
 @Singleton
 public class HttpServ implements IStartStop {

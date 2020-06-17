@@ -1,7 +1,7 @@
-package com.alfray.camproxy.dagger;
+package com.alfray.trainmotion.dagger;
 
-import com.alfray.camproxy.util.ILogger;
-import com.alfray.camproxy.util.SoutLogger;
+import com.alfray.trainmotion.util.ILogger;
+import com.alfray.trainmotion.util.SoutLogger;
 import dagger.Module;
 import dagger.Provides;
 

@@ -1,9 +1,9 @@
-package com.alfray.camproxy.util;
+package com.alfray.trainmotion.util;
 
-import com.alfray.camproxy.CommandLineArgs;
-import com.alfray.camproxy.cam.CamInfo;
-import com.alfray.camproxy.cam.CamInputGrabber;
-import com.alfray.camproxy.cam.Cameras;
+import com.alfray.trainmotion.CommandLineArgs;
+import com.alfray.trainmotion.cam.CamInfo;
+import com.alfray.trainmotion.cam.CamInputGrabber;
+import com.alfray.trainmotion.cam.Cameras;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Frame;
 

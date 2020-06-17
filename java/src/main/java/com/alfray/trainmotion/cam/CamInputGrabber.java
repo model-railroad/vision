@@ -1,10 +1,10 @@
-package com.alfray.camproxy.cam;
+package com.alfray.trainmotion.cam;
 
-import com.alfray.camproxy.CommandLineArgs;
-import com.alfray.camproxy.util.DebugDisplay;
-import com.alfray.camproxy.util.FpsMeasurer;
-import com.alfray.camproxy.util.ILogger;
-import com.alfray.camproxy.util.ThreadLoop;
+import com.alfray.trainmotion.CommandLineArgs;
+import com.alfray.trainmotion.util.DebugDisplay;
+import com.alfray.trainmotion.util.FpsMeasurer;
+import com.alfray.trainmotion.util.ILogger;
+import com.alfray.trainmotion.util.ThreadLoop;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.FFmpegFrameGrabber;

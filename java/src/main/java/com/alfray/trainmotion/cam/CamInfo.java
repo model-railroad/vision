@@ -1,4 +1,4 @@
-package com.alfray.camproxy.cam;
+package com.alfray.trainmotion.cam;
 
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;

@@ -1,10 +1,10 @@
-package com.alfray.camproxy;
+package com.alfray.trainmotion;
 
 public class Main {
 
     public static void main(String[] args) {
         System.out.println("Hello World");
-        CamProxy entry = new CamProxy();
+        TrainMotion entry = new TrainMotion();
         entry.run(args);
     }
 }

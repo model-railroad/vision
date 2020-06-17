@@ -1,4 +1,4 @@
-package com.alfray.camproxy.util;
+package com.alfray.trainmotion.util;
 
 public interface ILogger {
     void log(String msg);
