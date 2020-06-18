@@ -37,7 +37,7 @@ The project is written in Java 8 (JDK or OpenJDK) and relies the following exter
 * [AutoFactory](https://github.com/google/auto/tree/master/factory).
 * [JavaCV](https://github.com/bytedeco/javacv), specifically the [OpenCV](https://opencv.org/) and [FFmpeg](https://ffmpeg.org/) APIs.
 * [JavaCPP](https://github.com/bytedeco/javacpp), required by JavaCV.
-* FasterXML [Jackson Databond](https://github.com/FasterXML/jackson-databind).
+* FasterXML [Jackson Databind](https://github.com/FasterXML/jackson-databind).
 * Eclipse [Jetty](https://www.eclipse.org/jetty/).
 
 Rendering relies on:
@@ -70,6 +70,7 @@ The first build/run will take about forever as the dependencies gets downloaded.
 
 See below for an explanation of the command-line options.
  
+
 ## Building with Gradle
 
 Requirements:
@@ -86,23 +87,44 @@ To run it:
 
 `$ java -jar build/libs/train-motion-0.1-SNAPSHOT-all.jar <command line options>`
 
+
 ## Command-line Options
 
 * `-d,--debug`:               Debug Display.
 * `-h,--help`:                This usage help.
 
-Cameras:
+__Cameras__:
 
 * `-1,--pass1 <password-1>`:  Password $P1
 * `-2,--pass2 <password-2>`:  Password $P2
 * `-3,--pass3 <password-3>`:  Password $P3
 * `-u,--user <username>`:     Default $U name
 
-Web server:
+The cameras specification is currently hardcoded in `src/main/java/com/alfray/trainmotion/TrainMotion.java`.
+This is temporary for the initial prototype.
+The cameras are addressed using RTSP URLs that include replacement tokens (`$U`, `$P1`, `$P2`, `$P3`)
+which map to the command line options given above.
+This is certainly primitive yet gets the job done for now.
+Eventually this will be replaced by a small ini config file parser.
+
+__Web server__:
 
 * `-p,--port <port>`:         Web server port (default is 8080)
 * `-s,--size <pixels>`:       Size/width of the 16:9 camera feed (analysis+output, default 640)
 * `-w,--web-root <path>`:     Absolute directory for web root (default: use jar embedded web root)
 
+By default, a web server is created on port 8080, at [http://localhost:8080](http://localhost:8080).
+This serves the main html & JS files. The port can be changed using the `-p` option.
+
+The `-s` option exists to reduce the size of the camera feed to the given width.
+Height is always center-cropped to a 16:9 ratio.
+The reduced image size drastically reduces the motion detection cost and it is recommended to not
+provide it, in order to use the default as the default web page player expects that size.
+
+The `-w` option is only useful for development.
+If given, it must point to the `src/main/resources/web` directory on the local path.
+When `-w` is specified, Jetty will serve the actual file from the file system, which
+allows the html / JS files to be refreshed live for development.
+The default is to use the html / JS files from the JAR archive.
 
 ~~
