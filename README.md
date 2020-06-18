@@ -32,6 +32,7 @@ The full text of the license is provided in the file `LICENSE.txt`.
 ## Dependencies
 
 The project is written in Java 8 (JDK or OpenJDK) and relies the following external libraries:
+
 * [Dagger](https://dagger.dev/).
 * [AutoFactory](https://github.com/google/auto/tree/master/factory).
 * [JavaCV](https://github.com/bytedeco/javacv), specifically the [OpenCV](https://opencv.org/) and [FFmpeg](https://ffmpeg.org/) APIs.
@@ -40,6 +41,7 @@ The project is written in Java 8 (JDK or OpenJDK) and relies the following exter
 * Eclipse [Jetty](https://www.eclipse.org/jetty/).
 
 Rendering relies on:
+
 * [Debian](https://www.debian.org/) Linux.
 * [Chromium](https://www.chromium.org/).
 * [Youtube Player API](https://developers.google.com/youtube/iframe_api_reference).
@@ -48,6 +50,7 @@ Rendering relies on:
 ## Building with IJ
 
 Requirements:
+
 * IJ Community 2020.1+
 * JDK 1.8 or OpenJDK 8
 
@@ -55,6 +58,7 @@ IJ > Open project > Select top "_train-motion_" directory.
 
 To create a run configuration, the easiest way is to open `src/main/java/com/alfray/trainmotion/Main.java`,
 right click the Run action command, and then edit the Run Configuration:
+
 * Template: `Application`
 * Main Class: `com.alfray.trainmotion.Main`
 * Program Arguments:
@@ -69,6 +73,7 @@ See below for an explanation of the command-line options.
 ## Building with Gradle
 
 Requirements:
+
 * JDK 1.8 or OpenJDK 8
 
 From the command line:
@@ -87,12 +92,14 @@ To run it:
 * `-h,--help`:                This usage help.
 
 Cameras:
+
 * `-1,--pass1 <password-1>`:  Password $P1
 * `-2,--pass2 <password-2>`:  Password $P2
 * `-3,--pass3 <password-3>`:  Password $P3
 * `-u,--user <username>`:     Default $U name
 
 Web server:
+
 * `-p,--port <port>`:         Web server port (default is 8080)
 * `-s,--size <pixels>`:       Size/width of the 16:9 camera feed (analysis+output, default 640)
 * `-w,--web-root <path>`:     Absolute directory for web root (default: use jar embedded web root)
