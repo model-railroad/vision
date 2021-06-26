@@ -23,7 +23,8 @@ public class CommandLineArgs {
     public static final String OPT_HTTP_PORT = "p";
     public static final String OPT_USER_VALUE = "u";
     public static final String OPT_WEB_ROOT = "w";
-    public static final String OPT_SIZE_WIDTH = "s"; // can't be w/width or p/pixesl...
+    public static final String OPT_SIZE_WIDTH = "s"; // can't be w/width or p/pixels...
+    public static final String OPT_CONFIG_INI = "c";
 
     private final ILogger mLogger;
     private final Options mOptions = new Options();
@@ -41,26 +42,32 @@ public class CommandLineArgs {
                 .hasArg()
                 .type(Integer.class)
                 .argName("port")
-                .desc("Web server port")
+                .desc("Web server port.")
                 .build());
         mOptions.addOption(Option.builder(OPT_SIZE_WIDTH)
                 .longOpt("size")
                 .hasArg()
                 .type(Integer.class)
                 .argName("pixels")
-                .desc("Size/width of the 16:9 camera feed (analysis+output)")
+                .desc("Size/width of the 16:9 camera feed (analysis+output).")
                 .build());
         mOptions.addOption(Option.builder(OPT_WEB_ROOT)
                 .longOpt("web-root")
                 .hasArg()
                 .argName("path")
-                .desc("Absolute directory for web root (default: use jar embedded web root)")
+                .desc("Absolute directory for web root (default: use jar embedded web root).")
                 .build());
         mOptions.addOption(Option.builder(OPT_USER_VALUE)
                 .longOpt("user")
                 .hasArg()
                 .argName("username")
-                .desc("Default $U name")
+                .desc("Default $U name.")
+                .build());
+        mOptions.addOption(Option.builder(OPT_CONFIG_INI)
+                .longOpt("config")
+                .hasArg()
+                .argName("config.ini")
+                .desc("Path for config file.")
                 .build());
         Stream.of(1, 2, 3).forEach(i ->
                 mOptions.addOption(Option.builder(Integer.toString(i))
@@ -82,11 +89,21 @@ public class CommandLineArgs {
             error = true;
         }
 
-        if (error || mLine == null || mLine.hasOption(OPT_HELP)) {
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("train-motion", mOptions);
-            System.exit(1);
+        if (error) {
+            mLogger.log(TAG, "Command line has error(s).");
         }
+        mLogger.log(TAG, "Command line: " + mLine.getArgList());
+
+        if (error || mLine == null || mLine.hasOption(OPT_HELP)) {
+            showHelpAndExit();
+        }
+    }
+
+    public void showHelpAndExit() {
+System.out.println("@@" + new Throwable());
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp("train-motion", mOptions);
+        System.exit(1);
     }
 
     /**

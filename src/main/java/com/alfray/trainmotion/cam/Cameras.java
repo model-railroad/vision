@@ -33,6 +33,10 @@ public class Cameras implements IStartStop {
         mLogger.log(TAG, "Add Cam #" + info.getIndex() + " for " + info.getConfig().getInputUrl());
     }
 
+    public int count() {
+        return mCamInfos.size();
+    }
+
     public void forEachCamera(@Nonnull Consumer<CamInfo> consumer) {
         mCamInfos.forEach(consumer);
     }

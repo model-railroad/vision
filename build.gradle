@@ -89,6 +89,12 @@ task fatJar(type: Jar) {
     with jar
 }
 
+task run(type: Exec) {
+    dependsOn fatJar
+    group = "Execution"
+    commandLine "java", "-jar", fatJar.archiveFile.get(), "--config", "src/main/resources/config.ini"
+}
+
 artifacts {
     archives fatJar
 }

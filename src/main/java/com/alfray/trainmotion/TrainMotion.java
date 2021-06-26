@@ -10,12 +10,16 @@ import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 
 import javax.inject.Inject;
+import java.io.File;
+import java.util.Optional;
 
 public class TrainMotion {
     private static final String TAG = TrainMotion.class.getSimpleName();
+    private static final double MOTION_THRESHOLD = 0.3;
 
     private final ITrainMotionComponent mComponent;
 
+    @Inject IniFileReader mIniFileReader;
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject DebugDisplay mDebugDisplay;
     @Inject ILogger mLogger;
@@ -32,16 +36,19 @@ public class TrainMotion {
 
         mCommandLineArgs.parse(args);
 
-        // TODO this is intended to be pulled off some configuration file or command line args.
-        mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P11$P2@192.168.$P3.85:554/ipcam_h264.sdp"),
-                0.3));
-        mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P12$P2@192.168.$P3.86:554/ipcam_h264.sdp"),
-                0.3));
-        mCameras.add(new CamConfig(
-                mCommandLineArgs.resolve("rtsp://$U:$P13$P2@192.168.$P3.87:554/ipcam_h264.sdp"),
-                0.3));
+        //noinspection ConstantConditions
+        mIniFileReader.readFile(new File(mCommandLineArgs.getStringOption(
+                                CommandLineArgs.OPT_CONFIG_INI,
+                                IniFileReader.DEFAULT_CONFIG_INI)));
+
+        addCamera(1);
+        addCamera(2);
+        addCamera(3);
+
+        if (mCameras.count() < 1) {
+            mLogger.log(TAG, "ERROR: No camera URLs found in " + mIniFileReader.getFile());
+            System.exit(1);
+        }
 
         try {
             mDebugDisplay.start();
@@ -57,6 +64,15 @@ public class TrainMotion {
         }
 
         mLogger.log(TAG, "End");
+    }
+
+    private void addCamera(int index) {
+        Optional<String> camProp = mIniFileReader.getCamN(index);
+        if (camProp.isPresent()) {
+            String camUrl = mCommandLineArgs.resolve(camProp.get());
+            mCameras.add(new CamConfig(camUrl, MOTION_THRESHOLD));
+            mLogger.log(TAG, "Added camera " + index);
+        }
     }
 
     private void safeStop(IStartStop stoppable) {

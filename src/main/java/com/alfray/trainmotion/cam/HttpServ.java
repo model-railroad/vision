@@ -45,7 +45,7 @@ public class HttpServ implements IStartStop {
         int port = mCommandLineArgs.getIntOption(CommandLineArgs.OPT_HTTP_PORT, 8080);
         mServer = new Server(port);
 
-        String webRoot = mCommandLineArgs.getStringOption(mCommandLineArgs.OPT_WEB_ROOT, null);
+        String webRoot = mCommandLineArgs.getStringOption(CommandLineArgs.OPT_WEB_ROOT, null);
         HandlerList handlers = new HandlerList(
                 mHttpCamHandler,
                 createResourceHandler(webRoot));
