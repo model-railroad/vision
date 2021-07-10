@@ -145,6 +145,7 @@ public class CamAnalyzer extends ThreadLoop {
         if (source == null) return "";
 
         if (mOutput == null) {
+            // TODO use Mat(Size, type=CV_8UC1).
             CvSize size = new CvSize().width(frame.imageWidth).height(frame.imageHeight);
             mOutputImage = cvCreateImage(size, 8, 1);
             mOutput = new Mat(mOutputImage);

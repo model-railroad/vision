@@ -7,7 +7,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;

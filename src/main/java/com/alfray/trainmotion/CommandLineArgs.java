@@ -19,6 +19,7 @@ public class CommandLineArgs {
     private static final String TAG = CommandLineArgs.class.getSimpleName();
 
     public static final String OPT_DEBUG_DISPLAY = "d";
+    public static final String OPT_VERBOSE_LOG = "v";
     public static final String OPT_HELP = "h";
     public static final String OPT_HTTP_PORT = "p";
     public static final String OPT_USER_VALUE = "u";
@@ -37,6 +38,7 @@ public class CommandLineArgs {
 
         mOptions.addOption(OPT_HELP, "help", false, "This usage help.");
         mOptions.addOption(OPT_DEBUG_DISPLAY, "debug", false, "Debug Display.");
+        mOptions.addOption(OPT_VERBOSE_LOG, "verbose", false, "Verbose log.");
         mOptions.addOption(Option.builder(OPT_HTTP_PORT)
                 .longOpt("port")
                 .hasArg()
@@ -100,7 +102,6 @@ public class CommandLineArgs {
     }
 
     public void showHelpAndExit() {
-System.out.println("@@" + new Throwable());
         HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("train-motion", mOptions);
         System.exit(1);

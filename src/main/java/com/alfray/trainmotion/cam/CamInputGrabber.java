@@ -7,6 +7,7 @@ import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.ThreadLoop;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
+import com.google.common.base.Strings;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
@@ -34,6 +35,7 @@ import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 public class CamInputGrabber extends ThreadLoop {
 
     private static final double OUTPUT_ASPECT_RATIO = 16./9;
+
     public static final int DEFAULT_WIDTH = 640;
     public static final int DEFAULT_HEIGHT = (int)(DEFAULT_WIDTH / OUTPUT_ASPECT_RATIO);
 
@@ -130,7 +132,10 @@ public class CamInputGrabber extends ThreadLoop {
 
     @Override
     protected void _runInThreadLoop() {
-        mLogger.log(TAG, "Thread loop begin");
+        boolean verboseLog = mCommandLineArgs.hasOption(CommandLineArgs.OPT_VERBOSE_LOG);
+        if (verboseLog) {
+            mLogger.log(TAG, "Thread loop begin");
+        }
 
         final String key = String.format("%da", mCamInfo.getIndex());
         final String info = " | Cam" + mCamInfo.getIndex() + ": ";
@@ -139,11 +144,17 @@ public class CamInputGrabber extends ThreadLoop {
         final int outputHeight = (int) (outputWidth / OUTPUT_ASPECT_RATIO);
         final Size outputSize = new Size(outputWidth, outputHeight);
 
-        FFmpegFrameGrabber grabber = null;
+        IFrameGrabber grabber = null;
+        boolean started = false;
         try {
             mDebugDisplay.updateLineInfo(key, info + "Connecting...");
 
-            grabber = new FFmpegFrameGrabber(mCamInfo.getConfig().getInputUrl());
+            String inputUrl = mCamInfo.getConfig().getInputUrl();
+            if (!Strings.isNullOrEmpty(inputUrl) && inputUrl.startsWith(FakeFrameGrabber.PREFIX)) {
+                grabber = new FakeFrameGrabber(inputUrl);
+            } else {
+                grabber = FrameGrabberAdapter.of(new FFmpegFrameGrabber(inputUrl));
+            }
             grabber.setOption("stimeout" , "5000000"); // microseconds cf https://www.ffmpeg.org/ffmpeg-protocols.html#rtsp
             grabber.setTimeout(5*1000); // milliseconds
             grabber.start();
@@ -163,6 +174,7 @@ public class CamInputGrabber extends ThreadLoop {
 
             FpsMeasurer fpsMeasurer = new FpsMeasurer();
             fpsMeasurer.setFrameRate(mFrameRate);
+            started = true;
 
             while (!mQuit && (frame = grabber.grabImage()) != null) {
                 fpsMeasurer.startTick();
@@ -182,7 +194,12 @@ public class CamInputGrabber extends ThreadLoop {
             grabber.flush();
 
         } catch (FrameGrabber.Exception e) {
-            mLogger.log(TAG, e.toString());
+            if (started) {
+                mDebugDisplay.updateLineInfo(key, info + "Error");
+            }
+            if (verboseLog) {
+                mLogger.log(TAG, e.toString());
+            }
         } finally {
             if (grabber != null) {
                 try {

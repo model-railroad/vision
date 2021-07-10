@@ -67,6 +67,8 @@ public class DebugDisplay implements IStartStop {
                 requestQuit();
             }
         });
+
+        // FIXME this only works as long as focus is _not_ forced on the image view.
         mDisplay.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent keyEvent) {
@@ -184,6 +186,7 @@ public class DebugDisplay implements IStartStop {
     }
 
     private boolean processKey(char c) {
+        // mLogger.log(TAG, "Process key: " + c); // DEBUG
         switch (c) {
         case '?':
         case 'h':
