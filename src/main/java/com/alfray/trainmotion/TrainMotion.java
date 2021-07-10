@@ -8,6 +8,7 @@ import com.alfray.trainmotion.dagger.ITrainMotionComponent;
 import com.alfray.trainmotion.util.DebugDisplay;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
+import com.alfray.trainmotion.util.KioskDisplay;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -22,6 +23,7 @@ public class TrainMotion {
     @Inject IniFileReader mIniFileReader;
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject DebugDisplay mDebugDisplay;
+    @Inject KioskDisplay mKioskDisplay;
     @Inject ILogger mLogger;
     @Inject Cameras mCameras;
     @Inject HttpServ mHttpServ;
@@ -52,14 +54,17 @@ public class TrainMotion {
 
         try {
             mDebugDisplay.start();
+            mKioskDisplay.start();
             mHttpServ.start();
             mCameras.start();
+            mKioskDisplay.loadPage();
             mDebugDisplay.consoleWait();
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());
         } finally {
             safeStop(mCameras);
             safeStop(mHttpServ);
+            safeStop(mKioskDisplay);
             safeStop(mDebugDisplay);
         }
 
