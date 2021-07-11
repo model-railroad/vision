@@ -6,6 +6,10 @@ version "0.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    // Journey (https://github.com/CodeBrig/Journey), a JCEF-powered web browser
+    // (Note: CEF=Chrome Embedded Framework, J for java bindings from the java-cef project).
+    // Offline fatJar w/ natives is multiplatform ~300 MB.
+    maven { url "https://jitpack.io" }
 }
 
 compileJava {
@@ -20,6 +24,9 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:2.10.2"
     // Note: jetty-server:10.0.0.beta0 requires JDK 9.
     compile "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
+    // Note: Journey 0.4.0 does not work. Need 0.4.1 (not avail) or older 0.3.3, either offline or online.
+    // Offline version of Journey is 300 MB. Using the online (natives download at first run).
+    compile "com.github.codebrig:journey:0.3.3-online"
 
     compile                 "com.google.dagger:dagger:2.28"
     annotationProcessor     "com.google.dagger:dagger-compiler:2.28"

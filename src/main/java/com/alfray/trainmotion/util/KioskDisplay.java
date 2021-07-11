@@ -2,6 +2,7 @@ package com.alfray.trainmotion.util;
 
 import com.alfray.trainmotion.CommandLineArgs;
 import com.alfray.trainmotion.cam.Cameras;
+import com.codebrig.journey.JourneyBrowserView;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -27,7 +28,7 @@ public class KioskDisplay implements IStartStop {
 
     private boolean mToggleMask;
     private JFrame mFrame;
-    private JEditorPane mWebPane;
+    private JourneyBrowserView mWebView;
 
     @Inject
     public KioskDisplay(
@@ -44,8 +45,14 @@ public class KioskDisplay implements IStartStop {
     public void start() {
         mFrame = new JFrame("Train Motion");
 
-        mWebPane = new JEditorPane();
-        mFrame.add(mWebPane);
+        // Source: https://github.com/CodeBrig/Journey
+        // CEF = Chrome Embedded Framework (to embed Chrome in apps).
+        // JCEF = Java-CEF = Java native bindinds for CEF. Java + native libs (Mac, Linux, Win).
+        // Journey is built on top of JCEF and simplifies usage of the JCEF API even more.
+
+        mWebView = new JourneyBrowserView();
+
+        mFrame.add(mWebView);
 
 
 //        mDisplay = new CanvasFrame("Test video");
@@ -81,13 +88,14 @@ public class KioskDisplay implements IStartStop {
 
     public void stop() {
         if (mFrame != null) {
+            mWebView.getCefApp().dispose();
             mFrame.dispose();
             mFrame = null;
         }
     }
 
-    public void loadPage() throws IOException {
-        mWebPane.setPage("http://localhost:8080/yt_solo.html");
+    public void loadPage() {
+        mWebView.getCefBrowser().loadURL("http://localhost:8080/yt.html");
     }
 
 //    public void displayAsync(@Nullable Frame frame) {
