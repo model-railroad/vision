@@ -20,10 +20,12 @@ public class TrainMotion {
 
     private final ITrainMotionComponent mComponent;
 
-    @Inject IniFileReader mIniFileReader;
+    @Inject
+    ConfigIni mConfigIniReader;
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject DebugDisplay mDebugDisplay;
     @Inject KioskDisplay mKioskDisplay;
+    @Inject Playlist mPlaylist;
     @Inject ILogger mLogger;
     @Inject Cameras mCameras;
     @Inject HttpServ mHttpServ;
@@ -36,28 +38,33 @@ public class TrainMotion {
     public void run(String[] args) {
         mLogger.log(TAG, "Start");
 
-        mCommandLineArgs.parse(args);
+        mCommandLineArgs.initialize(args);
 
         //noinspection ConstantConditions
-        mIniFileReader.readFile(new File(mCommandLineArgs.getStringOption(
+        mConfigIniReader.initialize(new File(mCommandLineArgs.getStringOption(
                                 CommandLineArgs.OPT_CONFIG_INI,
-                                IniFileReader.DEFAULT_CONFIG_INI)));
+                                ConfigIni.DEFAULT_CONFIG_INI)));
+
 
         addCamera(1);
         addCamera(2);
         addCamera(3);
 
         if (mCameras.count() < 1) {
-            mLogger.log(TAG, "ERROR: No camera URLs found in " + mIniFileReader.getFile());
+            mLogger.log(TAG, "ERROR: No camera URLs found in " + mConfigIniReader.getFile());
             System.exit(1);
         }
 
         try {
+            //noinspection ConstantConditions
+            mPlaylist.initialize(
+                    mCommandLineArgs.getStringOption(CommandLineArgs.OPT_MEDIA_DIR,
+                            mConfigIniReader.getPlaylistDir()) );
             mDebugDisplay.start();
             mKioskDisplay.start();
             mHttpServ.start();
             mCameras.start();
-            mKioskDisplay.loadPage();
+            mKioskDisplay.initialize();
             mDebugDisplay.consoleWait();
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());
@@ -72,7 +79,7 @@ public class TrainMotion {
     }
 
     private void addCamera(int index) {
-        Optional<String> camProp = mIniFileReader.getCamN(index);
+        Optional<String> camProp = mConfigIniReader.getCamN(index);
         if (camProp.isPresent()) {
             String camUrl = mCommandLineArgs.resolve(camProp.get());
             mCameras.add(new CamConfig(camUrl, MOTION_THRESHOLD));

@@ -94,7 +94,7 @@ public class KioskDisplay implements IStartStop {
         }
     }
 
-    public void loadPage() {
+    public void initialize() {
         mWebView.getCefBrowser().loadURL("http://localhost:8080/yt.html");
     }
 

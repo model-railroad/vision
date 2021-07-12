@@ -14,6 +14,12 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.stream.Stream;
 
+/**
+ * Parses the command-line.
+ * <p/>
+ * WARNING: Do NOT invoke the getters from dagger constructors! It's too early and the command line
+ * has not been parsed yet.
+ */
 @Singleton
 public class CommandLineArgs {
     private static final String TAG = CommandLineArgs.class.getSimpleName();
@@ -26,6 +32,7 @@ public class CommandLineArgs {
     public static final String OPT_WEB_ROOT = "w";
     public static final String OPT_SIZE_WIDTH = "s"; // can't be w/width or p/pixels...
     public static final String OPT_CONFIG_INI = "c";
+    public static final String OPT_MEDIA_DIR = "m";
 
     private final ILogger mLogger;
     private final Options mOptions = new Options();
@@ -71,6 +78,12 @@ public class CommandLineArgs {
                 .argName("config.ini")
                 .desc("Path for config file.")
                 .build());
+        mOptions.addOption(Option.builder(OPT_MEDIA_DIR)
+                .longOpt("media")
+                .hasArg()
+                .argName("media/")
+                .desc("Path for playlist media directory (default: use config file playlist_dir).")
+                .build());
         Stream.of(1, 2, 3).forEach(i ->
                 mOptions.addOption(Option.builder(Integer.toString(i))
                         .longOpt("pass" + i)
@@ -80,7 +93,7 @@ public class CommandLineArgs {
                         .build()));
     }
 
-    public void parse(@Nonnull String[] arguments) {
+    public void initialize(@Nonnull String[] arguments) {
         mParsed = true;
         DefaultParser parser = new DefaultParser();
         boolean error = false;
