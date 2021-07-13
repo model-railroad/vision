@@ -1,9 +1,10 @@
 package com.alfray.trainmotion.util;
 
-public abstract class ThreadLoop {
+public abstract class ThreadLoop implements IStartStop {
     protected Thread mThread;
     protected volatile boolean mQuit;
 
+    @Override
     public void start() throws Exception {
         if (mThread == null) {
             mThread = new Thread(this::_runInThread);
@@ -12,7 +13,8 @@ public abstract class ThreadLoop {
         }
     }
 
-    public void stop() throws InterruptedException {
+    @Override
+    public void stop() throws Exception {
         if (mThread != null) {
             Thread t = mThread;
             mThread = null;

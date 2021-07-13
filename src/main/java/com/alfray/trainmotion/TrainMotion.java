@@ -8,7 +8,7 @@ import com.alfray.trainmotion.dagger.ITrainMotionComponent;
 import com.alfray.trainmotion.util.DebugDisplay;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
-import com.alfray.trainmotion.util.KioskDisplay;
+import com.alfray.trainmotion.display.KioskDisplay;
 
 import javax.inject.Inject;
 import java.io.File;

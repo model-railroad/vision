@@ -51,6 +51,7 @@ public class Cameras implements IStartStop {
         return null;
     }
 
+    @Override
     public void start() throws Exception {
         for (CamInfo camInfo : mCamInfos) {
             camInfo.getGrabber().start();
@@ -58,16 +59,17 @@ public class Cameras implements IStartStop {
         }
     }
 
+    @Override
     public void stop() {
         for (CamInfo camInfo : mCamInfos) {
             try {
                 camInfo.getAnalyzer().stop();
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 mLogger.log(TAG, "Stopping analyzer-" + camInfo.getIndex() + ": " + e);
             }
             try {
                 camInfo.getGrabber().stop();
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 mLogger.log(TAG, "Stopping grab-" + camInfo.getIndex() + ": " + e);
             }
         }

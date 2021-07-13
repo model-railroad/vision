@@ -53,6 +53,7 @@ public class DebugDisplay implements IStartStop {
         mCommandLineArgs = commandLineArgs;
     }
 
+    @Override
     public void start() {
         mQuit = false;
 
@@ -92,6 +93,7 @@ public class DebugDisplay implements IStartStop {
         return mQuit;
     }
 
+    @Override
     public void stop() {
         if (mDisplay != null) {
             mDisplay.dispose();

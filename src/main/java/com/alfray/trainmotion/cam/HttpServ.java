@@ -39,6 +39,7 @@ public class HttpServ implements IStartStop {
         mHttpCamHandler = httpCamHandler;
     }
 
+    @Override
     public void start() throws Exception {
         mLogger.log(TAG, "Start");
 
@@ -54,6 +55,7 @@ public class HttpServ implements IStartStop {
         mServer.start();
     }
 
+    @Override
     public void stop() throws Exception {
         mLogger.log(TAG, "Stop");
         mServer.stop();

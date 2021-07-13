@@ -95,7 +95,7 @@ public class CamAnalyzer extends ThreadLoop {
     }
 
     @Override
-    public void stop() throws InterruptedException {
+    public void stop() throws Exception {
         mLogger.log(TAG, "Stop");
         super.stop();
     }
