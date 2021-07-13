@@ -17,6 +17,7 @@ dependencies {
     compile "commons-cli:commons-cli:1.4"
     compile "org.bytedeco:javacv-platform:1.5.3"
     compile "org.bytedeco:javacpp-platform:1.5.3"
+    compile "uk.co.caprica:vlcj:4.7.1"
     compile "com.fasterxml.jackson.core:jackson-databind:2.10.2"
     // Note: jetty-server:10.0.0.beta0 requires JDK 9.
     compile "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
