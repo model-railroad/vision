@@ -48,7 +48,10 @@ function parse_config() {
 
     [[ -n "$PLAYLIST_DIR" ]] || PLAYLIST_DIR=$( sed -n -e 's/playlist_dir=\(.*\)/\1/p' "$CONFIG" )
     [[ -d "$PLAYLIST_DIR" ]] || die "Invalid output directory: $PLAYLIST_DIR"
-    
+
+    Y=$( sed -n -e 's/youtube_dl=\(.*\)/\1/p' "$CONFIG" )
+    if [[ -x "$Y" ]]; then YOUTUBE_DL="$Y"; fi
+
     echo "Playlist id : $PLAYLIST_ID"
     echo "Playlist dir: $PLAYLIST_DIR"
 }

@@ -37,6 +37,7 @@ The project is written in Java 8 (JDK or OpenJDK) and relies the following exter
 * [AutoFactory](https://github.com/google/auto/tree/master/factory).
 * [JavaCV](https://github.com/bytedeco/javacv), specifically the [OpenCV](https://opencv.org/) and [FFmpeg](https://ffmpeg.org/) APIs.
 * [JavaCPP](https://github.com/bytedeco/javacpp), required by JavaCV.
+* VLC and vlcj.
 * FasterXML [Jackson Databind](https://github.com/FasterXML/jackson-databind).
 * Eclipse [Jetty](https://www.eclipse.org/jetty/).
 
