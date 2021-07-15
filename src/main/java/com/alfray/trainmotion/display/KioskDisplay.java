@@ -46,7 +46,6 @@ public class KioskDisplay implements IStartStop {
     private final DebugDisplay mDebugDisplay;
 
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
-    private boolean mToggleMask;
     private JFrame mFrame;
     private EmbeddedMediaPlayerComponent mMediaPlayer;
     private Timer mRepaintTimer;
@@ -68,8 +67,10 @@ public class KioskDisplay implements IStartStop {
         mFrame = new JFrame("Kiosk video");
         mFrame.setSize(800, 600); // FIXME
         mFrame.setLayout(null);
+        mFrame.setBackground(Color.BLACK);
 
         mMediaPlayer = new EmbeddedMediaPlayerComponent();
+        mMediaPlayer.setBackground(Color.BLACK);
         mFrame.add(mMediaPlayer);
 
         mFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
@@ -110,6 +111,7 @@ public class KioskDisplay implements IStartStop {
             }
         });
 
+        mDebugDisplay.addKeyListener(mFrame);
         mFrame.setVisible(true);
 
         mRepaintTimer = new Timer(1000 / DISPLAY_FPS, this::onRepaintTimerTick);
@@ -192,7 +194,7 @@ public class KioskDisplay implements IStartStop {
         public VideoCanvas(int posIndex, CamInfo camInfo) {
             mPosIndex = posIndex;
             mCamInfo = camInfo;
-            setBackground(Color.DARK_GRAY);
+            setBackground(Color.BLACK);
         }
 
         public void initialize() {
@@ -209,11 +211,35 @@ public class KioskDisplay implements IStartStop {
 
         @Override
         public void paint(Graphics g) {
-            final int w = getWidth();
-            final int h = getHeight();
-            if (w <= 0 || h <= 0) {
+            if (mImage == null) {
+                super.paint(g);
                 return;
             }
+
+            // Aspect ratio computation
+            // Canvas ratio cr = cw / ch.
+            // Image  ratio ir = iw / ih.
+            // If ir < cr, image is thinner, canvas is wider: fit H, resize W.
+            // If ir > cr, image is wider, canvas is thinner: fit W, resize H.
+            final int cw = getWidth();
+            final int ch = getHeight();
+            final int iw = mImage.getWidth(null /* observer */);
+            final int ih = mImage.getHeight(null /* observer */);
+            if (cw <= 0 || ch <= 0 || iw <= 0 || ih <= 0) {
+                return;
+            }
+            double cr = (double) cw / (double) ch;
+            double ir = (double) iw / (double) ih;
+            int dw, dh;
+            if (ir < cr) {
+                dh = ch;
+                dw = (int)(ch * ir);
+            } else {
+                dw = cw;
+                dh = (int)(cw / ir);
+            }
+            int dx = (cw - dw) / 2;
+            int dy = (ch - dh) / 2;
 
             if (USE_BUFFERS) {
                 // Calling BufferStrategy.show() here sometimes throws
@@ -226,7 +252,7 @@ public class KioskDisplay implements IStartStop {
                         do {
                             g = strategy.getDrawGraphics();
                             if (mImage != null) {
-                                g.drawImage(mImage, 0, 0, w, h, null);
+                                g.drawImage(mImage, dx, dy, dw, dh, null);
                             }
                             g.dispose();
                         } while (strategy.contentsRestored());
@@ -236,14 +262,14 @@ public class KioskDisplay implements IStartStop {
                 }
             } else {
                 super.paint(g);
-                g.drawImage(mImage, 0, 0, w, h, null /* observer */);
+                g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
             }
         }
 
         /** Must be invoked on the Swing UI thread. */
         public void displayFrame() {
             Frame frame;
-            if (mToggleMask) {
+            if (mDebugDisplay.isToggleMask()) {
                 frame = mCamInfo.getAnalyzer().getLastFrame();
             } else {
                 frame = mCamInfo.getGrabber().getLastFrame();

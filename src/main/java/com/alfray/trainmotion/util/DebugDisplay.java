@@ -13,6 +13,7 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
+import java.awt.Component;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -69,8 +70,15 @@ public class DebugDisplay implements IStartStop {
             }
         });
 
+        addKeyListener(mDisplay);
+
+        // Start visible in --debug mode
+        mDisplay.setVisible(mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY));
+    }
+
+    public void addKeyListener(Component component) {
         // FIXME this only works as long as focus is _not_ forced on the image view.
-        mDisplay.addKeyListener(new KeyAdapter() {
+        component.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent keyEvent) {
                 if (processKey(keyEvent.getKeyChar())) {
@@ -79,9 +87,10 @@ public class DebugDisplay implements IStartStop {
                 super.keyPressed(keyEvent);
             }
         });
+    }
 
-        // Start visible in --debug mode
-        mDisplay.setVisible(mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY));
+    public boolean isToggleMask() {
+        return mToggleMask;
     }
 
     public void requestQuit() {
