@@ -89,23 +89,25 @@ public class FakeFrameGrabber implements IFrameGrabber {
         int speed = Math.max(1, (mSpeedRgb >> 24) & 0x7F);
         mX += speed;
         mY += speed / 2;
-        if (mX > WIDTH) {
+        if (mX > WIDTH * 2) {
             mY += speed;
             mX = 0;
         }
         if (mY > HEIGHT) {
             mY = 0;
         }
-        int x = Math.max(0, Math.min(WIDTH - SIZE - 1, mX));
-        int y = Math.max(0, Math.min(HEIGHT - SIZE - 1, mY));
+        int x = mX; // Math.max(0, Math.min(WIDTH - SIZE - 1, mX));
+        int y = mY; // Math.max(0, Math.min(HEIGHT - SIZE - 1, mY));
         int sz = Math.max(2, (x+y) % SIZE);
         int col = (x+y) & 0xFF;
 
         // Note: I don't know how to fill a portion of a sub-mat with an RGB color.
         // So instead clone the full-color one, and fill a a sub-rect with a gray value. Good enough.
         Mat clone = mMat.clone();
-        Mat subMat = new Mat(clone, new Rect(x, y, sz, sz));
-        subMat.setTo(new Mat(1, 1, CvType.CV_8UC1, new Scalar(col)));
+        if (x >= 0 && x <= WIDTH / 2 - SIZE - 1 && y >= 0 && y <= HEIGHT - SIZE - 1) {
+            Mat subMat = new Mat(clone, new Rect(x, y, sz, sz));
+            subMat.setTo(new Mat(1, 1, CvType.CV_8UC1, new Scalar(col)));
+        }
 
         Frame frame = mMatConverter.convert(clone);
         try {

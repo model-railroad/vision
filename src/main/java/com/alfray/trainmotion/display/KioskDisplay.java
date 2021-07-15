@@ -37,8 +37,12 @@ import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 public class KioskDisplay implements IStartStop {
     private static final String TAG = KioskDisplay.class.getSimpleName();
 
-    // The display does not need to run at the full input/output feed fps.
+    // Approximage FPS to update the camera videos.
     private static final int DISPLAY_FPS = 15;
+
+    private static final Color HIGHLIGHT_LINE_COLOR = Color.YELLOW;
+    private static final long HIGHLIGHT_DURATION_MS = 3*1000;
+    private static final int HIGHLIGHT_LINE_SIZE = 10;
 
     private final ILogger mLogger;
     private final Cameras mCameras;
@@ -71,6 +75,7 @@ public class KioskDisplay implements IStartStop {
 
         mMediaPlayer = new EmbeddedMediaPlayerComponent();
         mMediaPlayer.setBackground(Color.BLACK);
+        mMediaPlayer.setBounds(0, 0, 800, 600); // matches initial frame
         mFrame.add(mMediaPlayer);
 
         mFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
@@ -85,28 +90,7 @@ public class KioskDisplay implements IStartStop {
             @Override
             public void componentResized(ComponentEvent event) {
                 super.componentResized(event);
-                mLogger.log(TAG, String.format("componentResized --> %dx%d", mFrame.getWidth(), mFrame.getHeight()));
-                onFrameResized(event);
-            }
-
-            @Override
-            public void componentMoved(ComponentEvent event) {
-                super.componentMoved(event);
-                mLogger.log(TAG, String.format("componentMoved --> %dx%d", mFrame.getWidth(), mFrame.getHeight()));
-                onFrameResized(event);
-            }
-
-            @Override
-            public void componentShown(ComponentEvent event) {
-                super.componentShown(event);
-                mLogger.log(TAG, String.format("componentShown --> %dx%d", mFrame.getWidth(), mFrame.getHeight()));
-                onFrameResized(event);
-            }
-
-            @Override
-            public void componentHidden(ComponentEvent event) {
-                super.componentHidden(event);
-                mLogger.log(TAG, String.format("componentHidden --> %dx%d", mFrame.getWidth(), mFrame.getHeight()));
+                // mLogger.log(TAG, String.format("componentResized --> %dx%d", mFrame.getWidth(), mFrame.getHeight()));
                 onFrameResized(event);
             }
         });
@@ -132,18 +116,44 @@ public class KioskDisplay implements IStartStop {
             int width = mFrame.getWidth();
             int height = mFrame.getHeight();
 
-            mMediaPlayer.setBounds(0, 0, width / 2, height / 2);
-
             for (VideoCanvas canvas : mVideoCanvas) {
                 canvas.computeAbsolutePosition(width, height);
             }
+
+            mFrame.revalidate();
         }
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame != null) {
+        if (mFrame != null && mMediaPlayer != null) {
+            boolean hasHighlight = false;
             for (VideoCanvas canvas : mVideoCanvas) {
                 canvas.displayFrame();
+                hasHighlight |= canvas.isHighlighted();
+            }
+
+            // frame (window) size
+            int fw = mFrame.getWidth();
+            int fh = mFrame.getHeight();
+            // target size for media player
+            int tw = fw, th = fh;
+            if (hasHighlight) {
+                // Desired player is half size screen
+                tw = fw / 2;
+                th = fh / 2;
+            }
+            // current player size
+            int pw = mMediaPlayer.getWidth();
+            int ph = mMediaPlayer.getHeight();
+            if (Math.abs(tw - pw) > 1 || Math.abs(th - ph) > 1) {
+                if (tw != pw) {
+                    tw = pw + (tw - pw) / 2;
+                }
+                if (th != ph) {
+                    th = ph + (th - ph) / 2;
+                }
+                mMediaPlayer.setBounds(0, 0, tw, th);
+                mMediaPlayer.revalidate();
             }
         }
     }
@@ -184,11 +194,13 @@ public class KioskDisplay implements IStartStop {
 
     /** Based on org/bytedeco/javacv/CanvasFrame.java */
     private class VideoCanvas extends Canvas {
-        private final boolean USE_BUFFERS = true;
+        private static final boolean USE_BUFFERS = true;
         private final Java2DFrameConverter mConverter = new Java2DFrameConverter();
 
         private final int mPosIndex;
         private final CamInfo mCamInfo;
+        /** Show highlight if > 0. Indicates when highlight should end. */
+        private long mHighlightTS;
         private Image mImage;
 
         public VideoCanvas(int posIndex, CamInfo camInfo) {
@@ -238,8 +250,8 @@ public class KioskDisplay implements IStartStop {
                 dw = cw;
                 dh = (int)(cw / ir);
             }
-            int dx = (cw - dw) / 2;
-            int dy = (ch - dh) / 2;
+            final int dx = (cw - dw) / 2;
+            final int dy = (ch - dh) / 2;
 
             if (USE_BUFFERS) {
                 // Calling BufferStrategy.show() here sometimes throws
@@ -252,7 +264,7 @@ public class KioskDisplay implements IStartStop {
                         do {
                             g = strategy.getDrawGraphics();
                             if (mImage != null) {
-                                g.drawImage(mImage, dx, dy, dw, dh, null);
+                                drawImageAndContour(g, dw, dh, dx, dy);
                             }
                             g.dispose();
                         } while (strategy.contentsRestored());
@@ -261,9 +273,24 @@ public class KioskDisplay implements IStartStop {
                 } catch (NullPointerException | IllegalStateException ignored) {
                 }
             } else {
-                super.paint(g);
-                g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
+                drawImageAndContour(g, dw, dh, dx, dy);
             }
+        }
+
+        private void drawImageAndContour(Graphics g, int dw, int dh, int dx, int dy) {
+            g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
+
+            if (isHighlighted()) {
+                g.setColor(HIGHLIGHT_LINE_COLOR);
+                g.fillRect(dx, dy, dw, HIGHLIGHT_LINE_SIZE);
+                g.fillRect(dx, dy + dh - HIGHLIGHT_LINE_SIZE, dw, HIGHLIGHT_LINE_SIZE);
+                g.fillRect(dx, dy, HIGHLIGHT_LINE_SIZE, dh);
+                g.fillRect(dx + dw - HIGHLIGHT_LINE_SIZE, dy, HIGHLIGHT_LINE_SIZE, dh);
+            }
+        }
+
+        public boolean isHighlighted() {
+            return mHighlightTS > 0;
         }
 
         /** Must be invoked on the Swing UI thread. */
@@ -274,6 +301,13 @@ public class KioskDisplay implements IStartStop {
             } else {
                 frame = mCamInfo.getGrabber().getLastFrame();
             }
+
+            if (mCamInfo.getAnalyzer().isMotionDetected()) {
+                mHighlightTS = System.currentTimeMillis() + HIGHLIGHT_DURATION_MS;
+            } else if (mHighlightTS > 0 && mHighlightTS < System.currentTimeMillis()) {
+                mHighlightTS = 0;
+            }
+
             if (frame != null) {
                 mImage = mConverter.getBufferedImage(frame);
                 repaint();
