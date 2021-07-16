@@ -13,10 +13,13 @@ import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.Canvas;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Insets;
@@ -54,8 +57,9 @@ public class KioskDisplay implements IStartStop {
     private JFrame mFrame;
     private EmbeddedMediaPlayerComponent mMediaPlayer;
     private Timer mRepaintTimer;
-    private int mFrameWidth;
-    private int mFrameHeight;
+    private int mVideosWidth;
+    private int mVideosHeight;
+    private JLabel mBottomLabel;
 
     @Inject
     public KioskDisplay(
@@ -81,6 +85,13 @@ public class KioskDisplay implements IStartStop {
         mMediaPlayer.setBounds(0, 0, 800, 600); // matches initial frame
         mFrame.add(mMediaPlayer);
 
+        mBottomLabel = new JLabel("Text");
+        mBottomLabel.setOpaque(true);
+        mBottomLabel.setBackground(Color.BLACK);
+        mBottomLabel.setForeground(Color.LIGHT_GRAY);
+        mBottomLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        mFrame.add(mBottomLabel);
+
         mFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         mFrame.addWindowListener(new WindowAdapter() {
             @Override
@@ -98,8 +109,12 @@ public class KioskDisplay implements IStartStop {
         });
 
         mDebugDisplay.addKeyListener(mFrame);
-        mFrame.pack();
         mFrame.setVisible(true);
+        // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
+        // after the main frame is set visible.
+        createVideoCanvas();
+        mFrame.pack();
+        onFrameResized(null /* event */);
         mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH); // maximize
 
         mRepaintTimer = new Timer(1000 / DISPLAY_FPS, this::onRepaintTimerTick);
@@ -115,19 +130,27 @@ public class KioskDisplay implements IStartStop {
         });
     }
 
-    private void computeFrameInnerSize() {
+    private void computeLayout() {
         if (mFrame != null) {
             Insets insets = mFrame.getInsets();
-            mFrameWidth  = mFrame.getWidth() - insets.left - insets.right;
-            mFrameHeight = mFrame.getHeight() - insets.top - insets.bottom;
+            mVideosWidth = mFrame.getWidth() - insets.left - insets.right;
+            mVideosHeight = mFrame.getHeight() - insets.top - insets.bottom;
+
+            Dimension labelSize = mBottomLabel.getPreferredSize();
+            mLogger.log(TAG, "Label labelSize = " + labelSize);
+            if (labelSize != null) {
+                int lh = labelSize.height;
+                mVideosHeight -= lh;
+                mBottomLabel.setBounds(0, mVideosHeight, mVideosWidth, lh);
+            }
         }
     }
 
     private void onFrameResized(ComponentEvent event) {
         if (mFrame != null) {
-            computeFrameInnerSize();
-            final int width = mFrameWidth;
-            final int height = mFrameHeight;
+            computeLayout();
+            final int width = mVideosWidth;
+            final int height = mVideosHeight;
             mLogger.log(TAG, String.format("onFrameResized --> %dx%d", width, height));
 
             for (VideoCanvas canvas : mVideoCanvas) {
@@ -140,6 +163,8 @@ public class KioskDisplay implements IStartStop {
 
     private void onRepaintTimerTick(ActionEvent event) {
         if (mFrame != null && mMediaPlayer != null) {
+            mBottomLabel.setText(mDebugDisplay.computeLineInfo());
+
             boolean hasHighlight = false;
             for (VideoCanvas canvas : mVideoCanvas) {
                 canvas.displayFrame();
@@ -147,9 +172,9 @@ public class KioskDisplay implements IStartStop {
             }
 
             // frame (window) size
-            computeFrameInnerSize();
-            final int fw = mFrameWidth;
-            final int fh = mFrameHeight;
+            computeLayout();
+            final int fw = mVideosWidth;
+            final int fh = mVideosHeight;
             // target size for media player
             int tw = fw, th = fh;
             if (hasHighlight) {
@@ -188,11 +213,6 @@ public class KioskDisplay implements IStartStop {
 
     public void initialize() throws Exception {
         SwingUtilities.invokeLater(() -> {
-            // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
-            // after the main frame is set visible.
-            createVideoCanvas();
-
-            onFrameResized(null /* event */);
             mRepaintTimer.start();
 
             Optional<File> next = mPlaylist.getNext();

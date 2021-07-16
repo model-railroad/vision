@@ -56,6 +56,11 @@ public class DebugDisplay implements IStartStop {
 
     @Override
     public void start() {
+        // Only start this in debug mode
+        if (!mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
+            return;
+        }
+
         mQuit = false;
 
         mDisplay = new CanvasFrame("Test video");
@@ -73,7 +78,7 @@ public class DebugDisplay implements IStartStop {
         addKeyListener(mDisplay);
 
         // Start visible in --debug mode
-        mDisplay.setVisible(mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY));
+        mDisplay.setVisible(true);
     }
 
     public void addKeyListener(Component component) {
@@ -133,7 +138,7 @@ public class DebugDisplay implements IStartStop {
     }
 
     private final StringBuffer _sTempBuf = new StringBuffer();
-    public void displayLineInfo() {
+    public String computeLineInfo() {
         _sTempBuf.setLength(0);
         synchronized (mLineInfo) {
             for (String info : mLineInfo.values()) {
@@ -144,7 +149,11 @@ public class DebugDisplay implements IStartStop {
             }
         }
         _sTempBuf.append('\r');
-        mLogger.log(_sTempBuf.toString());
+        return _sTempBuf.toString();
+    }
+
+    public void displayLineInfo() {
+        mLogger.log(computeLineInfo());
     }
 
     public void consoleWait() {
@@ -201,7 +210,7 @@ public class DebugDisplay implements IStartStop {
         switch (c) {
         case '?':
         case 'h':
-            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, d=disply on/off, m=toggle mask on/off, 1/2/3=show cam N");
+            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, d=display on/off, m=toggle mask on/off, 1/2/3=show cam N");
             break;
         case 27:
         case 'q':
