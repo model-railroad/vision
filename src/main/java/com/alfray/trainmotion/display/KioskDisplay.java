@@ -19,6 +19,7 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -53,6 +54,8 @@ public class KioskDisplay implements IStartStop {
     private JFrame mFrame;
     private EmbeddedMediaPlayerComponent mMediaPlayer;
     private Timer mRepaintTimer;
+    private int mFrameWidth;
+    private int mFrameHeight;
 
     @Inject
     public KioskDisplay(
@@ -90,13 +93,14 @@ public class KioskDisplay implements IStartStop {
             @Override
             public void componentResized(ComponentEvent event) {
                 super.componentResized(event);
-                // mLogger.log(TAG, String.format("componentResized --> %dx%d", mFrame.getWidth(), mFrame.getHeight()));
                 onFrameResized(event);
             }
         });
 
         mDebugDisplay.addKeyListener(mFrame);
+        mFrame.pack();
         mFrame.setVisible(true);
+        mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH); // maximize
 
         mRepaintTimer = new Timer(1000 / DISPLAY_FPS, this::onRepaintTimerTick);
     }
@@ -111,10 +115,20 @@ public class KioskDisplay implements IStartStop {
         });
     }
 
+    private void computeFrameInnerSize() {
+        if (mFrame != null) {
+            Insets insets = mFrame.getInsets();
+            mFrameWidth  = mFrame.getWidth() - insets.left - insets.right;
+            mFrameHeight = mFrame.getHeight() - insets.top - insets.bottom;
+        }
+    }
+
     private void onFrameResized(ComponentEvent event) {
         if (mFrame != null) {
-            int width = mFrame.getWidth();
-            int height = mFrame.getHeight();
+            computeFrameInnerSize();
+            final int width = mFrameWidth;
+            final int height = mFrameHeight;
+            mLogger.log(TAG, String.format("onFrameResized --> %dx%d", width, height));
 
             for (VideoCanvas canvas : mVideoCanvas) {
                 canvas.computeAbsolutePosition(width, height);
@@ -133,8 +147,9 @@ public class KioskDisplay implements IStartStop {
             }
 
             // frame (window) size
-            int fw = mFrame.getWidth();
-            int fh = mFrame.getHeight();
+            computeFrameInnerSize();
+            final int fw = mFrameWidth;
+            final int fh = mFrameHeight;
             // target size for media player
             int tw = fw, th = fh;
             if (hasHighlight) {
@@ -266,6 +281,7 @@ public class KioskDisplay implements IStartStop {
                             if (mImage != null) {
                                 drawImageAndContour(g, dw, dh, dx, dy);
                             }
+                            // g.drawRect(0, 0, cw-1, ch-1); // DEBUG
                             g.dispose();
                         } while (strategy.contentsRestored());
                         strategy.show();
@@ -274,6 +290,7 @@ public class KioskDisplay implements IStartStop {
                 }
             } else {
                 drawImageAndContour(g, dw, dh, dx, dy);
+                // g.drawRect(0, 0, cw-1, ch-1); // DEBUG
             }
         }
 
@@ -281,6 +298,8 @@ public class KioskDisplay implements IStartStop {
             g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
 
             if (isHighlighted()) {
+                dw--;
+                dh--;
                 g.setColor(HIGHLIGHT_LINE_COLOR);
                 g.fillRect(dx, dy, dw, HIGHLIGHT_LINE_SIZE);
                 g.fillRect(dx, dy + dh - HIGHLIGHT_LINE_SIZE, dw, HIGHLIGHT_LINE_SIZE);
