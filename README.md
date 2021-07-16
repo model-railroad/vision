@@ -5,8 +5,8 @@
 Source: https://bitbucket.org/ralfoide/train-motion
 
 This is a project created for the
-[Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall)
-in San Francisco.
+[Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), which is an automated live
+HO-sized model train exhibit in the [Randall Museum](https://randallmuseum.org/) in San Francisco.
 
 Train Motion runs full screen on a laptop and plays a series of Youtube videos of the
 model railroad in a loop.
@@ -21,6 +21,43 @@ on this project.
 
 ![Overview Architecture Graphic](http://ralf.alfray.com/trains/blog/randall/index_ccd987b50b5bb36d608ce3e10d9579132f79076fd.jpg)
 
+As usual with my train-related projects, although this project has been designed for the needs of
+the [Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), the project itself is
+kept generic and customizable. It is made available open source with the goal that others pick it
+up and use it too.
+
+
+## Input
+
+Live source video comes from live IP Security camera, either over wifi or ethernet. 
+The FFMPEG library is used to decode the camera streams, which means it will support pretty much
+any standard video stream, from MJPEG to MPEG h264 ot h265. Old-style pull mode (where JPEG frames
+are pulled at periodic interval) is not supported; however most of these types of cameras also used
+to support MJPEG mode. For performance reasons, h264 or h265 streams should be favored.
+
+The player also plays non-live media. In the prototype v0.1 version, this was done by embedding
+a YouTube player and showing a playlist in a loop, right over wifi. Although this was fine for the
+v0.1 prototype, we do not want to rely on wifi ability for this to work in a museum exhibit. One
+advantage is that this would allow us to update the playlist remotely.
+
+So instead in the v0.2 version, videos are pulled offline into a local "media" directory, and
+recorded videos are played directly off the disk. A script is provided that can fill such a directory
+by automatically downloading YouTube videos off a playlist using _youtube-dl_ and caching them locally.
+The goal is to them run that update script daily, which will offer us an easy way to update the
+playlist without requiring direct intervention on the display computer.
+
+
+## Output
+
+In the prototype v0.1 version, the output was provided via an embedded web server.
+A Chrome or Chromium browser running in kiosk mode (a.k.a. fullscreen) would display the recorded
+playlist and well as the 3 live camera streams. JavaScript is then used to highlight motion and
+toggle the playlist viewer between its full-size render or its quarter-size render.
+
+In the v0.2 version, the display is handled by a native Java window showing the playlist viewer
+and the cameras streams. This is offers better performance and control. 
+The web browser output is still available as an alternative. 
+
 
 ## License
 
@@ -31,17 +68,28 @@ The full text of the license is provided in the file `LICENSE.txt`.
 
 ## Dependencies
 
-The project is written in Java 8 (JDK or OpenJDK) and relies the following external libraries:
+The project is written in Java 8 (JDK or OpenJDK) and relies on the following external libraries:
 
 * [Dagger](https://dagger.dev/).
 * [AutoFactory](https://github.com/google/auto/tree/master/factory).
 * [JavaCV](https://github.com/bytedeco/javacv), specifically the [OpenCV](https://opencv.org/) and [FFmpeg](https://ffmpeg.org/) APIs.
 * [JavaCPP](https://github.com/bytedeco/javacpp), required by JavaCV.
-* VLC and vlcj.
+* [VLC](https://www.videolan.org/) and [vlcj](https://github.com/caprica/vlcj).
 * FasterXML [Jackson Databind](https://github.com/FasterXML/jackson-databind).
 * Eclipse [Jetty](https://www.eclipse.org/jetty/).
 
-Rendering relies on:
+Rendering for v0.2 relies on:
+
+* [VLC](https://www.videolan.org/vlc/) and [vlcj](https://github.com/caprica/vlcj).
+
+For linux:
+
+`$ apt install vlc libvlc5`
+
+For Windows, [VLC 3.0](https://www.videolan.org/vlc/) or more recent should be installed on the system.
+
+
+Rendering for v0.1 relies on:
 
 * [Debian](https://www.debian.org/) Linux.
 * [Chromium](https://www.chromium.org/).
@@ -86,29 +134,59 @@ The first build/run will take about forever as the dependencies gets downloaded.
 
 To run it:
 
-`$ java -jar build/libs/train-motion-0.1-SNAPSHOT-all.jar <command line options>`
+`$ java -jar build/libs/train-motion-0.2-SNAPSHOT-all.jar <command line options>`
 
 
-## Command-line Options
+## Configuration and Command-line Options for v0.2
 
+Configuration is done using a _config.ini_ file.
+
+An example is provided in `src/main/resources/config.ini`.
+
+Key/values expected in the configuration file:
+* `cam1`, `cam2`, `cam3`: The URL for the live cameras download stream.
+  * The syntax varies by model/make. \
+    For example for my Edimax cameras, the syntax is
+    `rtsp://username:password@ipaddress:554/ipcam_h264.sdp`. \
+    If you do not know the syntax for your camera model, google it or look up the documentation. \
+    The path can use the magic variables $U, $P1, $P2, $P3 which are
+    replacemend by command-line arguments -u, -p1, -p2, -p3 respectively.
+  * For testing, a "fake live camera" generator can be invoked by using the
+    magic value `fake_srgb_01ff0000` (the hex value represent speed + RGB).
+    See `src/main/resources/config.ini` for examples to use.
+  * The numer of cameras that train-motion can handle is not limited.
+    The key parameter is `camN` where N>=1.
+    Right now the visual output is optimized for 3 cameras.
+    At least one camera is expected.
+* `playlist_id`: The YouTube playlist id (which starts with `PL`).
+  * In v0.1, this is used by the embedded YouTube player.
+  * In v0.2, this is only used by the `_sync_playlist.sh` script.
+* `playlist_dir`: The directory where the local media is located in v0.2
+  * The directory must contain at least one media file to play.
+  * The directory must contain an `_index.txt` file listing the filenames to play.
+* `youtube_dl`: Optional path to the [youtube-dl](https://youtube-dl.org/) program.
+  * In v0.2, this is only used by the `_sync_playlist.sh` script.
+ 
+
+__Main Command-line Options__:
+
+* `-c,--config`:              Path to config.ini file (default is ./config.ini).
+* `-m,--media`:               Path for playlist media directory (default: use config file playlist_dir).
+* `-h,--help`:                Usage help.
 * `-d,--debug`:               Debug Display.
-* `-h,--help`:                This usage help.
 
-__Cameras__:
 
-* `-1,--pass1 <password-1>`:  Password $P1
-* `-2,--pass2 <password-2>`:  Password $P2
-* `-3,--pass3 <password-3>`:  Password $P3
-* `-u,--user <username>`:     Default $U name
+__Optional, for cameras__:
 
-The cameras specification is currently hardcoded in `src/main/java/com/alfray/trainmotion/TrainMotion.java`.
-This is temporary for the initial prototype.
-The cameras are addressed using RTSP URLs that include replacement tokens (`$U`, `$P1`, `$P2`, `$P3`)
-which map to the command line options given above.
-This is certainly primitive yet gets the job done for now.
-Eventually this will be replaced by a small ini config file parser.
+* `-1,--pass1 <password-1>`:  Password $P1 if present on a camera URL.
+* `-2,--pass2 <password-2>`:  Password $P2 if present on a camera URL
+* `-3,--pass3 <password-3>`:  Password $P3 if present on a camera URL
+* `-u,--user <username>`:     Default $U name if present on a camera URL
 
-__Web server__:
+Note: these parameter become necessary only if the config.init uses the variables.
+
+
+__Optional, for Web server__:
 
 * `-p,--port <port>`:         Web server port (default is 8080)
 * `-s,--size <pixels>`:       Size/width of the 16:9 camera feed (analysis+output, default 640)

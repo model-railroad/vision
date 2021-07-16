@@ -10,4 +10,4 @@ set -x
 )
 # List & run
 ls -1sh $(find build/ -name "*.jar")
-java -jar build/libs/train-motion-0.1-SNAPSHOT-all.jar $@
+java -jar build/libs/train-motion-0.2-SNAPSHOT-all.jar $@

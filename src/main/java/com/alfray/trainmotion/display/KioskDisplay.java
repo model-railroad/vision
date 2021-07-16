@@ -85,7 +85,7 @@ public class KioskDisplay implements IStartStop {
         mMediaPlayer.setBounds(0, 0, 800, 600); // matches initial frame
         mFrame.add(mMediaPlayer);
 
-        mBottomLabel = new JLabel("Text");
+        mBottomLabel = new JLabel("Please wait, initializing camera streams...");
         mBottomLabel.setOpaque(true);
         mBottomLabel.setBackground(Color.BLACK);
         mBottomLabel.setForeground(Color.LIGHT_GRAY);
@@ -137,7 +137,6 @@ public class KioskDisplay implements IStartStop {
             mVideosHeight = mFrame.getHeight() - insets.top - insets.bottom;
 
             Dimension labelSize = mBottomLabel.getPreferredSize();
-            mLogger.log(TAG, "Label labelSize = " + labelSize);
             if (labelSize != null) {
                 int lh = labelSize.height;
                 mVideosHeight -= lh;
@@ -318,8 +317,6 @@ public class KioskDisplay implements IStartStop {
             g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
 
             if (isHighlighted()) {
-                dw--;
-                dh--;
                 g.setColor(HIGHLIGHT_LINE_COLOR);
                 g.fillRect(dx, dy, dw, HIGHLIGHT_LINE_SIZE);
                 g.fillRect(dx, dy + dh - HIGHLIGHT_LINE_SIZE, dw, HIGHLIGHT_LINE_SIZE);
