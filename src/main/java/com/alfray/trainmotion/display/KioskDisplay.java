@@ -8,6 +8,8 @@ import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
+import uk.co.caprica.vlcj.player.base.MediaPlayer;
+import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
 
 import javax.inject.Inject;
@@ -26,6 +28,8 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
@@ -55,11 +59,12 @@ public class KioskDisplay implements IStartStop {
 
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
     private JFrame mFrame;
+    private JLabel mBottomLabel;
     private EmbeddedMediaPlayerComponent mMediaPlayer;
     private Timer mRepaintTimer;
     private int mVideosWidth;
     private int mVideosHeight;
-    private JLabel mBottomLabel;
+    private boolean mForceZoom;
 
     @Inject
     public KioskDisplay(
@@ -107,8 +112,17 @@ public class KioskDisplay implements IStartStop {
                 onFrameResized(event);
             }
         });
+        mFrame.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent keyEvent) {
+                if (processKey(keyEvent.getKeyChar())
+                        || mDebugDisplay.processKey(keyEvent.getKeyChar())) {
+                    keyEvent.consume();
+                }
+                super.keyPressed(keyEvent);
+            }
+        });
 
-        mDebugDisplay.addKeyListener(mFrame);
         mFrame.setVisible(true);
         // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
         // after the main frame is set visible.
@@ -145,6 +159,33 @@ public class KioskDisplay implements IStartStop {
         }
     }
 
+    public boolean processKey(char c) {
+        // Keys handled by the DebugDisplay:
+        // esc, q = quit // d = toggle debug // m = toggle mask // 1, 2, 3 = debug cam select.
+        // mLogger.log(TAG, "Process key: " + c); // DEBUG
+        switch (c) {
+        case 'f':
+            // Toggle fullscreen zoom
+            mForceZoom = !mForceZoom;
+            return true;
+        case 's':
+            // Toggle sound
+            if (mMediaPlayer != null) {
+                mMediaPlayer.mediaPlayer().audio().mute();
+            }
+            return true;
+        case 'u':
+            // Toggle shuffle
+            mPlaylist.setShuffle(!mPlaylist.isShuffle());
+            return true;
+        case 'n':
+            playNext();
+            return true;
+        }
+
+        return false; // not consumed
+    }
+
     private void onFrameResized(ComponentEvent event) {
         if (mFrame != null) {
             computeLayout();
@@ -176,7 +217,7 @@ public class KioskDisplay implements IStartStop {
             final int fh = mVideosHeight;
             // target size for media player
             int tw = fw, th = fh;
-            if (hasHighlight) {
+            if (hasHighlight && !mForceZoom) {
                 // Desired player is half size screen
                 tw = fw / 2;
                 th = fh / 2;
@@ -185,12 +226,12 @@ public class KioskDisplay implements IStartStop {
             int pw = mMediaPlayer.getWidth();
             int ph = mMediaPlayer.getHeight();
             if (Math.abs(tw - pw) > 1 || Math.abs(th - ph) > 1) {
-                if (tw != pw) {
+                /* if (tw != pw) {
                     tw = pw + (tw - pw) / 2;
                 }
                 if (th != ph) {
                     th = ph + (th - ph) / 2;
-                }
+                } */
                 mMediaPlayer.setBounds(0, 0, tw, th);
                 mMediaPlayer.revalidate();
             }
@@ -211,17 +252,42 @@ public class KioskDisplay implements IStartStop {
     }
 
     public void initialize() throws Exception {
+        // Start shuffled
+        mPlaylist.setShuffle(true);
+
+        mMediaPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+            @Override
+            public void finished(MediaPlayer mediaPlayer) {
+                super.finished(mediaPlayer);
+                mLogger.log(TAG, "Media Finished: " + mediaPlayer);
+                playNext();
+            }
+
+            @Override
+            public void error(MediaPlayer mediaPlayer) {
+                super.error(mediaPlayer);
+                mLogger.log(TAG, "Media Error: " + mediaPlayer);
+                playNext();
+            }
+        });
+
         SwingUtilities.invokeLater(() -> {
             mRepaintTimer.start();
+            playNext();
+        });
+    }
 
-            Optional<File> next = mPlaylist.getNext();
-            if (next.isPresent()) {
-                File file = next.get();
-                mLogger.log(TAG, "Start PlaylistThread file = " + file.getAbsolutePath());
+    private void playNext() {
+        SwingUtilities.invokeLater(() -> {
+            if (mMediaPlayer != null) {
+                Optional<File> next = mPlaylist.getNext();
+                if (next.isPresent()) {
+                    File file = next.get();
+                    mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
 
-                mMediaPlayer.mediaPlayer().audio().setMute(true);
-                // mMediaPlayer.mediaPlayer().audio().setVolume(0);
-                mMediaPlayer.mediaPlayer().media().play(file.getAbsolutePath());
+                    mMediaPlayer.mediaPlayer().audio().setMute(true);
+                    mMediaPlayer.mediaPlayer().media().play(file.getAbsolutePath());
+                }
             }
         });
     }
@@ -361,8 +427,8 @@ public class KioskDisplay implements IStartStop {
             x *= w;
             y *= h;
             this.setBounds(x, y, w, h);
-            mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
-                    mPosIndex, mCamInfo.getIndex(), x, y, w, h));
+            //mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
+            //        mPosIndex, mCamInfo.getIndex(), x, y, w, h));
         }
     }
 

@@ -66,6 +66,10 @@ public class Playlist {
         mShuffle = shuffle;
     }
 
+    public boolean isShuffle() {
+        return mShuffle;
+    }
+
     @Nonnull
     public Optional<File> getNext() {
         if (mNext.isEmpty()) {

@@ -205,7 +205,7 @@ public class DebugDisplay implements IStartStop {
         mLogger.log(TAG, "\nEnd loop");
     }
 
-    private boolean processKey(char c) {
+    public boolean processKey(char c) {
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
         switch (c) {
         case '?':
