@@ -48,9 +48,15 @@ public class KioskDisplay implements IStartStop {
     // Approximage FPS to update the camera videos.
     private static final int DISPLAY_FPS = 15;
 
+    // Highlight color
     private static final Color HIGHLIGHT_LINE_COLOR = Color.YELLOW;
+    // Highlight minimum display duration
     private static final long HIGHLIGHT_DURATION_MS = 3*1000;
+    // Highlight stroke width
     private static final int HIGHLIGHT_LINE_SIZE = 10;
+
+    // Player zoom minimum display duration
+    private static final long PLAYER_ZOOM_MIN_DURATION_MS = 5*1000;
 
     private final ILogger mLogger;
     private final Cameras mCameras;
@@ -65,6 +71,10 @@ public class KioskDisplay implements IStartStop {
     private int mVideosWidth;
     private int mVideosHeight;
     private boolean mForceZoom;
+    private boolean mPlayerMuted;
+    private int mPlayerMaxVolume = 50; // TODO make it config.ini
+    private long mPlayerZoomEndTS;
+
 
     @Inject
     public KioskDisplay(
@@ -166,12 +176,17 @@ public class KioskDisplay implements IStartStop {
         switch (c) {
         case 'f':
             // Toggle fullscreen zoom
+            mPlayerZoomEndTS = 0;
             mForceZoom = !mForceZoom;
             return true;
         case 's':
             // Toggle sound
             if (mMediaPlayer != null) {
-                mMediaPlayer.mediaPlayer().audio().mute();
+                // Note mMediaPlayer.mediaPlayer().audio().setMute(!muted) seems to work in reverse
+                // (and/or differently per platform) so let's avoid it. Just control volume.
+                mPlayerMuted = !mPlayerMuted;
+                mMediaPlayer.mediaPlayer().audio().setVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
+                mLogger.log(TAG, "Audio: volume " + mMediaPlayer.mediaPlayer().audio().volume() + "%");
             }
             return true;
         case 'u':
@@ -226,14 +241,17 @@ public class KioskDisplay implements IStartStop {
             int pw = mMediaPlayer.getWidth();
             int ph = mMediaPlayer.getHeight();
             if (Math.abs(tw - pw) > 1 || Math.abs(th - ph) > 1) {
-                /* if (tw != pw) {
-                    tw = pw + (tw - pw) / 2;
+                if (mPlayerZoomEndTS < System.currentTimeMillis()) { // don't change too fast
+                    /* if (tw != pw) {
+                        tw = pw + (tw - pw) / 2;
+                    }
+                    if (th != ph) {
+                        th = ph + (th - ph) / 2;
+                    } */
+                    mMediaPlayer.setBounds(0, 0, tw, th);
+                    mMediaPlayer.revalidate();
+                    mPlayerZoomEndTS = System.currentTimeMillis() + PLAYER_ZOOM_MIN_DURATION_MS;
                 }
-                if (th != ph) {
-                    th = ph + (th - ph) / 2;
-                } */
-                mMediaPlayer.setBounds(0, 0, tw, th);
-                mMediaPlayer.revalidate();
             }
         }
     }
@@ -285,7 +303,7 @@ public class KioskDisplay implements IStartStop {
                     File file = next.get();
                     mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
 
-                    mMediaPlayer.mediaPlayer().audio().setMute(true);
+                    mMediaPlayer.mediaPlayer().audio().setVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
                     mMediaPlayer.mediaPlayer().media().play(file.getAbsolutePath());
                 }
             }
@@ -300,7 +318,7 @@ public class KioskDisplay implements IStartStop {
         private final int mPosIndex;
         private final CamInfo mCamInfo;
         /** Show highlight if > 0. Indicates when highlight should end. */
-        private long mHighlightTS;
+        private long mHighlightEndTS;
         private Image mImage;
 
         public VideoCanvas(int posIndex, CamInfo camInfo) {
@@ -392,7 +410,7 @@ public class KioskDisplay implements IStartStop {
         }
 
         public boolean isHighlighted() {
-            return mHighlightTS > 0;
+            return mHighlightEndTS > 0;
         }
 
         /** Must be invoked on the Swing UI thread. */
@@ -405,9 +423,9 @@ public class KioskDisplay implements IStartStop {
             }
 
             if (mCamInfo.getAnalyzer().isMotionDetected()) {
-                mHighlightTS = System.currentTimeMillis() + HIGHLIGHT_DURATION_MS;
-            } else if (mHighlightTS > 0 && mHighlightTS < System.currentTimeMillis()) {
-                mHighlightTS = 0;
+                mHighlightEndTS = System.currentTimeMillis() + HIGHLIGHT_DURATION_MS;
+            } else if (mHighlightEndTS > 0 && mHighlightEndTS < System.currentTimeMillis()) {
+                mHighlightEndTS = 0;
             }
 
             if (frame != null) {
