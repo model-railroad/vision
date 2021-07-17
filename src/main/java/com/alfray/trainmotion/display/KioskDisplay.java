@@ -1,5 +1,6 @@
 package com.alfray.trainmotion.display;
 
+import com.alfray.trainmotion.ConfigIni;
 import com.alfray.trainmotion.Playlist;
 import com.alfray.trainmotion.cam.CamInfo;
 import com.alfray.trainmotion.cam.Cameras;
@@ -57,10 +58,13 @@ public class KioskDisplay implements IStartStop {
 
     // Player zoom minimum display duration
     private static final long PLAYER_ZOOM_MIN_DURATION_MS = 5*1000;
+    // Player default volume percentage
+    private static final int PLAYER_VOLUME_DEFAULT = 50;
 
     private final ILogger mLogger;
     private final Cameras mCameras;
     private final Playlist mPlaylist;
+    private final ConfigIni mConfigIni;
     private final DebugDisplay mDebugDisplay;
 
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
@@ -72,7 +76,7 @@ public class KioskDisplay implements IStartStop {
     private int mVideosHeight;
     private boolean mForceZoom;
     private boolean mPlayerMuted;
-    private int mPlayerMaxVolume = 50; // TODO make it config.ini
+    private int mPlayerMaxVolume = PLAYER_VOLUME_DEFAULT;
     private long mPlayerZoomEndTS;
 
 
@@ -81,10 +85,12 @@ public class KioskDisplay implements IStartStop {
             ILogger logger,
             Cameras cameras,
             Playlist playlist,
+            ConfigIni configIni,
             DebugDisplay debugDisplay) {
         mLogger = logger;
         mCameras = cameras;
         mPlaylist = playlist;
+        mConfigIni = configIni;
         mDebugDisplay = debugDisplay;
     }
 
@@ -273,6 +279,9 @@ public class KioskDisplay implements IStartStop {
         // Start shuffled
         mPlaylist.setShuffle(true);
 
+        // Get desired volume
+        mPlayerMaxVolume = mConfigIni.getVolumePct(PLAYER_VOLUME_DEFAULT);
+
         mMediaPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
             @Override
             public void finished(MediaPlayer mediaPlayer) {
@@ -291,6 +300,7 @@ public class KioskDisplay implements IStartStop {
 
         SwingUtilities.invokeLater(() -> {
             mRepaintTimer.start();
+            mMediaPlayer.mediaPlayer().audio().setMute(false);
             playNext();
         });
     }

@@ -8,7 +8,7 @@ This is a project created for the
 [Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), which is an automated live
 HO-sized model train exhibit in the [Randall Museum](https://randallmuseum.org/) in San Francisco.
 
-Train Motion runs full screen on a laptop and plays a series of Youtube videos of the
+__Train Motion__ runs full screen on a laptop and plays a series of Youtube videos of the
 model railroad in a loop.
 Three cameras point to the layout and, when activity is detected on these cameras,
 the view changes to a matrix displaying both the Youtube video as well as the three
@@ -25,6 +25,11 @@ As usual with my train-related projects, although this project has been designed
 the [Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), the project itself is
 kept generic and customizable. It is made available open source with the goal that others pick it
 up and use it too.
+
+__Train Motion__ is designed to work under [Debian](https://www.debian.org/) Linux.
+However development is also done under Windows with [Cygwin](https://www.cygwin.com/)
+or [Raspbian](https://www.raspberrypi.org/software/) as needed.
+The project is designed to be reasonably portable to any similar architecture. 
 
 
 ## Input
@@ -61,7 +66,7 @@ The web browser output is still available as an alternative.
 
 ## License
 
-Train Motion is licensed under the terms of the open source [MIT License](https://opensource.org/licenses/MIT "MIT License").
+__Train Motion__ is licensed under the terms of the open source [MIT License](https://opensource.org/licenses/MIT "MIT License").
 
 The full text of the license is provided in the file `LICENSE.txt`.
 
@@ -78,11 +83,12 @@ The project is written in Java 8 (JDK or OpenJDK) and relies on the following ex
 * FasterXML [Jackson Databind](https://github.com/FasterXML/jackson-databind).
 * Eclipse [Jetty](https://www.eclipse.org/jetty/).
 
-Rendering for v0.2 relies on:
+Rendering for v0.2 relies on VLC, found here:
 
 * [VLC](https://www.videolan.org/vlc/) and [vlcj](https://github.com/caprica/vlcj).
+* Side Note: __vlcj__ is GPL v3 and not LGPL as one would expect from a library.
 
-For linux:
+For linux, install VLC on the system first:
 
 `$ apt install vlc libvlc5`
 
@@ -144,28 +150,35 @@ Configuration is done using a _config.ini_ file.
 An example is provided in `src/main/resources/config.ini`.
 
 Key/values expected in the configuration file:
+
+__Input camera streams__:
 * `cam1`, `cam2`, `cam3`: The URL for the live cameras download stream.
   * The syntax varies by model/make. \
     For example for my Edimax cameras, the syntax is
     `rtsp://username:password@ipaddress:554/ipcam_h264.sdp`. \
     If you do not know the syntax for your camera model, google it or look up the documentation. \
     The path can use the magic variables $U, $P1, $P2, $P3 which are
-    replacemend by command-line arguments -u, -p1, -p2, -p3 respectively.
-  * For testing, a "fake live camera" generator can be invoked by using the
-    magic value `fake_srgb_01ff0000` (the hex value represent speed + RGB).
+    replaced by command-line arguments -u, -p1, -p2, -p3 respectively.
+  * For testing, a "fake live camera" generator can be invoked by using a
+    magic value in the form `fake_srgb_01ff8822` (the 32-bit hex value represent speed + RGB).
     See `src/main/resources/config.ini` for examples to use.
   * The numer of cameras that train-motion can handle is not limited.
     The key parameter is `camN` where N>=1.
     Right now the visual output is optimized for 3 cameras.
-    At least one camera is expected.
-* `playlist_id`: The YouTube playlist id (which starts with `PL`).
-  * In v0.1, this is used by the embedded YouTube player.
-  * In v0.2, this is only used by the `_sync_playlist.sh` script.
+    At least one live camera is required.
+
+__Local Media Playback__:
+* `volume_pct`: The volume percentage when playing media videos. Default is 50%.
+
+__Configuration shared with the `_sync_playlist.sh` script__:
 * `playlist_dir`: The directory where the local media is located in v0.2
   * The directory must contain at least one media file to play.
   * The directory must contain an `_index.txt` file listing the filenames to play.
+  * Overridden by the `--media` command-line argument if present.
+* `playlist_id`: The YouTube playlist id (which starts with `PL`).
+  * In v0.2 only, this is used by the `_sync_playlist.sh` script.
 * `youtube_dl`: Optional path to the [youtube-dl](https://youtube-dl.org/) program.
-  * In v0.2, this is only used by the `_sync_playlist.sh` script.
+  * In v0.2 only, this is used by the `_sync_playlist.sh` script.
  
 
 __Main Command-line Options__:

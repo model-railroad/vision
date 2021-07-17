@@ -1,6 +1,7 @@
 package com.alfray.trainmotion;
 
 import com.alfray.trainmotion.util.ILogger;
+import com.google.common.base.Strings;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -27,6 +28,7 @@ public class ConfigIni {
     private static final String KEY_CAM = "cam%d";
     private static final String KEY_PlAYLIST_ID = "playlist_id";
     private static final String KEY_PlAYLIST_DIR = "playlist_dir";
+    private static final String KEY_VOLUME_PERCENT = "volume_pct";
 
     private final ILogger mLogger;
     private final Properties mProps = new Properties();
@@ -76,5 +78,18 @@ public class ConfigIni {
     @Nonnull
     public String getPlaylistDir() {
         return mProps.getProperty(KEY_PlAYLIST_DIR, "");
+    }
+
+    /** Returns the volume percentage or the default value. */
+    public int getVolumePct(int defaultValue) {
+        String volPct = mProps.getProperty(KEY_VOLUME_PERCENT, "");
+        if (!Strings.isNullOrEmpty(volPct)) {
+            try {
+                return Integer.parseInt(volPct);
+            } catch (NumberFormatException e) {
+                mLogger.log(TAG, "Failed to parse volume percentage from '" + volPct + "'");
+            }
+        }
+        return defaultValue;
     }
 }
