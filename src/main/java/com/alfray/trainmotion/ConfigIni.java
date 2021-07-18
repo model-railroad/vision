@@ -9,6 +9,7 @@ import javax.inject.Singleton;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.BitSet;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
@@ -29,6 +30,8 @@ public class ConfigIni {
     private static final String KEY_PlAYLIST_ID = "playlist_id";
     private static final String KEY_PlAYLIST_DIR = "playlist_dir";
     private static final String KEY_VOLUME_PERCENT = "volume_pct";
+    private static final String KEY_WINDOW_TITLE = "window_title";
+    private static final String KEY_WINDOW_MAXIMIZE = "window_maximize";
 
     private final ILogger mLogger;
     private final Properties mProps = new Properties();
@@ -91,5 +94,13 @@ public class ConfigIni {
             }
         }
         return defaultValue;
+    }
+
+    public String getWindowTitle(String defaultValue) {
+        return mProps.getProperty(KEY_WINDOW_TITLE, defaultValue);
+    }
+
+    public boolean getWindowMaximize() {
+        return Boolean.parseBoolean(mProps.getProperty(KEY_WINDOW_MAXIMIZE, "false"));
     }
 }

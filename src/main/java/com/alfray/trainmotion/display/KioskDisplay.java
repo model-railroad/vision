@@ -26,6 +26,8 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -96,8 +98,9 @@ public class KioskDisplay implements IStartStop {
 
     @Override
     public void start() throws Exception {
-        mFrame = new JFrame("Kiosk video");
-        mFrame.setSize(800, 600); // FIXME
+        mFrame = new JFrame(mConfigIni.getWindowTitle("Train Motion"));
+        mFrame.setSize(800, 600); // random startup value; most of the time it is maximized below.
+        mFrame.setMinimumSize(new Dimension(64, 64));
         mFrame.setLayout(null);
         mFrame.setBackground(Color.BLACK);
 
@@ -139,13 +142,26 @@ public class KioskDisplay implements IStartStop {
             }
         });
 
+        // Create an "invalid" cursor to make the cursor transparent in the frame.
+        try {
+            Toolkit toolkit = mFrame.getToolkit();
+            mFrame.setCursor(toolkit.createCustomCursor(toolkit.createImage(""), new Point(), "cursor"));
+        } catch (Exception ignore) {}
+
+        boolean maximize = mConfigIni.getWindowMaximize();
+        if (maximize) {
+            // Remove window borders. Must be done before the setVisible call.
+            mFrame.setUndecorated(true);
+        }
+
         mFrame.setVisible(true);
         // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
         // after the main frame is set visible.
         createVideoCanvas();
-        mFrame.pack();
         onFrameResized(null /* event */);
-        mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH); // maximize
+        if (maximize) {
+            mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
+        }
 
         mRepaintTimer = new Timer(1000 / DISPLAY_FPS, this::onRepaintTimerTick);
     }
