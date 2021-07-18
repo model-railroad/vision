@@ -239,7 +239,7 @@ public class KioskDisplay implements IStartStop {
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame != null && mMediaPlayer != null) {
+        if (mFrame != null && mMediaPlayer != null && !mDebugDisplay.quitRequested()) {
             mBottomLabel.setText(mDebugDisplay.computeLineInfo());
 
             boolean hasHighlight = false;
@@ -280,15 +280,18 @@ public class KioskDisplay implements IStartStop {
 
     @Override
     public void stop() throws Exception {
-        mRepaintTimer.stop();
-        if (mMediaPlayer != null) {
-            mMediaPlayer.release();
-            mMediaPlayer = null;
-        }
-        if (mFrame != null) {
-            mFrame.dispose();
-            mFrame = null;
-        }
+        SwingUtilities.invokeLater(() -> {
+            mLogger.log(TAG, "Stop");
+            mRepaintTimer.stop();
+            if (mMediaPlayer != null) {
+                mMediaPlayer.release();
+                mMediaPlayer = null;
+            }
+            if (mFrame != null) {
+                mFrame.dispose();
+                mFrame = null;
+            }
+        });
     }
 
     public void initialize() throws Exception {
@@ -315,15 +318,17 @@ public class KioskDisplay implements IStartStop {
         });
 
         SwingUtilities.invokeLater(() -> {
-            mRepaintTimer.start();
-            mMediaPlayer.mediaPlayer().audio().setMute(false);
-            playNext();
+            if (mMediaPlayer != null && !mDebugDisplay.quitRequested()) {
+                mRepaintTimer.start();
+                mMediaPlayer.mediaPlayer().audio().setMute(false);
+                playNext();
+            }
         });
     }
 
     private void playNext() {
         SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null) {
+            if (mMediaPlayer != null && !mDebugDisplay.quitRequested()) {
                 Optional<File> next = mPlaylist.getNext();
                 if (next.isPresent()) {
                     File file = next.get();

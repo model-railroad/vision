@@ -100,7 +100,7 @@ public class DebugDisplay implements IStartStop {
 
     public void requestQuit() {
         mLogger.log(TAG, "\nQuit Requested");
-        mQuit = true;
+        SwingUtilities.invokeLater(() -> mQuit = true);
     }
 
     public boolean quitRequested() {
@@ -109,10 +109,13 @@ public class DebugDisplay implements IStartStop {
 
     @Override
     public void stop() {
-        if (mDisplay != null) {
-            mDisplay.dispose();
-            mDisplay = null;
-        }
+        SwingUtilities.invokeLater(() -> {
+            mLogger.log(TAG, "Stop");
+            if (mDisplay != null) {
+                mDisplay.dispose();
+                mDisplay = null;
+            }
+        });
     }
 
     public void updateLineInfo(String key, @Nonnull String msg) {
@@ -123,7 +126,11 @@ public class DebugDisplay implements IStartStop {
 
     public void displayAsync(@Nullable Frame frame) {
         if (mDisplay != null && frame != null) {
-            SwingUtilities.invokeLater(() -> mDisplay.showImage(frame));
+            SwingUtilities.invokeLater(() -> {
+                if (mDisplay != null) {
+                    mDisplay.showImage(frame);
+                }
+            });
         }
     }
 
