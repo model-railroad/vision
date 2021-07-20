@@ -4,7 +4,6 @@ import com.alfray.trainmotion.ConfigIni;
 import com.alfray.trainmotion.Playlist;
 import com.alfray.trainmotion.cam.CamInfo;
 import com.alfray.trainmotion.cam.Cameras;
-import com.alfray.trainmotion.util.DebugDisplay;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 import org.bytedeco.javacv.Frame;
@@ -67,7 +66,7 @@ public class KioskDisplay implements IStartStop {
     private final Cameras mCameras;
     private final Playlist mPlaylist;
     private final ConfigIni mConfigIni;
-    private final DebugDisplay mDebugDisplay;
+    private final ConsoleTask mConsoleTask;
 
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
     private JFrame mFrame;
@@ -78,6 +77,7 @@ public class KioskDisplay implements IStartStop {
     private int mVideosHeight;
     private boolean mForceZoom;
     private boolean mPlayerMuted;
+    private boolean mToggleMask;
     private int mPlayerMaxVolume = PLAYER_VOLUME_DEFAULT;
     private long mPlayerZoomEndTS;
 
@@ -88,12 +88,12 @@ public class KioskDisplay implements IStartStop {
             Cameras cameras,
             Playlist playlist,
             ConfigIni configIni,
-            DebugDisplay debugDisplay) {
+            ConsoleTask consoleTask) {
         mLogger = logger;
         mCameras = cameras;
         mPlaylist = playlist;
         mConfigIni = configIni;
-        mDebugDisplay = debugDisplay;
+        mConsoleTask = consoleTask;
     }
 
     @Override
@@ -121,7 +121,7 @@ public class KioskDisplay implements IStartStop {
             @Override
             public void windowClosing(WindowEvent windowEvent) {
                 super.windowClosing(windowEvent);
-                mDebugDisplay.requestQuit();
+                mConsoleTask.requestQuit();
             }
         });
         mFrame.addComponentListener(new ComponentAdapter() {
@@ -135,7 +135,7 @@ public class KioskDisplay implements IStartStop {
             @Override
             public void keyPressed(KeyEvent keyEvent) {
                 if (processKey(keyEvent.getKeyChar())
-                        || mDebugDisplay.processKey(keyEvent.getKeyChar())) {
+                        || mConsoleTask.processKey(keyEvent.getKeyChar())) {
                     keyEvent.consume();
                 }
                 super.keyPressed(keyEvent);
@@ -192,8 +192,8 @@ public class KioskDisplay implements IStartStop {
     }
 
     public boolean processKey(char c) {
-        // Keys handled by the DebugDisplay:
-        // esc, q = quit // d = toggle debug // m = toggle mask // 1, 2, 3 = debug cam select.
+        // Keys handled by the ConsoleTask:
+        // esc, q = quit // ?, h = help.
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
         switch (c) {
         case 'f':
@@ -201,8 +201,8 @@ public class KioskDisplay implements IStartStop {
             mPlayerZoomEndTS = 0;
             mForceZoom = !mForceZoom;
             return true;
-        case 's':
-            // Toggle sound
+        case 'm':
+            // Toggle mute sound
             if (mMediaPlayer != null) {
                 // Note mMediaPlayer.mediaPlayer().audio().setMute(!muted) seems to work in reverse
                 // (and/or differently per platform) so let's avoid it. Just control volume.
@@ -211,12 +211,16 @@ public class KioskDisplay implements IStartStop {
                 mLogger.log(TAG, "Audio: volume " + mMediaPlayer.mediaPlayer().audio().volume() + "%");
             }
             return true;
-        case 'u':
+        case 's':
             // Toggle shuffle
             mPlaylist.setShuffle(!mPlaylist.isShuffle());
             return true;
         case 'n':
             playNext();
+            return true;
+        case 'k':
+            mToggleMask = !mToggleMask;
+            mLogger.log(TAG, "Mask toggled " + (mToggleMask ? "on" : "off"));
             return true;
         }
 
@@ -239,8 +243,8 @@ public class KioskDisplay implements IStartStop {
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame != null && mMediaPlayer != null && !mDebugDisplay.isQuitRequested()) {
-            mBottomLabel.setText(mDebugDisplay.computeLineInfo());
+        if (mFrame != null && mMediaPlayer != null && !mConsoleTask.isQuitRequested()) {
+            mBottomLabel.setText(mConsoleTask.computeLineInfo());
 
             boolean hasHighlight = false;
             for (VideoCanvas canvas : mVideoCanvas) {
@@ -318,7 +322,7 @@ public class KioskDisplay implements IStartStop {
         });
 
         SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null && !mDebugDisplay.isQuitRequested()) {
+            if (mMediaPlayer != null && !mConsoleTask.isQuitRequested()) {
                 mRepaintTimer.start();
                 mMediaPlayer.mediaPlayer().audio().setMute(false);
                 playNext();
@@ -328,7 +332,7 @@ public class KioskDisplay implements IStartStop {
 
     private void playNext() {
         SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null && !mDebugDisplay.isQuitRequested()) {
+            if (mMediaPlayer != null && !mConsoleTask.isQuitRequested()) {
                 Optional<File> next = mPlaylist.getNext();
                 if (next.isPresent()) {
                     File file = next.get();
@@ -447,7 +451,7 @@ public class KioskDisplay implements IStartStop {
         /** Must be invoked on the Swing UI thread. */
         public void displayFrame() {
             Frame frame;
-            if (mDebugDisplay.isToggleMask()) {
+            if (mToggleMask) {
                 frame = mCamInfo.getAnalyzer().getLastFrame();
             } else {
                 frame = mCamInfo.getGrabber().getLastFrame();

@@ -1,6 +1,6 @@
 package com.alfray.trainmotion.cam;
 
-import com.alfray.trainmotion.util.DebugDisplay;
+import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.FpsMeasurer;
 import com.alfray.trainmotion.util.ILogger;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,7 +45,7 @@ public class HttpCamHandler extends AbstractHandler {
 
     private final ILogger mLogger;
     private final Cameras mCameras;
-    private final DebugDisplay mDebugDisplay;
+    private final ConsoleTask mConsoleTask;
     private final ObjectMapper mJsonMapper;
 
     private Java2DFrameConverter mFrameConverter;
@@ -60,11 +60,11 @@ public class HttpCamHandler extends AbstractHandler {
             ILogger logger,
             Cameras cameras,
             ObjectMapper jsonMapper,
-            DebugDisplay debugDisplay) {
+            ConsoleTask consoleTask) {
         mLogger = logger;
         mCameras = cameras;
         mJsonMapper = jsonMapper;
-        mDebugDisplay = debugDisplay;
+        mConsoleTask = consoleTask;
     }
 
     @Override
@@ -144,7 +144,7 @@ public class HttpCamHandler extends AbstractHandler {
     private boolean doGet(String path, HttpServletResponse response) throws IOException {
         if (path.equals("/qqq")) {
             sendText(response, HttpServletResponse.SC_OK, "Quitting");
-            mDebugDisplay.requestQuit();
+            mConsoleTask.requestQuit();
             return true;
         }
 
@@ -290,7 +290,7 @@ public class HttpCamHandler extends AbstractHandler {
             fpsMeasurer.setFrameRate(frameRate);
             try {
                 long extraMs = -1;
-                while (!mDebugDisplay.isQuitRequested()) {
+                while (!mConsoleTask.isQuitRequested()) {
                     fpsMeasurer.startTick();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);
@@ -303,7 +303,7 @@ public class HttpCamHandler extends AbstractHandler {
 
                     recorder.record(useFrame);
 
-                    mDebugDisplay.updateLineInfo(key,
+                    mConsoleTask.updateLineInfo(key,
                             String.format(" >M %4.1ff%+3d", fpsMeasurer.getFps(), extraMs));
 
                     extraMs = fpsMeasurer.endWait();
@@ -381,7 +381,7 @@ public class HttpCamHandler extends AbstractHandler {
             fpsMeasurer.setFrameRate(frameRate);
             try {
                 long extraMs = -1;
-                while (!mDebugDisplay.isQuitRequested()) {
+                while (!mConsoleTask.isQuitRequested()) {
                     fpsMeasurer.startTick();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);
@@ -394,7 +394,7 @@ public class HttpCamHandler extends AbstractHandler {
 
                     recorder.record(useFrame);
 
-                    mDebugDisplay.updateLineInfo(key,
+                    mConsoleTask.updateLineInfo(key,
                             String.format(" >H %4.1ff%+3d", fpsMeasurer.getFps(), extraMs));
 
                     extraMs = fpsMeasurer.endWait();

@@ -24,7 +24,6 @@ import java.util.stream.Stream;
 public class CommandLineArgs {
     private static final String TAG = CommandLineArgs.class.getSimpleName();
 
-    public static final String OPT_DEBUG_DISPLAY = "d";
     public static final String OPT_VERBOSE_LOG = "v";
     public static final String OPT_HELP = "h";
     public static final String OPT_HTTP_PORT = "p";
@@ -44,7 +43,6 @@ public class CommandLineArgs {
         mLogger = logger;
 
         mOptions.addOption(OPT_HELP, "help", false, "This usage help.");
-        mOptions.addOption(OPT_DEBUG_DISPLAY, "debug", false, "Debug Display.");
         mOptions.addOption(OPT_VERBOSE_LOG, "verbose", false, "Verbose log.");
         mOptions.addOption(Option.builder(OPT_HTTP_PORT)
                 .longOpt("port")

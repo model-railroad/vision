@@ -1,7 +1,7 @@
 package com.alfray.trainmotion.cam;
 
 import com.alfray.trainmotion.CommandLineArgs;
-import com.alfray.trainmotion.util.DebugDisplay;
+import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.FpsMeasurer;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.ThreadLoop;
@@ -39,7 +39,7 @@ public class CamInputGrabber extends ThreadLoop {
     public static final int DEFAULT_WIDTH = 640;
     public static final int DEFAULT_HEIGHT = (int)(DEFAULT_WIDTH / OUTPUT_ASPECT_RATIO);
 
-    private final DebugDisplay mDebugDisplay;
+    private final ConsoleTask mConsoleTask;
     private final CommandLineArgs mCommandLineArgs;
     private final String TAG;
 
@@ -53,10 +53,10 @@ public class CamInputGrabber extends ThreadLoop {
 
     public CamInputGrabber(
             @Provided ILogger logger,
-            @Provided DebugDisplay debugDisplay,
+            @Provided ConsoleTask consoleTask,
             @Provided CommandLineArgs commandLineArgs,
             CamInfo camInfo) {
-        mDebugDisplay = debugDisplay;
+        mConsoleTask = consoleTask;
         mCommandLineArgs = commandLineArgs;
         TAG = "CamIn-" + camInfo.getIndex();
         mLogger = logger;
@@ -147,7 +147,7 @@ public class CamInputGrabber extends ThreadLoop {
         IFrameGrabber grabber = null;
         boolean started = false;
         try {
-            mDebugDisplay.updateLineInfo(key, info + "Connecting...");
+            mConsoleTask.updateLineInfo(key, info + "Connecting...");
 
             String inputUrl = mCamInfo.getConfig().getInputUrl();
             if (!Strings.isNullOrEmpty(inputUrl) && inputUrl.startsWith(FakeFrameGrabber.PREFIX)) {
@@ -178,7 +178,7 @@ public class CamInputGrabber extends ThreadLoop {
 
             while (!mQuit && (frame = grabber.grabImage()) != null) {
                 fpsMeasurer.startTick();
-                mDebugDisplay.updateLineInfo(key,
+                mConsoleTask.updateLineInfo(key,
                         String.format("%s%6.1f fps", info,fpsMeasurer.getFps()));
 
                 CountDownLatch latch = mFrameLatch.get();
@@ -195,7 +195,7 @@ public class CamInputGrabber extends ThreadLoop {
 
         } catch (FrameGrabber.Exception e) {
             if (started) {
-                mDebugDisplay.updateLineInfo(key, info + "Error");
+                mConsoleTask.updateLineInfo(key, info + "Error");
             }
             if (verboseLog) {
                 mLogger.log(TAG, e.toString());

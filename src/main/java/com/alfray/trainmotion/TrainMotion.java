@@ -5,7 +5,7 @@ import com.alfray.trainmotion.cam.Cameras;
 import com.alfray.trainmotion.cam.HttpServ;
 import com.alfray.trainmotion.dagger.DaggerITrainMotionComponent;
 import com.alfray.trainmotion.dagger.ITrainMotionComponent;
-import com.alfray.trainmotion.util.DebugDisplay;
+import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 import com.alfray.trainmotion.display.KioskDisplay;
@@ -21,10 +21,9 @@ public class TrainMotion {
 
     private final ITrainMotionComponent mComponent;
 
-    @Inject
-    ConfigIni mConfigIniReader;
+    @Inject ConfigIni mConfigIniReader;
     @Inject CommandLineArgs mCommandLineArgs;
-    @Inject DebugDisplay mDebugDisplay;
+    @Inject ConsoleTask mConsoleTask;
     @Inject KioskDisplay mKioskDisplay;
     @Inject Playlist mPlaylist;
     @Inject ILogger mLogger;
@@ -62,7 +61,7 @@ public class TrainMotion {
             public void run() {
                 super.run();
                 mLogger.log(TAG, "Shutdown Hook");
-                mDebugDisplay.requestQuit();
+                mConsoleTask.requestQuit();
                 try {
                     mLogger.log(TAG, "Shutdown Hook await");
                     shutdownLatch.await();
@@ -77,19 +76,19 @@ public class TrainMotion {
             mPlaylist.initialize(
                     mCommandLineArgs.getStringOption(CommandLineArgs.OPT_MEDIA_DIR,
                             mConfigIniReader.getPlaylistDir()) );
-            mDebugDisplay.start();
+            mConsoleTask.start();
             mKioskDisplay.start();
             mHttpServ.start();
             mCameras.start();
             mKioskDisplay.initialize();
-            mDebugDisplay.consoleWait();
+            mConsoleTask.consoleWait();
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());
         } finally {
             safeStop(mCameras);
             safeStop(mHttpServ);
             safeStop(mKioskDisplay);
-            safeStop(mDebugDisplay);
+            safeStop(mConsoleTask);
         }
 
         mLogger.log(TAG, "Shutdown Hook release");

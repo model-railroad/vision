@@ -117,7 +117,7 @@ right click the Run action command, and then edit the Run Configuration:
 * Template: `Application`
 * Main Class: `com.alfray.trainmotion.Main`
 * Program Arguments:
- `--debug -u CamUserName -1 CamPassword1 -2 CamPassword2 -3 CamPassword3 -w $PROJECT_DIR$/src/main/resources/web`
+ `--config config.ini -m /path/to/media/folder`
 * Use classpath of module: `train-motion.main`
 * JRE: `Default 1.8`
 
