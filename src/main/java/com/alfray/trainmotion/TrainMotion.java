@@ -6,6 +6,7 @@ import com.alfray.trainmotion.cam.HttpServ;
 import com.alfray.trainmotion.dagger.DaggerITrainMotionComponent;
 import com.alfray.trainmotion.dagger.ITrainMotionComponent;
 import com.alfray.trainmotion.display.ConsoleTask;
+import com.alfray.trainmotion.util.Analytics;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 import com.alfray.trainmotion.display.KioskDisplay;
@@ -26,6 +27,7 @@ public class TrainMotion {
     @Inject ConsoleTask mConsoleTask;
     @Inject KioskDisplay mKioskDisplay;
     @Inject Playlist mPlaylist;
+    @Inject Analytics mAnalytics;
     @Inject ILogger mLogger;
     @Inject Cameras mCameras;
     @Inject HttpServ mHttpServ;
@@ -72,6 +74,8 @@ public class TrainMotion {
         });
 
         try {
+            mAnalytics.setAnalyticsId(mConfigIniReader.getAnalyticsId());
+            mAnalytics.start();
             //noinspection ConstantConditions
             mPlaylist.initialize(
                     mCommandLineArgs.getStringOption(CommandLineArgs.OPT_MEDIA_DIR,
@@ -89,6 +93,7 @@ public class TrainMotion {
             safeStop(mHttpServ);
             safeStop(mKioskDisplay);
             safeStop(mConsoleTask);
+            safeStop(mAnalytics);
         }
 
         mLogger.log(TAG, "Shutdown Hook release");

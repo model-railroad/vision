@@ -6,7 +6,13 @@ import dagger.Component;
 import javax.inject.Singleton;
 
 @Singleton
-@Component(modules = { LoggerModule.class, JsonModule.class })
+@Component(modules = {
+        ExecutorModule.class,
+        HttpClientModule.class,
+        JsonModule.class,
+        LoggerModule.class,
+        RandomModule.class,
+        })
 public interface ITrainMotionComponent {
 
     void inject(TrainMotion camProxy);

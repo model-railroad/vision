@@ -32,6 +32,7 @@ public class ConfigIni {
     private static final String KEY_VOLUME_PERCENT = "volume_pct";
     private static final String KEY_WINDOW_TITLE = "window_title";
     private static final String KEY_WINDOW_MAXIMIZE = "window_maximize";
+    private static final String KEY_ANALYTICS_ID = "analytics_id";
 
     private final ILogger mLogger;
     private final Properties mProps = new Properties();
@@ -102,5 +103,10 @@ public class ConfigIni {
 
     public boolean getWindowMaximize() {
         return Boolean.parseBoolean(mProps.getProperty(KEY_WINDOW_MAXIMIZE, "false"));
+    }
+
+    @Nonnull
+    public String getAnalyticsId() {
+        return mProps.getProperty(KEY_ANALYTICS_ID, "").trim();
     }
 }
