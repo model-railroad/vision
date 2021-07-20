@@ -13,6 +13,7 @@ import com.alfray.trainmotion.display.KioskDisplay;
 import javax.inject.Inject;
 import java.io.File;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 
 public class TrainMotion {
     private static final String TAG = TrainMotion.class.getSimpleName();
@@ -55,6 +56,22 @@ public class TrainMotion {
             System.exit(1);
         }
 
+        final CountDownLatch shutdownLatch = new CountDownLatch(1);
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                mLogger.log(TAG, "Shutdown Hook");
+                mDebugDisplay.requestQuit();
+                try {
+                    mLogger.log(TAG, "Shutdown Hook await");
+                    shutdownLatch.await();
+                } catch (InterruptedException e) {
+                    mLogger.log(TAG, e.toString());
+                }
+            }
+        });
+
         try {
             //noinspection ConstantConditions
             mPlaylist.initialize(
@@ -75,6 +92,8 @@ public class TrainMotion {
             safeStop(mDebugDisplay);
         }
 
+        mLogger.log(TAG, "Shutdown Hook release");
+        shutdownLatch.countDown();
         mLogger.log(TAG, "End");
     }
 

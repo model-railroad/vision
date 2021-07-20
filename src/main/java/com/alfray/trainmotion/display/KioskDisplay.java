@@ -239,7 +239,7 @@ public class KioskDisplay implements IStartStop {
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame != null && mMediaPlayer != null && !mDebugDisplay.quitRequested()) {
+        if (mFrame != null && mMediaPlayer != null && !mDebugDisplay.isQuitRequested()) {
             mBottomLabel.setText(mDebugDisplay.computeLineInfo());
 
             boolean hasHighlight = false;
@@ -318,7 +318,7 @@ public class KioskDisplay implements IStartStop {
         });
 
         SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null && !mDebugDisplay.quitRequested()) {
+            if (mMediaPlayer != null && !mDebugDisplay.isQuitRequested()) {
                 mRepaintTimer.start();
                 mMediaPlayer.mediaPlayer().audio().setMute(false);
                 playNext();
@@ -328,7 +328,7 @@ public class KioskDisplay implements IStartStop {
 
     private void playNext() {
         SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null && !mDebugDisplay.quitRequested()) {
+            if (mMediaPlayer != null && !mDebugDisplay.isQuitRequested()) {
                 Optional<File> next = mPlaylist.getNext();
                 if (next.isPresent()) {
                     File file = next.get();

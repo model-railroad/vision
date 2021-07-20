@@ -290,7 +290,7 @@ public class HttpCamHandler extends AbstractHandler {
             fpsMeasurer.setFrameRate(frameRate);
             try {
                 long extraMs = -1;
-                while (!mDebugDisplay.quitRequested()) {
+                while (!mDebugDisplay.isQuitRequested()) {
                     fpsMeasurer.startTick();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);
@@ -381,7 +381,7 @@ public class HttpCamHandler extends AbstractHandler {
             fpsMeasurer.setFrameRate(frameRate);
             try {
                 long extraMs = -1;
-                while (!mDebugDisplay.quitRequested()) {
+                while (!mDebugDisplay.isQuitRequested()) {
                     fpsMeasurer.startTick();
                     if (cam != null) {
                         frame = cam.getGrabber().refreshAndGetFrame(sleepMs);

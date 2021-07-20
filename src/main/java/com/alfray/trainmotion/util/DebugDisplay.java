@@ -52,6 +52,7 @@ public class DebugDisplay implements IStartStop {
         mLogger = logger;
         mCameras = cameras;
         mCommandLineArgs = commandLineArgs;
+        mQuit = false;
     }
 
     @Override
@@ -60,8 +61,6 @@ public class DebugDisplay implements IStartStop {
         if (!mCommandLineArgs.hasOption(CommandLineArgs.OPT_DEBUG_DISPLAY)) {
             return;
         }
-
-        mQuit = false;
 
         mDisplay = new CanvasFrame("Test video");
         mDisplay.setSize(CamInputGrabber.DEFAULT_WIDTH, CamInputGrabber.DEFAULT_HEIGHT);
@@ -103,7 +102,7 @@ public class DebugDisplay implements IStartStop {
         SwingUtilities.invokeLater(() -> mQuit = true);
     }
 
-    public boolean quitRequested() {
+    public boolean isQuitRequested() {
         return mQuit;
     }
 
@@ -209,7 +208,8 @@ public class DebugDisplay implements IStartStop {
             mLogger.log(TAG, e.toString());
         }
 
-        mLogger.log(TAG, "\nEnd loop");
+        mLogger.log(TAG, "");
+        mLogger.log(TAG, "End loop");
     }
 
     public boolean processKey(char c) {
