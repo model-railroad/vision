@@ -4,6 +4,7 @@ import com.alfray.trainmotion.ConfigIni;
 import com.alfray.trainmotion.Playlist;
 import com.alfray.trainmotion.cam.CamInfo;
 import com.alfray.trainmotion.cam.Cameras;
+import com.alfray.trainmotion.util.Analytics;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 import org.bytedeco.javacv.Frame;
@@ -66,6 +67,7 @@ public class KioskDisplay implements IStartStop {
     private final Cameras mCameras;
     private final Playlist mPlaylist;
     private final ConfigIni mConfigIni;
+    private final Analytics mAnalytics;
     private final ConsoleTask mConsoleTask;
 
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
@@ -88,11 +90,13 @@ public class KioskDisplay implements IStartStop {
             Cameras cameras,
             Playlist playlist,
             ConfigIni configIni,
+            Analytics analytics,
             ConsoleTask consoleTask) {
         mLogger = logger;
         mCameras = cameras;
         mPlaylist = playlist;
         mConfigIni = configIni;
+        mAnalytics = analytics;
         mConsoleTask = consoleTask;
     }
 
@@ -337,6 +341,7 @@ public class KioskDisplay implements IStartStop {
                 if (next.isPresent()) {
                     File file = next.get();
                     mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
+                    mAnalytics.sendEvent("PlayVideo", file.getName());
 
                     mMediaPlayer.mediaPlayer().audio().setVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
                     mMediaPlayer.mediaPlayer().media().play(file.getAbsolutePath());
@@ -457,10 +462,15 @@ public class KioskDisplay implements IStartStop {
                 frame = mCamInfo.getGrabber().getLastFrame();
             }
 
+            long nowMs = System.currentTimeMillis();
             if (mCamInfo.getAnalyzer().isMotionDetected()) {
-                mHighlightEndTS = System.currentTimeMillis() + HIGHLIGHT_DURATION_MS;
-            } else if (mHighlightEndTS > 0 && mHighlightEndTS < System.currentTimeMillis()) {
-                mHighlightEndTS = 0;
+                mHighlightEndTS = nowMs + HIGHLIGHT_DURATION_MS;
+            } else if (mHighlightEndTS > 0) {
+                long duration = nowMs - mHighlightEndTS;
+                if (duration > 0) {
+                    mHighlightEndTS = 0;
+                    mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
+                }
             }
 
             if (frame != null) {

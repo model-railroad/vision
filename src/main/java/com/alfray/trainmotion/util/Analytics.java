@@ -11,14 +11,20 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Send common hits to the Google Analytics Measurement Protocol v1.
+ * <p/>
+ * https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide
+ */
+@Singleton
 public class Analytics implements IStartStop {
     private static final String TAG = Analytics.class.getSimpleName();
 
@@ -32,6 +38,11 @@ public class Analytics implements IStartStop {
 
     private static final String UTF_8 = "UTF-8";
     private static final MediaType MEDIA_TYPE = MediaType.parse("text/plain");
+
+    // App specific constants
+    private static final String CATEGORY = "TrainMotion";    // Main filter for GA / DataStudio
+    private static final String DATA_SOURCE = "trainmotion";
+    private static final String USER_ID = "TrainMotion";     // should be made to vary per machine
 
     private final ILogger mLogger;
     private final Random mRandom;
@@ -55,6 +66,7 @@ public class Analytics implements IStartStop {
 
     @Override
     public void start() throws Exception {
+        sendEvent("Start", "");
     }
 
     public void setAnalyticsId(@Nonnull String analyticsId) {
@@ -77,6 +89,7 @@ public class Analytics implements IStartStop {
      */
     @Override
     public void stop() throws Exception {
+        sendEvent("Stop", "");
         mExecutor.shutdown();
         mExecutor.awaitTermination(10, TimeUnit.SECONDS);
         mLogger.log(TAG, "Shutdown");
@@ -87,12 +100,27 @@ public class Analytics implements IStartStop {
     }
 
     public void sendEvent(
+            @Nonnull String action,
+            @Nonnull String label) {
+        sendEvent(CATEGORY, action, label, null, USER_ID);
+    }
+
+    public void sendEvent(
+            @Nonnull String action,
+            @Nonnull String label,
+            @Nonnull String value) {
+        sendEvent(CATEGORY, action, label, value, USER_ID);
+    }
+
+    public void sendEvent(
             @Nonnull String category,
             @Nonnull String action,
             @Nonnull String label,
+            @Nullable String value,
             @Nonnull String user_) {
-        if (mAnalyticsId == null || mAnalyticsId.isEmpty()) {
-            mLogger.log(TAG, "No Tracking ID");
+        final String analyticsId = mAnalyticsId;
+        if (analyticsId == null || analyticsId.isEmpty()) {
+            mLogger.log(TAG, "Event Ignored -- No Tracking ID");
             return;
         }
 
@@ -103,26 +131,37 @@ public class Analytics implements IStartStop {
                     random = -random;
                 }
 
-                String user = user_;
-                if (user.length() > 0 && Character.isDigit(user.charAt(0))) {
-                    user = "user" + user;
-                }
-
+                String user = Strings.isNullOrEmpty(user_) ? USER_ID : user_;
                 String cid = UUID.nameUUIDFromBytes(user.getBytes()).toString();
 
+                // Events keys:
+                // https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide#event
+
                 String payload = String.format(
-                        "v=1&tid=%s&ds=consist&cid=%s&t=event&ec=%s&ea=%s&el=%s&z=%d",
-                        URLEncoder.encode(mAnalyticsId, UTF_8),
+                        "v=1" +
+                                "&tid=%s" +         // tracking id
+                                "&ds=%s" +          // data source
+                                "&cid=%s" +         // anonymous cliend id
+                                "&t=event" +        // hit type == event
+                                "&ec=%s" +          // event category
+                                "&ea=%s" +          // event action
+                                "&el=%s" +          // event label
+                                "&z=%d",            // cache buster
+                        URLEncoder.encode(analyticsId, UTF_8),
+                        URLEncoder.encode(DATA_SOURCE, UTF_8),
                         URLEncoder.encode(cid, UTF_8),
                         URLEncoder.encode(category, UTF_8),
                         URLEncoder.encode(action, UTF_8),
                         URLEncoder.encode(label, UTF_8),
                         random);
+                if (!Strings.isNullOrEmpty(value)) {
+                    payload += String.format("&ev=%s", URLEncoder.encode(value, UTF_8));
+                }
 
                 Response response = sendPayload(payload);
 
-                mLogger.log(TAG, String.format("Event [%s %s %s %s] code: %d",
-                        category, action, label, user, response.code()));
+                mLogger.log(TAG, String.format("Event [c:%s a:%s l:%s u:%s v:%s] code: %d",
+                        category, action, label, value, user, response.code()));
 
                 if (DEBUG) {
                     mLogger.log(TAG, "Event body: " + response.body().string());
@@ -140,8 +179,9 @@ public class Analytics implements IStartStop {
             @Nonnull String url_,
             @Nonnull String path,
             @Nonnull String user_) {
-        if (mAnalyticsId == null) {
-            mLogger.log(TAG, "No Tracking ID");
+        final String analyticsId = mAnalyticsId;
+        if (analyticsId == null || analyticsId.isEmpty()) {
+            mLogger.log(TAG, "Page Ignored -- No Tracking ID");
             return;
         }
 
@@ -161,16 +201,26 @@ public class Analytics implements IStartStop {
 
                 String d_url = url_ + path;
 
+                // Page keys:
+                // https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide#page
+
                 String payload = String.format(
-                        "v=1&tid=%s&ds=consist&cid=%s&t=pageview&dl=%s&z=%d",
-                        URLEncoder.encode(mAnalyticsId, UTF_8),
+                        "v=1" +
+                                "&tid=%s" +         // tracking id
+                                "&ds=%s" +          // data source
+                                "&cid=%s" +         // anonymous cliend id
+                                "&t=pageview" +     // hit type == pageview
+                                "&dl=%s" +          // document location
+                                "&z=%d",            // cache buster
+                        URLEncoder.encode(analyticsId, UTF_8),
+                        URLEncoder.encode(DATA_SOURCE, UTF_8),
                         URLEncoder.encode(cid, UTF_8),
                         URLEncoder.encode(d_url, UTF_8),
                         random);
 
                 Response response = sendPayload(payload);
 
-                mLogger.log(TAG, String.format("PageView [%s %s] code: %d",
+                mLogger.log(TAG, String.format("PageView [d:%s u:%s] code: %d",
                         d_url, user, response.code()));
 
                 if (DEBUG) {
