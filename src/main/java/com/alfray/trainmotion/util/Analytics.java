@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class Analytics implements IStartStop {
     private static final String TAG = Analytics.class.getSimpleName();
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private static final boolean USE_GET = false; // default is POST
 
     private static final String GA_URL =
@@ -160,7 +160,7 @@ public class Analytics implements IStartStop {
 
                 Response response = sendPayload(payload);
 
-                mLogger.log(TAG, String.format("Event [c:%s a:%s l:%s u:%s v:%s] code: %d",
+                mLogger.log(TAG, String.format("Event [c:%s a:%s l:%s v:%s u:%s] code: %d",
                         category, action, label, value, user, response.code()));
 
                 if (DEBUG) {

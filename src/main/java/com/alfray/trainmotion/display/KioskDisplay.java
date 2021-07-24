@@ -358,7 +358,7 @@ public class KioskDisplay implements IStartStop {
         private final int mPosIndex;
         private final CamInfo mCamInfo;
         /** Show highlight if > 0. Indicates when highlight should end. */
-        private long mHighlightEndTS;
+        private long mHighlightStartMS;
         private Image mImage;
 
         public VideoCanvas(int posIndex, CamInfo camInfo) {
@@ -450,7 +450,7 @@ public class KioskDisplay implements IStartStop {
         }
 
         public boolean isHighlighted() {
-            return mHighlightEndTS > 0;
+            return mHighlightStartMS > 0;
         }
 
         /** Must be invoked on the Swing UI thread. */
@@ -464,11 +464,11 @@ public class KioskDisplay implements IStartStop {
 
             long nowMs = System.currentTimeMillis();
             if (mCamInfo.getAnalyzer().isMotionDetected()) {
-                mHighlightEndTS = nowMs + HIGHLIGHT_DURATION_MS;
-            } else if (mHighlightEndTS > 0) {
-                long duration = nowMs - mHighlightEndTS;
-                if (duration > 0) {
-                    mHighlightEndTS = 0;
+                mHighlightStartMS = nowMs;
+            } else if (mHighlightStartMS > 0) {
+                long duration = nowMs - mHighlightStartMS;
+                if (duration >= HIGHLIGHT_DURATION_MS) {
+                    mHighlightStartMS = 0;
                     mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
                 }
             }
