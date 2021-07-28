@@ -31,6 +31,7 @@ import uk.co.caprica.vlcj.player.base.MediaPlayer;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.JFrame;
@@ -88,6 +89,7 @@ public class KioskDisplay implements IStartStop {
     private final Analytics mAnalytics;
     private final ConsoleTask mConsoleTask;
 
+    @GuardedBy("mVideoCanvas")
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
     private JFrame mFrame;
     private JLabel mBottomLabel;
@@ -190,12 +192,14 @@ public class KioskDisplay implements IStartStop {
 
     private void createVideoCanvas() {
         AtomicInteger posIndex = new AtomicInteger();
-        mCameras.forEachCamera(camInfo -> {
-            VideoCanvas canvas = new VideoCanvas(posIndex.incrementAndGet(), camInfo);
-            mVideoCanvas.add(canvas);
-            mFrame.add(canvas);
-            canvas.initialize();
-        });
+        synchronized (mVideoCanvas) {
+            mCameras.forEachCamera(camInfo -> {
+                VideoCanvas canvas = new VideoCanvas(posIndex.incrementAndGet(), camInfo);
+                mVideoCanvas.add(canvas);
+                mFrame.add(canvas);
+                canvas.initialize();
+            });
+        }
     }
 
     private void computeLayout() {
@@ -256,8 +260,10 @@ public class KioskDisplay implements IStartStop {
             final int height = mVideosHeight;
             mLogger.log(TAG, String.format("onFrameResized --> %dx%d", width, height));
 
-            for (VideoCanvas canvas : mVideoCanvas) {
-                canvas.computeAbsolutePosition(width, height);
+            synchronized (mVideoCanvas) {
+                for (VideoCanvas canvas : mVideoCanvas) {
+                    canvas.computeAbsolutePosition(width, height);
+                }
             }
 
             mFrame.revalidate();
@@ -269,9 +275,11 @@ public class KioskDisplay implements IStartStop {
             mBottomLabel.setText(mConsoleTask.computeLineInfo());
 
             boolean hasHighlight = false;
-            for (VideoCanvas canvas : mVideoCanvas) {
-                canvas.displayFrame();
-                hasHighlight |= canvas.isHighlighted();
+            synchronized (mVideoCanvas) {
+                for (VideoCanvas canvas : mVideoCanvas) {
+                    canvas.displayFrame();
+                    hasHighlight |= canvas.isHighlighted();
+                }
             }
 
             // frame (window) size
