@@ -106,7 +106,8 @@ public class FakeFrameGrabber implements IFrameGrabber {
         int speed = Math.max(1, (mSpeedRgb >> 24) & 0x7F);
         mX += speed;
         mY += speed / 2;
-        if (mX > WIDTH * 2) {
+        int ratio2 = speed < 2 ? 2 : 1;
+        if (mX > WIDTH / ratio2) {
             mY += speed;
             mX = 0;
         }
@@ -115,7 +116,7 @@ public class FakeFrameGrabber implements IFrameGrabber {
         }
         int x = mX; // Math.max(0, Math.min(WIDTH - SIZE - 1, mX));
         int y = mY; // Math.max(0, Math.min(HEIGHT - SIZE - 1, mY));
-        int sz = Math.max(2, (x+y) % SIZE);
+        int sz = Math.max(2, ((x / ratio2) + y) % (SIZE * ratio2));
         int col = (x+y) & 0xFF;
 
         // Note: I don't know how to fill a portion of a sub-mat with an RGB color.

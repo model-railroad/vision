@@ -72,8 +72,10 @@ public class KioskDisplay implements IStartStop {
 
     // Highlight color
     private static final Color HIGHLIGHT_LINE_COLOR = Color.YELLOW;
-    // Highlight minimum display duration
-    private static final long HIGHLIGHT_DURATION_MS = 3*1000;
+    // Highlight minimum display duration with video motion ON. Total with OFF is 3 seconds.
+    private static final long HIGHLIGHT_DURATION_ON_MS = 2500;
+    // Highlight minimum display duration with video motion OFF after a ON event.
+    private static final long HIGHLIGHT_DURATION_OFF_MS = 500;
     // Highlight stroke width
     private static final int HIGHLIGHT_LINE_SIZE = 10;
 
@@ -383,8 +385,10 @@ public class KioskDisplay implements IStartStop {
 
         private final int mPosIndex;
         private final CamInfo mCamInfo;
-        /** Show highlight if > 0. Indicates when highlight should end. */
-        private long mHighlightStartMS;
+        /** Show highlight if > 0. Indicates when highlight ON started. */
+        private long mHighlightOnMS;
+        /** Show highlight if > 0. Indicates when highlight OFF started. */
+        private long mHighlightOffMS;
         private Image mImage;
 
         public VideoCanvas(int posIndex, CamInfo camInfo) {
@@ -476,7 +480,7 @@ public class KioskDisplay implements IStartStop {
         }
 
         public boolean isHighlighted() {
-            return mHighlightStartMS > 0;
+            return mHighlightOnMS > 0;
         }
 
         /** Must be invoked on the Swing UI thread. */
@@ -489,12 +493,25 @@ public class KioskDisplay implements IStartStop {
             }
 
             long nowMs = System.currentTimeMillis();
-            if (mCamInfo.getAnalyzer().isMotionDetected()) {
-                mHighlightStartMS = nowMs;
-            } else if (mHighlightStartMS > 0) {
-                long duration = nowMs - mHighlightStartMS;
-                if (duration >= HIGHLIGHT_DURATION_MS) {
-                    mHighlightStartMS = 0;
+            boolean motionDetected = mCamInfo.getAnalyzer().isMotionDetected();
+            if (mHighlightOnMS == 0) {
+                if (motionDetected) {
+                    mHighlightOnMS = nowMs;
+                }
+            } else {
+                long duration = nowMs - mHighlightOnMS;
+                if (mHighlightOffMS == 0
+                        && !motionDetected
+                        && duration >= HIGHLIGHT_DURATION_ON_MS) {
+                    // mHighlightOnMS is > 0 ... motion was ON and stopped.
+                    mHighlightOffMS = nowMs;
+                } else if (mHighlightOffMS > 0
+                        && !motionDetected
+                        && duration >= (HIGHLIGHT_DURATION_ON_MS + HIGHLIGHT_DURATION_OFF_MS)) {
+                    // mHighlightOnMS is > 0 and mHighlightOffMS is > 0.
+                    // Motion was ON and has stopped for at least the OFF duration.
+                    mHighlightOnMS = 0;
+                    mHighlightOffMS = 0;
                     mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
                 }
             }
