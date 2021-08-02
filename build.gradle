@@ -27,8 +27,8 @@ dependencies {
     annotationProcessor     "com.google.dagger:dagger-compiler:2.28"
     testAnnotationProcessor "com.google.dagger:dagger-compiler:2.28"
 
-    implementation      "com.google.auto.factory:auto-factory:1.0-beta7"
-    annotationProcessor "com.google.auto.factory:auto-factory:1.0-beta7"
+    implementation "com.google.auto.factory:auto-factory:1.0.1"
+    annotationProcessor "com.google.auto.factory:auto-factory:1.0.1"
 
     testImplementation "junit:junit:4.12"
     testImplementation "com.google.truth:truth:1.0.1"
