@@ -18,15 +18,17 @@
 
 package com.alfray.trainmotion.util;
 
+import com.google.auto.factory.AutoFactory;
+
 import javax.inject.Inject;
 
+@AutoFactory
 public class FpsMeasurer {
     private long mLastMs;
     private double mFps;
     private long mLoopMs;
 
-    @Inject
-    public FpsMeasurer() {}
+    FpsMeasurer() {}
 
     public void reset() {
         mLastMs = 0;

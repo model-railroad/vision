@@ -20,6 +20,7 @@ package com.alfray.trainmotion.cam;
 
 import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.FpsMeasurer;
+import com.alfray.trainmotion.util.FpsMeasurerFactory;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.ThreadLoop;
 import com.google.auto.factory.AutoFactory;
@@ -49,6 +50,7 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
 @AutoFactory
 public class CamAnalyzer extends ThreadLoop {
     private final ConsoleTask mConsoleTask;
+    private final FpsMeasurerFactory mFpsMeasurerFactory;
     private final String TAG;
 
     // The analyzer does not need to run at the full input/output feed fps.
@@ -68,8 +70,10 @@ public class CamAnalyzer extends ThreadLoop {
     public CamAnalyzer(
             @Provided ILogger logger,
             @Provided ConsoleTask consoleTask,
+            @Provided FpsMeasurerFactory fpsMeasurerFactory,
             CamInfo camInfo) {
         mConsoleTask = consoleTask;
+        mFpsMeasurerFactory = fpsMeasurerFactory;
         TAG = "CamAn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
@@ -125,7 +129,7 @@ public class CamAnalyzer extends ThreadLoop {
         double targetFps = 0;
         final String key = String.format("%db", mCamInfo.getIndex());
 
-        FpsMeasurer fpsMeasurer = new FpsMeasurer();
+        FpsMeasurer fpsMeasurer = mFpsMeasurerFactory.create();
         fpsMeasurer.setFrameRate(ANALYZER_FPS);
         long loopMs = fpsMeasurer.getLoopMs();
         long extraMs = -1;

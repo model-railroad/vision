@@ -20,6 +20,7 @@ package com.alfray.trainmotion.cam;
 
 import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.FpsMeasurer;
+import com.alfray.trainmotion.util.FpsMeasurerFactory;
 import com.alfray.trainmotion.util.ILogger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bytedeco.ffmpeg.avformat.AVOutputFormat;
@@ -64,6 +65,7 @@ public class HttpCamHandler extends AbstractHandler {
     private final ILogger mLogger;
     private final Cameras mCameras;
     private final ConsoleTask mConsoleTask;
+    private final FpsMeasurerFactory mFpsMeasurerFactory;
     private final ObjectMapper mJsonMapper;
 
     private Java2DFrameConverter mFrameConverter;
@@ -78,11 +80,13 @@ public class HttpCamHandler extends AbstractHandler {
             ILogger logger,
             Cameras cameras,
             ObjectMapper jsonMapper,
-            ConsoleTask consoleTask) {
+            ConsoleTask consoleTask,
+            FpsMeasurerFactory fpsMeasurerFactory) {
         mLogger = logger;
         mCameras = cameras;
         mJsonMapper = jsonMapper;
         mConsoleTask = consoleTask;
+        mFpsMeasurerFactory = fpsMeasurerFactory;
     }
 
     @Override
@@ -304,7 +308,7 @@ public class HttpCamHandler extends AbstractHandler {
             recorder.start();
 
             final long sleepMs = (long) (1000 / frameRate);
-            FpsMeasurer fpsMeasurer = new FpsMeasurer();
+            FpsMeasurer fpsMeasurer = mFpsMeasurerFactory.create();
             fpsMeasurer.setFrameRate(frameRate);
             try {
                 long extraMs = -1;
@@ -395,7 +399,7 @@ public class HttpCamHandler extends AbstractHandler {
             recorder.start();
 
             final long sleepMs = (long) (1000 / frameRate);
-            FpsMeasurer fpsMeasurer = new FpsMeasurer();
+            FpsMeasurer fpsMeasurer = mFpsMeasurerFactory.create();
             fpsMeasurer.setFrameRate(frameRate);
             try {
                 long extraMs = -1;

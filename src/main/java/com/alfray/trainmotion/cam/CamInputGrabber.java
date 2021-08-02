@@ -21,6 +21,7 @@ package com.alfray.trainmotion.cam;
 import com.alfray.trainmotion.CommandLineArgs;
 import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.FpsMeasurer;
+import com.alfray.trainmotion.util.FpsMeasurerFactory;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.ThreadLoop;
 import com.google.auto.factory.AutoFactory;
@@ -59,6 +60,7 @@ public class CamInputGrabber extends ThreadLoop {
 
     private final ConsoleTask mConsoleTask;
     private final CommandLineArgs mCommandLineArgs;
+    private final FpsMeasurerFactory mFpsMeasurerFactory;
     private final String TAG;
 
     private final ILogger mLogger;
@@ -73,9 +75,11 @@ public class CamInputGrabber extends ThreadLoop {
             @Provided ILogger logger,
             @Provided ConsoleTask consoleTask,
             @Provided CommandLineArgs commandLineArgs,
+            @Provided FpsMeasurerFactory fpsMeasurerFactory,
             CamInfo camInfo) {
         mConsoleTask = consoleTask;
         mCommandLineArgs = commandLineArgs;
+        mFpsMeasurerFactory = fpsMeasurerFactory;
         TAG = "CamIn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
@@ -190,7 +194,7 @@ public class CamInputGrabber extends ThreadLoop {
             // its timestamp is unchanged.
             Frame frame;
 
-            FpsMeasurer fpsMeasurer = new FpsMeasurer();
+            FpsMeasurer fpsMeasurer = mFpsMeasurerFactory.create();
             fpsMeasurer.setFrameRate(mFrameRate);
             started = true;
 
