@@ -1,6 +1,6 @@
 /*
- * Project: Train-Motion
- * Copyright (C) 2021 alf.labs gmail com,
+ * Project: Lib Utils
+ * Copyright (C) 2017 alf.labs gmail com,
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,29 +16,28 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.alfray.trainmotion.dagger;
+package com.alfray.libutils.utils;
 
-import com.alfray.trainmotion.TrainMotion;
-import dagger.Component;
-
-import javax.inject.Singleton;
-
-@Singleton
-@Component(modules = {
-        ClockModule.class,
-        ExecutorModule.class,
-        HttpClientModule.class,
-        JsonModule.class,
-        LoggerModule.class,
-        RandomModule.class,
-        })
-public interface ITrainMotionComponent {
-
-    void inject(TrainMotion camProxy);
-
-    @Component.Factory
-    interface Factory {
-        ITrainMotionComponent createComponent( /* @BindsInstance ISomeProvider someProvider */);
+public class JavaClock implements IClock {
+    @Override
+    public long elapsedRealtime() {
+        return System.currentTimeMillis();
     }
 
+    @Override
+    public long uptimeMillis() {
+        return System.currentTimeMillis();
+    }
+
+    @Override
+    public void sleep(long sleepTimeMs) {
+        try {
+            sleepWithInterrupt(sleepTimeMs);
+        } catch (InterruptedException ignore) {}
+    }
+
+    @Override
+    public void sleepWithInterrupt(long sleepTimeMs) throws InterruptedException {
+        Thread.sleep(sleepTimeMs);
+    }
 }

@@ -30,7 +30,7 @@ public class CamInfo {
     private final CamAnalyzer mAnalyzer;
     private final CamInputGrabber mGrabber;
 
-    public CamInfo(
+    CamInfo(
             @Provided CamAnalyzerFactory camAnalyzerFactory,
             @Provided CamInputGrabberFactory camInputGrabberFactory,
             int index,

@@ -18,27 +18,19 @@
 
 package com.alfray.trainmotion.dagger;
 
-import com.alfray.trainmotion.TrainMotion;
-import dagger.Component;
+import com.alfray.libutils.utils.IClock;
+import com.alfray.libutils.utils.JavaClock;
+import dagger.Module;
+import dagger.Provides;
 
 import javax.inject.Singleton;
 
-@Singleton
-@Component(modules = {
-        ClockModule.class,
-        ExecutorModule.class,
-        HttpClientModule.class,
-        JsonModule.class,
-        LoggerModule.class,
-        RandomModule.class,
-        })
-public interface ITrainMotionComponent {
+@Module
+public abstract class ClockModule {
 
-    void inject(TrainMotion camProxy);
-
-    @Component.Factory
-    interface Factory {
-        ITrainMotionComponent createComponent( /* @BindsInstance ISomeProvider someProvider */);
+    @Singleton
+    @Provides
+    public static IClock provideClock() {
+        return new JavaClock();
     }
-
 }

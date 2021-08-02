@@ -71,7 +71,7 @@ public class CamInputGrabber extends ThreadLoop {
     private double mFrameRate;
     private int mPixelFormat = AV_PIX_FMT_NONE;
 
-    public CamInputGrabber(
+    CamInputGrabber(
             @Provided ILogger logger,
             @Provided ConsoleTask consoleTask,
             @Provided CommandLineArgs commandLineArgs,

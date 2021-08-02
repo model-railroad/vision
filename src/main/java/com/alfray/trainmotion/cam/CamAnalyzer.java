@@ -67,7 +67,7 @@ public class CamAnalyzer extends ThreadLoop {
     private IplImage mOutputImage;
     private Mat mOutput;
 
-    public CamAnalyzer(
+    CamAnalyzer(
             @Provided ILogger logger,
             @Provided ConsoleTask consoleTask,
             @Provided FpsMeasurerFactory fpsMeasurerFactory,
