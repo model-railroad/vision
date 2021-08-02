@@ -127,13 +127,14 @@ Requirements:
 
 IJ > Open project > Select top "_train-motion_" directory.
 
+### Run Configuration
+
 To create a run configuration, the easiest way is to open `src/main/java/com/alfray/trainmotion/Main.java`,
 right click the Run action command, and then edit the Run Configuration:
 
 * Template: `Application`
 * Main Class: `com.alflabs.trainmotion.Main`
-* Program Arguments:
- `--config config.ini -m /path/to/media/folder`
+* Program Arguments: `--config config.ini -m /path/to/media/folder`
 * Use classpath of module: `train-motion.main`
 * JRE: `Default 1.8`
 
@@ -141,6 +142,21 @@ The first build/run will take about forever as the dependencies gets downloaded.
 
 See below for an explanation of the command-line options.
  
+
+### Test Configuration
+
+To create a test configuration, the easiest with IJ is to select `test/java` in the
+project list, right-click, and select the option `Run Tests in train-motion`.
+This creates a gradle test config and runs it.
+
+To create the same configuration manually:
+
+* Edit Configuration > + > Gradle
+* Run Cmd Line: `:test --tests *`
+* Gradle Project: `train-motion`
+* Environment: leave empty
+
+
 
 ## Building with Gradle
 
