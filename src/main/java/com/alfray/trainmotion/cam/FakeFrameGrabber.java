@@ -18,6 +18,9 @@
 
 package com.alfray.trainmotion.cam;
 
+import com.alfray.libutils.utils.IClock;
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.OpenCVFrameConverter;
@@ -31,6 +34,7 @@ import javax.annotation.Nonnull;
 
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24;
 
+@AutoFactory
 public class FakeFrameGrabber implements IFrameGrabber {
     private static final double OUTPUT_ASPECT_RATIO = 16./9;
 
@@ -40,12 +44,16 @@ public class FakeFrameGrabber implements IFrameGrabber {
     private static final int FRAME_RATE_FPS = 10;
     public static final String PREFIX = "fake_srgb_";
     private final int mSpeedRgb;
+    private final IClock mClock;
     @Nonnull private final String mInputUrl;
     private OpenCVFrameConverter.ToMat mMatConverter;
     private Mat mMat;
     private int mX, mY;
 
-    public FakeFrameGrabber(@Nonnull String inputUrl) {
+    FakeFrameGrabber(
+            @Provided IClock clock,
+            @Nonnull String inputUrl) {
+        mClock = clock;
         mInputUrl = inputUrl;
         int srgb = 0x01ff00ff;
         if (inputUrl.startsWith(PREFIX)) {
@@ -101,7 +109,7 @@ public class FakeFrameGrabber implements IFrameGrabber {
 
     @Override
     public Frame grabImage() throws FrameGrabber.Exception {
-        long startMs = System.currentTimeMillis();
+        long startMs = mClock.elapsedRealtime();
 
         int speed = Math.max(1, (mSpeedRgb >> 24) & 0x7F);
         mX += speed;
@@ -129,7 +137,7 @@ public class FakeFrameGrabber implements IFrameGrabber {
 
         Frame frame = mMatConverter.convert(clone);
         try {
-            long endMs = System.currentTimeMillis();
+            long endMs = mClock.elapsedRealtime();
             long sleepMs = 1000 / FRAME_RATE_FPS - (endMs - startMs);
             if (sleepMs > 0) {
                 Thread.sleep(sleepMs);

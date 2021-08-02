@@ -18,6 +18,7 @@
 
 package com.alfray.trainmotion.display;
 
+import com.alfray.libutils.utils.IClock;
 import com.alfray.trainmotion.ConfigIni;
 import com.alfray.trainmotion.Playlist;
 import com.alfray.trainmotion.cam.CamInfo;
@@ -84,6 +85,7 @@ public class KioskDisplay implements IStartStop {
     // Player default volume percentage
     private static final int PLAYER_VOLUME_DEFAULT = 50;
 
+    private final IClock mClock;
     private final ILogger mLogger;
     private final Cameras mCameras;
     private final Playlist mPlaylist;
@@ -108,12 +110,14 @@ public class KioskDisplay implements IStartStop {
 
     @Inject
     public KioskDisplay(
+            IClock clock,
             ILogger logger,
             Cameras cameras,
             Playlist playlist,
             ConfigIni configIni,
             Analytics analytics,
             ConsoleTask consoleTask) {
+        mClock = clock;
         mLogger = logger;
         mCameras = cameras;
         mPlaylist = playlist;
@@ -299,7 +303,7 @@ public class KioskDisplay implements IStartStop {
             int pw = mMediaPlayer.getWidth();
             int ph = mMediaPlayer.getHeight();
             if (Math.abs(tw - pw) > 1 || Math.abs(th - ph) > 1) {
-                if (mPlayerZoomEndTS < System.currentTimeMillis()) { // don't change too fast
+                if (mPlayerZoomEndTS < mClock.elapsedRealtime()) { // don't change too fast
                     /* if (tw != pw) {
                         tw = pw + (tw - pw) / 2;
                     }
@@ -308,7 +312,7 @@ public class KioskDisplay implements IStartStop {
                     } */
                     mMediaPlayer.setBounds(0, 0, tw, th);
                     mMediaPlayer.revalidate();
-                    mPlayerZoomEndTS = System.currentTimeMillis() + PLAYER_ZOOM_MIN_DURATION_MS;
+                    mPlayerZoomEndTS = mClock.elapsedRealtime() + PLAYER_ZOOM_MIN_DURATION_MS;
                 }
             }
         }
@@ -492,7 +496,7 @@ public class KioskDisplay implements IStartStop {
                 frame = mCamInfo.getGrabber().getLastFrame();
             }
 
-            long nowMs = System.currentTimeMillis();
+            long nowMs = mClock.elapsedRealtime();
             boolean motionDetected = mCamInfo.getAnalyzer().isMotionDetected();
             if (mHighlightOnMS == 0) {
                 if (motionDetected) {

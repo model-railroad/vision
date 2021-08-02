@@ -18,24 +18,27 @@
 
 package com.alfray.trainmotion.util;
 
+import com.alfray.libutils.utils.IClock;
 import com.google.auto.factory.AutoFactory;
-
-import javax.inject.Inject;
+import com.google.auto.factory.Provided;
 
 @AutoFactory
 public class FpsMeasurer {
+    private final IClock mClock;
     private long mLastMs;
     private double mFps;
     private long mLoopMs;
 
-    FpsMeasurer() {}
+    FpsMeasurer(@Provided IClock clock) {
+        mClock = clock;
+    }
 
     public void reset() {
         mLastMs = 0;
     }
 
     public void startTick() {
-        long now = System.currentTimeMillis();
+        long now = mClock.elapsedRealtime();
 
         if (mLastMs > 0) {
             long deltaMs = now - mLastMs;
@@ -49,7 +52,7 @@ public class FpsMeasurer {
         if (mLastMs <= 0) {
             return 0;
         }
-        long deltaMs = System.currentTimeMillis() - mLastMs;
+        long deltaMs = mClock.elapsedRealtime() - mLastMs;
         deltaMs = mLoopMs - deltaMs;
         if (deltaMs > 0) {
             try {

@@ -18,6 +18,7 @@
 
 package com.alfray.trainmotion.display;
 
+import com.alfray.libutils.utils.IClock;
 import com.alfray.trainmotion.util.ILogger;
 import com.alfray.trainmotion.util.IStartStop;
 
@@ -39,6 +40,7 @@ public class ConsoleTask implements IStartStop {
     // The console does not need to update at the full input/output feed fps.
     private static final int CONSOLE_FPS = 2;
 
+    private final IClock mClock;
     private final ILogger mLogger;
     @GuardedBy("mLineInfo")
     private final Map<String, String> mLineInfo = new TreeMap<>();
@@ -46,7 +48,10 @@ public class ConsoleTask implements IStartStop {
     private boolean mQuit;
 
     @Inject
-    public ConsoleTask(ILogger logger) {
+    public ConsoleTask(
+            IClock clock,
+            ILogger logger) {
+        mClock = clock;
         mLogger = logger;
         mQuit = false;
     }
@@ -104,7 +109,7 @@ public class ConsoleTask implements IStartStop {
 
         try {
             while (!mQuit) {
-                long startMs = System.currentTimeMillis();
+                long startMs = mClock.elapsedRealtime();
                 displayLineInfo();
 
                 // This is definitely... underwhelming but works well enough in a terminal.
@@ -113,7 +118,7 @@ public class ConsoleTask implements IStartStop {
                     processKey(c);
                 }
 
-                long deltaMs = System.currentTimeMillis() - startMs;
+                long deltaMs = mClock.elapsedRealtime() - startMs;
                 deltaMs = sleepMs - deltaMs;
                 if (deltaMs > 0) {
                     try {

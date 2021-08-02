@@ -18,6 +18,7 @@
 
 package com.alfray.trainmotion.cam;
 
+import com.alfray.libutils.utils.IClock;
 import com.alfray.trainmotion.display.ConsoleTask;
 import com.alfray.trainmotion.util.FpsMeasurer;
 import com.alfray.trainmotion.util.FpsMeasurerFactory;
@@ -49,6 +50,7 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
  */
 @AutoFactory
 public class CamAnalyzer extends ThreadLoop {
+    private final IClock mClock;
     private final ConsoleTask mConsoleTask;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
     private final String TAG;
@@ -68,10 +70,12 @@ public class CamAnalyzer extends ThreadLoop {
     private Mat mOutput;
 
     CamAnalyzer(
+            @Provided IClock clock,
             @Provided ILogger logger,
             @Provided ConsoleTask consoleTask,
             @Provided FpsMeasurerFactory fpsMeasurerFactory,
             CamInfo camInfo) {
+        mClock = clock;
         mConsoleTask = consoleTask;
         mFpsMeasurerFactory = fpsMeasurerFactory;
         TAG = "CamAn-" + camInfo.getIndex();
@@ -150,7 +154,7 @@ public class CamAnalyzer extends ThreadLoop {
                     info = processFrame(frame);
                 }
 
-                computeMs = System.currentTimeMillis() - computeMs;
+                computeMs = mClock.elapsedRealtime() - computeMs;
                 mConsoleTask.updateLineInfo(key,
                         String.format(" %s [%2d%+4d ms]", info, computeMs, extraMs));
 
