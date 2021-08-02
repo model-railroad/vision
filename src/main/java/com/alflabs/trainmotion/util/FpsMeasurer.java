@@ -22,6 +22,12 @@ import com.alflabs.libutils.utils.IClock;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
 
+/**
+ * Utility class that can be dropped in an FPS-controlled loop.
+ * <p/>
+ * Given a specific target framerate, this waits at the end of the loop to reach the desired
+ * frame rate (if there's any time left). It also computes the actual FPS achieved.
+ */
 @AutoFactory
 public class FpsMeasurer {
     private final IClock mClock;
@@ -33,10 +39,27 @@ public class FpsMeasurer {
         mClock = clock;
     }
 
-    public void reset() {
-        mLastMs = 0;
+    /** Sets the desired framerate, to determine how much to wait in {@link #endWait()}. */
+    public void setFrameRate(double frameRate) {
+        mLoopMs = frameRate <= 0 ? 0 : (long)(1000.0 / frameRate);
     }
 
+    /** Returns the loop duration in milliseconds needed to achieve the target framerate. */
+    public long getLoopMs() {
+        return mLoopMs;
+    }
+
+    /** Returns the actual FPS achieved. Updated by the {@link #startTick()} call. */
+    public double getFps() {
+        return mFps;
+    }
+
+    /**
+     * Called at the very beginning of a loop iteration.
+     * <p/>
+     * This computes the time spent in the <em>last</em> iteration and updates {@link #getFps()}
+     * with the actual FPS achieved in the last iteration.
+     */
     public void startTick() {
         long now = mClock.elapsedRealtime();
 
@@ -48,6 +71,13 @@ public class FpsMeasurer {
         mLastMs = now;
     }
 
+    /**
+     * Called at the very end of a loop iteration.
+     * <p/>
+     * If there's any time left, pauses to achieve the desired frame rate.
+     *
+     * @return The number of milliseconds paused waiting. Can be negative.
+     */
     public long endWait() {
         if (mLastMs <= 0) {
             return 0;
@@ -60,15 +90,8 @@ public class FpsMeasurer {
         return deltaMs;
     }
 
-    public double getFps() {
-        return mFps;
-    }
-
-    public long getLoopMs() {
-        return mLoopMs;
-    }
-
-    public void setFrameRate(double frameRate) {
-        mLoopMs = frameRate <= 0 ? 0 : (long)(1000.0 / frameRate);
+    /** Reset the internal state used to compute actual FPS, if this object is reused. */
+    public void reset() {
+        mLastMs = 0;
     }
 }
