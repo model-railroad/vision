@@ -131,7 +131,7 @@ To create a run configuration, the easiest way is to open `src/main/java/com/alf
 right click the Run action command, and then edit the Run Configuration:
 
 * Template: `Application`
-* Main Class: `com.alfray.trainmotion.Main`
+* Main Class: `com.alflabs.trainmotion.Main`
 * Program Arguments:
  `--config config.ini -m /path/to/media/folder`
 * Use classpath of module: `train-motion.main`
