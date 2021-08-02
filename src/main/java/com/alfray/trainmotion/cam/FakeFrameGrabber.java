@@ -136,13 +136,11 @@ public class FakeFrameGrabber implements IFrameGrabber {
         }
 
         Frame frame = mMatConverter.convert(clone);
-        try {
-            long endMs = mClock.elapsedRealtime();
-            long sleepMs = 1000 / FRAME_RATE_FPS - (endMs - startMs);
-            if (sleepMs > 0) {
-                Thread.sleep(sleepMs);
-            }
-        } catch (InterruptedException ignore) {}
+        long endMs = mClock.elapsedRealtime();
+        long sleepMs = 1000 / FRAME_RATE_FPS - (endMs - startMs);
+        if (sleepMs > 0) {
+            mClock.sleep(sleepMs);
+        }
         return frame;
     }
 

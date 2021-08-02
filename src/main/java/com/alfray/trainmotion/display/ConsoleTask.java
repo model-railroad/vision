@@ -121,11 +121,7 @@ public class ConsoleTask implements IStartStop {
                 long deltaMs = mClock.elapsedRealtime() - startMs;
                 deltaMs = sleepMs - deltaMs;
                 if (deltaMs > 0) {
-                    try {
-                        Thread.sleep(deltaMs);
-                    } catch (InterruptedException e) {
-                        mLogger.log(TAG, e.toString());
-                    }
+                    mClock.sleep(deltaMs);
                 }
             }
         } catch (Exception e) {

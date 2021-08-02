@@ -55,9 +55,7 @@ public class FpsMeasurer {
         long deltaMs = mClock.elapsedRealtime() - mLastMs;
         deltaMs = mLoopMs - deltaMs;
         if (deltaMs > 0) {
-            try {
-                Thread.sleep(deltaMs);
-            } catch (InterruptedException ignore) {}
+            mClock.sleep(deltaMs);
         }
         return deltaMs;
     }
