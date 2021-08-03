@@ -18,25 +18,25 @@
 
 package com.alflabs.trainmotion.dagger;
 
-import com.alflabs.trainmotion.TrainMotion;
+import com.alflabs.trainmotion.util.FpsMeasurerTest;
 import dagger.Component;
 
 import javax.inject.Singleton;
 
 @Singleton
 @Component(modules = {
-        ClockModule.class,
-        ExecutorModule.class,
-        HttpClientModule.class,
-        JsonModule.class,
-        LoggerModule.class,
-        RandomModule.class,
+        FakeClockModule.class,
+        //ExecutorModule.class,
+        //HttpClientModule.class,
+        //JsonModule.class,
+        //LoggerModule.class,
+        //RandomModule.class,
         })
-public interface ITrainMotionComponent {
-    void inject(TrainMotion camProxy);
+public interface ITrainMotionTestComponent extends
+        FpsMeasurerTest._injector {
 
     @Component.Factory
     interface Factory {
-        ITrainMotionComponent createComponent( /* @BindsInstance ISomeProvider someProvider */);
+        ITrainMotionTestComponent createComponent();
     }
 }

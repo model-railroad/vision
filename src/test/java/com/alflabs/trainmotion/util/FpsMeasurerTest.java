@@ -1,20 +1,28 @@
 package com.alflabs.trainmotion.util;
 
 import com.alflabs.libutils.utils.FakeClock;
+import com.alflabs.trainmotion.dagger.DaggerITrainMotionTestComponent;
+import com.alflabs.trainmotion.dagger.ITrainMotionTestComponent;
 import org.junit.Before;
 import org.junit.Test;
+
+import javax.inject.Inject;
 
 import static com.google.common.truth.Truth.assertThat;
 
 public class FpsMeasurerTest {
 
-    private FakeClock mClock;
-    private FpsMeasurerFactory mFpsMeasurerFactory;
+    @Inject FakeClock mClock;
+    @Inject FpsMeasurerFactory mFpsMeasurerFactory;
+
+    public interface _injector {
+        void inject(FpsMeasurerTest test);
+    }
 
     @Before
     public void setUp() {
-        mClock = new FakeClock(1000);
-        mFpsMeasurerFactory = new FpsMeasurerFactory(() -> mClock);
+        ITrainMotionTestComponent component = DaggerITrainMotionTestComponent.factory().createComponent();
+        component.inject(this);
     }
 
     @Test
