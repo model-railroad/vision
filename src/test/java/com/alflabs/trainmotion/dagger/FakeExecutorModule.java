@@ -18,28 +18,21 @@
 
 package com.alflabs.trainmotion.dagger;
 
-import com.alflabs.trainmotion.util.Analytics;
-import com.alflabs.trainmotion.util.AnalyticsTest;
-import com.alflabs.trainmotion.util.FpsMeasurerTest;
-import dagger.Component;
+import dagger.Module;
+import dagger.Provides;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
-@Singleton
-@Component(modules = {
-        FakeClockModule.class,
-        FakeExecutorModule.class,
-        MockHttpClientModule.class,
-        JsonModule.class,
-        LoggerModule.class,
-        MockRandomModule.class,
-        })
-public interface ITrainMotionTestComponent extends
-        FpsMeasurerTest._injector,
-        AnalyticsTest._injector {
+@Module
+public abstract class FakeExecutorModule {
 
-    @Component.Factory
-    interface Factory {
-        ITrainMotionTestComponent createComponent();
+    @Singleton
+    @Provides
+    @Named("SingleThreadExecutor")
+    public static ScheduledExecutorService provideScheduledExecutorService() {
+        return Executors.newSingleThreadScheduledExecutor();
     }
 }

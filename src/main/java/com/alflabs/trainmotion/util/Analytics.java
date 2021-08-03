@@ -84,10 +84,14 @@ public class Analytics implements IStartStop {
 
     @Override
     public void start() throws Exception {
-        sendEvent("Start", "");
     }
 
     public void setAnalyticsId(@Nonnull String analyticsId) {
+        // Use "#" as a comment and only take the first thing before, if any.
+        analyticsId = analyticsId.replaceAll("[#\n\r].*", "");
+        // GA Id format is "UA-Numbers-1" so accept only letters, numbers, hyphen. Ignore the rest.
+        analyticsId = analyticsId.replaceAll("[^A-Z0-9-]", "");
+
         //noinspection ConstantConditions
         if (analyticsId == null || analyticsId.trim().isEmpty()) {
             mAnalyticsId = null;
@@ -107,7 +111,6 @@ public class Analytics implements IStartStop {
      */
     @Override
     public void stop() throws Exception {
-        sendEvent("Stop", "");
         mExecutor.shutdown();
         mExecutor.awaitTermination(10, TimeUnit.SECONDS);
         mLogger.log(TAG, "Shutdown");

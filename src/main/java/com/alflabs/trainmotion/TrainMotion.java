@@ -103,7 +103,9 @@ public class TrainMotion {
             mHttpServ.start();
             mCameras.start();
             mKioskDisplay.initialize();
+            mAnalytics.sendEvent("Start", "");
             mConsoleTask.consoleWait();
+            mAnalytics.sendEvent("Stop", "");
         } catch (Exception e) {
             mLogger.log(TAG, e.toString());
         } finally {
