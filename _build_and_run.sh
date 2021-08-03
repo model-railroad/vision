@@ -5,7 +5,7 @@ set -x
     # Change to this script direcoty (following symlinks as needed)
     cd $(dirname $(readlink "$BASH_SOURCE" || echo "$BASH_SOURCE"))
     # Build
-    ./gradlew ass fatJar --info
+    ./gradlew test ass fatJar --info
     # ./gradlew --stop
 )
 # List & run

@@ -1,6 +1,6 @@
 /*
- * Project: Train-Motion
- * Copyright (C) 2021 alf.labs gmail com,
+ * Project: Conductor
+ * Copyright (C) 2019 alf.labs gmail com,
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,25 +18,19 @@
 
 package com.alflabs.trainmotion.dagger;
 
-import com.alflabs.trainmotion.util.FpsMeasurerTest;
-import dagger.Component;
+import dagger.Module;
+import dagger.Provides;
+import okhttp3.OkHttpClient;
 
 import javax.inject.Singleton;
 
-@Singleton
-@Component(modules = {
-        FakeClockModule.class,
-        ExecutorModule.class,
-        MockHttpClientModule.class,
-        JsonModule.class,
-        LoggerModule.class,
-        MockRandomModule.class,
-        })
-public interface ITrainMotionTestComponent extends
-        FpsMeasurerTest._injector {
+import static org.mockito.Mockito.mock;
 
-    @Component.Factory
-    interface Factory {
-        ITrainMotionTestComponent createComponent();
+@Module
+public abstract class MockHttpClientModule {
+    @Singleton
+    @Provides
+    public static OkHttpClient provideOkHttpClient() {
+        return mock(OkHttpClient.class);
     }
 }
