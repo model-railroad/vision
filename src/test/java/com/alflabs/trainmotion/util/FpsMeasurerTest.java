@@ -11,7 +11,6 @@ import javax.inject.Inject;
 import static com.google.common.truth.Truth.assertThat;
 
 public class FpsMeasurerTest {
-
     @Inject FakeClock mClock;
     @Inject FpsMeasurerFactory mFpsMeasurerFactory;
 
