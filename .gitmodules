@@ -1,0 +1,3 @@
+[submodule "LibUtils"]
+	path = LibUtils
+	url = git@bitbucket.org:ralfoide/libutils.git
