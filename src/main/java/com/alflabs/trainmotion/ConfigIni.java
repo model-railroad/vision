@@ -19,14 +19,15 @@
 package com.alflabs.trainmotion;
 
 import com.alflabs.trainmotion.util.ILogger;
+import com.alflabs.utils.FileOps;
 import com.google.common.base.Strings;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
@@ -52,12 +53,14 @@ public class ConfigIni {
     private static final String KEY_ANALYTICS_ID = "analytics_id";
 
     private final ILogger mLogger;
+    private final FileOps mFileOps;
     private final Properties mProps = new Properties();
     private File mFile = new File("");
 
     @Inject
-    public ConfigIni(ILogger logger) {
+    public ConfigIni(ILogger logger, FileOps fileOps) {
         mLogger = logger;
+        mFileOps = fileOps;
     }
 
     public void initialize(@Nonnull File file) {
@@ -65,9 +68,9 @@ public class ConfigIni {
         mFile = file;
         try {
             mLogger.log(TAG, "Parsing " + file);
-            FileInputStream stream = new FileInputStream(file);
-            mProps.load(stream);
-            mLogger.log(TAG, "Properties found: " + mProps.stringPropertyNames().stream().sorted().toArray());
+            Properties props = mFileOps.getProperties(file);
+            mProps.putAll(props);
+            mLogger.log(TAG, "Properties found: " + Arrays.toString(mProps.stringPropertyNames().stream().sorted().toArray()));
         } catch (IOException e) {
             mLogger.log(TAG, "Error parsing " + file + ": " + e);
         }

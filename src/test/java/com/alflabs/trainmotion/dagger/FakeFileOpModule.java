@@ -18,29 +18,19 @@
 
 package com.alflabs.trainmotion.dagger;
 
-import com.alflabs.trainmotion.util.Analytics;
-import com.alflabs.trainmotion.util.AnalyticsTest;
-import com.alflabs.trainmotion.util.FpsMeasurerTest;
-import dagger.Component;
+import com.alflabs.utils.FakeFileOps;
+import com.alflabs.utils.FileOps;
+import dagger.Module;
+import dagger.Provides;
 
 import javax.inject.Singleton;
 
-@Singleton
-@Component(modules = {
-        FakeClockModule.class,
-        FakeExecutorModule.class,
-        FakeFileOpModule.class,
-        MockHttpClientModule.class,
-        JsonModule.class,
-        LoggerModule.class,
-        MockRandomModule.class,
-        })
-public interface ITrainMotionTestComponent extends
-        FpsMeasurerTest._injector,
-        AnalyticsTest._injector {
+@Module
+public abstract class FakeFileOpModule {
 
-    @Component.Factory
-    interface Factory {
-        ITrainMotionTestComponent createComponent();
+    @Provides
+    @Singleton
+    static FileOps providesFileOps() {
+        return new FakeFileOps();
     }
 }

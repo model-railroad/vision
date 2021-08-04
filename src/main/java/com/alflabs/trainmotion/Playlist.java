@@ -19,7 +19,9 @@
 package com.alflabs.trainmotion;
 
 import com.alflabs.trainmotion.util.ILogger;
-import com.google.common.io.Files;
+import com.alflabs.utils.FileOps;
+import com.google.common.io.ByteSource;
+import com.google.common.io.LineProcessor;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -45,38 +47,52 @@ public class Playlist {
 
     private final List<File> mVideos = new ArrayList<>();
     private final List<File> mNext = new ArrayList<>();
-    private final Random mRnd = new Random();
     private final ILogger mLogger;
+    private final FileOps mFileOps;
+    private final Random mRandom;
+
     private File mPlaylistDir;
     private boolean mShuffle;
 
     @Inject
-    public Playlist(ILogger logger) {
+    public Playlist(ILogger logger, FileOps fileOps, Random random) {
         mLogger = logger;
+        mFileOps = fileOps;
+        mRandom = random;
     }
 
     public void initialize(@Nonnull String playlistDir) throws IOException {
         mPlaylistDir = new File(playlistDir);
-        if (!mPlaylistDir.isDirectory()) {
+        if (!mFileOps.isFile(mPlaylistDir)) {
             mLogger.log(TAG, "Missing playlist dir: " + playlistDir);
             return;
         }
 
         // Read the index
         File indexFile = new File(mPlaylistDir, INDEX);
-        for (String line : Files.readLines(indexFile, StandardCharsets.UTF_8)) {
-            line = line.trim();
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
+        byte[] content = mFileOps.readBytes(indexFile);
+        ByteSource.wrap(content).asCharSource(StandardCharsets.UTF_8).readLines(new LineProcessor<Void>() {
+            @Override
+            public boolean processLine(String line) throws IOException {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    return true; // continue to next line
+                }
+
+                File videoFile = new File(mPlaylistDir, line);
+                if (mFileOps.isFile(videoFile)) {
+                    mVideos.add(videoFile);
+                } else {
+                    mLogger.log(TAG, "Ignore missing file '" + line + "' from index.");
+                }
+                return true;
             }
 
-            File videoFile = new File(mPlaylistDir, line);
-            if (videoFile.isFile()) {
-                mVideos.add(videoFile);
-            } else {
-                mLogger.log(TAG, "Ignore missing file '" + line + "' from index.");
+            @Override
+            public Void getResult() {
+                return null;
             }
-        }
+        });
         mLogger.log(TAG, "Found " + mVideos.size() + " videos at " + indexFile.getAbsolutePath());
     }
 
@@ -100,7 +116,7 @@ public class Playlist {
 
         int index = 0;
         if (mShuffle) {
-            index = mRnd.nextInt(mNext.size());
+            index = mRandom.nextInt(mNext.size());
         }
         return Optional.of(mNext.remove(index));
     }

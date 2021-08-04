@@ -27,6 +27,7 @@ import javax.inject.Singleton;
 @Component(modules = {
         ClockModule.class,
         ExecutorModule.class,
+        FileOpModule.class,
         HttpClientModule.class,
         JsonModule.class,
         LoggerModule.class,
