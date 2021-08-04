@@ -34,6 +34,13 @@ import javax.annotation.Nonnull;
 
 import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24;
 
+/**
+ * {@link IFrameGrabber} simulator for debugging/testing.
+ * <p/>
+ * The video stream takes an "SRGB" (speed - r-g-b) 32-bit hex configuration.
+ * The RGB is used as a color background, and the speed dictates how a motion rectangle is
+ * generated on top of the background.
+ */
 @AutoFactory
 public class FakeFrameGrabber implements IFrameGrabber {
     private static final double OUTPUT_ASPECT_RATIO = 16./9;
@@ -45,7 +52,6 @@ public class FakeFrameGrabber implements IFrameGrabber {
     public static final String PREFIX = "fake_srgb_";
     private final int mSpeedRgb;
     private final IClock mClock;
-    @Nonnull private final String mInputUrl;
     private OpenCVFrameConverter.ToMat mMatConverter;
     private Mat mMat;
     private int mX, mY;
@@ -54,7 +60,6 @@ public class FakeFrameGrabber implements IFrameGrabber {
             @Provided IClock clock,
             @Nonnull String inputUrl) {
         mClock = clock;
-        mInputUrl = inputUrl;
         int srgb = 0x01ff00ff;
         if (inputUrl.startsWith(PREFIX)) {
             try {

@@ -23,6 +23,7 @@ import com.google.auto.factory.Provided;
 
 import javax.annotation.Nonnull;
 
+/** Live information about each camera: configuration, video grabber, analyzer. */
 @AutoFactory
 public class CamInfo {
     private final int mIndex;

@@ -45,10 +45,15 @@ import static org.bytedeco.opencv.global.opencv_imgproc.INTER_AREA;
 import static org.bytedeco.opencv.global.opencv_imgproc.resize;
 
 /**
- * Uses FFMpeg FFmpegFrameGrabber (via JavaCV) to grab frames from the source camera feed.
- * Currently supported: any URL that works for FFMpeg. E.g. RTSP with U/P and MJPEG or MP4.
- *
- * This "aggressively" reconnects as soon as the feed disconnects.
+ * Thread loop to grab frames from the source camera feed.
+ * <p/>
+ * Uses FFMpeg FFmpegFrameGrabber (via JavaCV).
+ * Currently supported: any URL that works for FFMpeg. E.g. RTSP or HTTP with U/P, and MJPEG or MP4.
+ * <p/>
+ * If the camera source URL starts with the {@link FakeFrameGrabber#PREFIX}, a
+ * {@link FakeFrameGrabber} is used as the source instead of FFmpeg. This is useful for debugging.
+ * <p/>
+ * This thread loop "aggressively" reconnects as soon as the feed disconnects.
  */
 @AutoFactory
 public class CamInputGrabber extends ThreadLoop {
@@ -125,6 +130,7 @@ public class CamInputGrabber extends ThreadLoop {
         }
 
         try {
+            //noinspection ResultOfMethodCallIgnored
             latch.await(waitTime, timeUnit);
         } catch (InterruptedException e) {
             // Option: Either return null or return the last frame we have? Do the latter for now.

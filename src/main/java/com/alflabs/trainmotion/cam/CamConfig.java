@@ -20,6 +20,7 @@ package com.alflabs.trainmotion.cam;
 
 import javax.annotation.Nonnull;
 
+/** Configuration data for one camera input stream. */
 public class CamConfig {
     private final String mInputUrl;
     private final double mMotionThreshold;

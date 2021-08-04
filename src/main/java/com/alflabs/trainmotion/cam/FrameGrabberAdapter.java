@@ -24,6 +24,7 @@ import org.bytedeco.javacv.FrameGrabber;
 
 import javax.annotation.Nonnull;
 
+/** {@link IFrameGrabber} interface wrapped around a {@link FFmpegFrameGrabber}. */
 public class FrameGrabberAdapter implements IFrameGrabber {
 
     private final FFmpegFrameGrabber mFrameGrabber;

@@ -45,6 +45,8 @@ import static org.bytedeco.opencv.global.opencv_imgproc.medianBlur;
 import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractorMOG2;
 
 /**
+ * Thread loop analyzing one camera input to detect motion in the video stream.
+ * <p/>
  * Example:
  * https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_video/py_bg_subtraction/py_bg_subtraction.html
  */
@@ -66,6 +68,7 @@ public class CamAnalyzer extends ThreadLoop {
     private CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private OpenCVFrameConverter.ToMat mMatConverter;
     private BackgroundSubtractor mSubtractor;
+    @SuppressWarnings("FieldCanBeLocal") // Must remain scoped as a field to keep allocated
     private IplImage mOutputImage;
     private Mat mOutput;
 

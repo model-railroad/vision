@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+/** List of all camera input streams. */
 @Singleton
 public class Cameras implements IStartStop {
     private static final String TAG = Cameras.class.getSimpleName();
