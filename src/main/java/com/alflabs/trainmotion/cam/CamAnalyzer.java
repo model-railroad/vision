@@ -18,12 +18,12 @@
 
 package com.alflabs.trainmotion.cam;
 
-import com.alflabs.libutils.utils.IClock;
 import com.alflabs.trainmotion.display.ConsoleTask;
 import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.ThreadLoop;
+import com.alflabs.utils.IClock;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.Frame;

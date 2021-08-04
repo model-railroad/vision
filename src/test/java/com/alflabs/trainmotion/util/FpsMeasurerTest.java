@@ -1,8 +1,8 @@
 package com.alflabs.trainmotion.util;
 
-import com.alflabs.libutils.utils.FakeClock;
 import com.alflabs.trainmotion.dagger.DaggerITrainMotionTestComponent;
 import com.alflabs.trainmotion.dagger.ITrainMotionTestComponent;
+import com.alflabs.utils.FakeClock;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -18,8 +18,8 @@
 
 package com.alflabs.trainmotion.dagger;
 
-import com.alflabs.libutils.utils.FakeClock;
-import com.alflabs.libutils.utils.IClock;
+import com.alflabs.utils.FakeClock;
+import com.alflabs.utils.IClock;
 import dagger.Module;
 import dagger.Provides;
 

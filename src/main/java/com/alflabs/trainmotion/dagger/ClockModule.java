@@ -18,8 +18,8 @@
 
 package com.alflabs.trainmotion.dagger;
 
-import com.alflabs.libutils.utils.IClock;
-import com.alflabs.libutils.utils.JavaClock;
+import com.alflabs.utils.IClock;
+import com.alflabs.utils.JavaClock;
 import dagger.Module;
 import dagger.Provides;
 

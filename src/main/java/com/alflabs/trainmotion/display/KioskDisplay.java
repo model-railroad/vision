@@ -18,7 +18,6 @@
 
 package com.alflabs.trainmotion.display;
 
-import com.alflabs.libutils.utils.IClock;
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.Playlist;
 import com.alflabs.trainmotion.cam.CamInfo;
@@ -26,6 +25,7 @@ import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
+import com.alflabs.utils.IClock;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
@@ -35,19 +35,8 @@ import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
 import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
-import java.awt.Canvas;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Toolkit;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;

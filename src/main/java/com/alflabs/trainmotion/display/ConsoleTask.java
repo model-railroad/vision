@@ -18,15 +18,15 @@
 
 package com.alflabs.trainmotion.display;
 
-import com.alflabs.libutils.utils.IClock;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
+import com.alflabs.utils.IClock;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

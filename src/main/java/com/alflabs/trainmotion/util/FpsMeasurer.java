@@ -18,7 +18,7 @@
 
 package com.alflabs.trainmotion.util;
 
-import com.alflabs.libutils.utils.IClock;
+import com.alflabs.utils.IClock;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
 
