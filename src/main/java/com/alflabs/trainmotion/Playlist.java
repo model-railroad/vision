@@ -43,7 +43,7 @@ import java.util.Random;
 @Singleton
 public class Playlist {
     private static final String TAG = Playlist.class.getSimpleName();
-    private static final String INDEX = "_index.txt";
+    static final String INDEX = "_index.txt";
 
     private final List<File> mVideos = new ArrayList<>();
     private final List<File> mNext = new ArrayList<>();
@@ -63,13 +63,13 @@ public class Playlist {
 
     public void initialize(@Nonnull String playlistDir) throws IOException {
         mPlaylistDir = new File(playlistDir);
-        if (!mFileOps.isFile(mPlaylistDir)) {
-            mLogger.log(TAG, "Missing playlist dir: " + playlistDir);
+        File indexFile = new File(mPlaylistDir, INDEX);
+        if (!mFileOps.isFile(indexFile)) {
+            mLogger.log(TAG, "Missing playlist index: " + indexFile.getAbsolutePath());
             return;
         }
 
         // Read the index
-        File indexFile = new File(mPlaylistDir, INDEX);
         byte[] content = mFileOps.readBytes(indexFile);
         ByteSource.wrap(content).asCharSource(StandardCharsets.UTF_8).readLines(new LineProcessor<Void>() {
             @Override

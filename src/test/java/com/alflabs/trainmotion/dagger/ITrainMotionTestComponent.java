@@ -18,6 +18,7 @@
 
 package com.alflabs.trainmotion.dagger;
 
+import com.alflabs.trainmotion.PlaylistTest;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.AnalyticsTest;
 import com.alflabs.trainmotion.util.FpsMeasurerTest;
@@ -36,8 +37,10 @@ import javax.inject.Singleton;
         MockRandomModule.class,
         })
 public interface ITrainMotionTestComponent extends
+        AnalyticsTest._injector,
         FpsMeasurerTest._injector,
-        AnalyticsTest._injector {
+        PlaylistTest._injector
+    {
 
     @Component.Factory
     interface Factory {

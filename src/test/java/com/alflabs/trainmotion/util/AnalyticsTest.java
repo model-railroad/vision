@@ -2,7 +2,6 @@ package com.alflabs.trainmotion.util;
 
 import com.alflabs.trainmotion.dagger.DaggerITrainMotionTestComponent;
 import com.alflabs.trainmotion.dagger.ITrainMotionTestComponent;
-import com.google.common.base.Charsets;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okio.Buffer;
@@ -11,20 +10,14 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
 import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class AnalyticsTest {
     public @Rule MockitoRule mRule = MockitoJUnit.rule();

@@ -24,6 +24,7 @@ import dagger.Provides;
 import javax.inject.Singleton;
 import java.util.Random;
 
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +35,10 @@ public abstract class MockRandomModule {
     public static Random provideRandom() {
         Random m = mock(Random.class);
         when(m.nextInt()).thenReturn(42);
+        when(m.nextInt(anyInt())).thenAnswer(invocation -> {
+            int maxRange = (int) invocation.getArgument(0);
+            return 17 % maxRange;
+        });
         return m;
     }
 }
