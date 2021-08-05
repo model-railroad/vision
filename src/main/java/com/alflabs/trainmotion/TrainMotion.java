@@ -27,8 +27,7 @@ import com.alflabs.trainmotion.display.ConsoleTask;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
-import com.alflabs.trainmotion.display.KioskDisplay;
-import com.alflabs.utils.FileOps;
+import com.alflabs.trainmotion.display.KioskController;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -44,7 +43,8 @@ public class TrainMotion {
     @Inject ConfigIni mConfigIniReader;
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject ConsoleTask mConsoleTask;
-    @Inject KioskDisplay mKioskDisplay;
+    @Inject
+    KioskController mKioskDisplay;
     @Inject Playlist mPlaylist;
     @Inject Analytics mAnalytics;
     @Inject ILogger mLogger;

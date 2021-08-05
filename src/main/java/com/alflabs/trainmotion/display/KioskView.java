@@ -18,14 +18,8 @@
 
 package com.alflabs.trainmotion.display;
 
-import com.alflabs.trainmotion.ConfigIni;
-import com.alflabs.trainmotion.Playlist;
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
-import com.alflabs.trainmotion.util.Analytics;
-import com.alflabs.trainmotion.util.ILogger;
-import com.alflabs.trainmotion.util.IStartStop;
-import com.alflabs.utils.IClock;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
@@ -48,17 +42,18 @@ import java.awt.image.BufferStrategy;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
+/**
+ * Kiosk Display is split in 2 parts: a KioskView class encapsulates all the Swing-related APIs,
+ * and this controller contains all the "business" logic. This makes it possible to test the
+ * controller using a mock UI that does not uses any actual views.
+ */
 @Singleton
-public class KioskDisplay implements IStartStop {
-    private static final String TAG = KioskDisplay.class.getSimpleName();
-
-    // Approximage FPS to update the camera videos.
-    private static final int DISPLAY_FPS = 15;
+public class KioskView {
+    private static final String TAG = KioskView.class.getSimpleName();
 
     // Highlight color
     private static final Color HIGHLIGHT_LINE_COLOR = Color.YELLOW;
@@ -69,63 +64,42 @@ public class KioskDisplay implements IStartStop {
     // Highlight stroke width
     private static final int HIGHLIGHT_LINE_SIZE = 10;
 
-    // Player zoom minimum display duration
-    private static final long PLAYER_ZOOM_MIN_DURATION_MS = 5*1000;
-    // Player default volume percentage
-    private static final int PLAYER_VOLUME_DEFAULT = 50;
-
-    private final IClock mClock;
-    private final ILogger mLogger;
-    private final Cameras mCameras;
-    private final Playlist mPlaylist;
-    private final ConfigIni mConfigIni;
-    private final Analytics mAnalytics;
-    private final ConsoleTask mConsoleTask;
-
+    private KioskController.Callbacks mCallbacks;
     @GuardedBy("mVideoCanvas")
     private final List<VideoCanvas> mVideoCanvas = new ArrayList<>();
     private JFrame mFrame;
     private JLabel mBottomLabel;
     private EmbeddedMediaPlayerComponent mMediaPlayer;
     private Timer mRepaintTimer;
-    private int mVideosWidth;
-    private int mVideosHeight;
-    private boolean mForceZoom;
-    private boolean mPlayerMuted;
-    private boolean mToggleMask;
-    private int mPlayerMaxVolume = PLAYER_VOLUME_DEFAULT;
-    private long mPlayerZoomEndTS;
-
+    private int mContentWidth;
+    private int mContentHeight;
 
     @Inject
-    public KioskDisplay(
-            IClock clock,
-            ILogger logger,
-            Cameras cameras,
-            Playlist playlist,
-            ConfigIni configIni,
-            Analytics analytics,
-            ConsoleTask consoleTask) {
-        mClock = clock;
-        mLogger = logger;
-        mCameras = cameras;
-        mPlaylist = playlist;
-        mConfigIni = configIni;
-        mAnalytics = analytics;
-        mConsoleTask = consoleTask;
+    public KioskView() {
     }
 
-    @Override
-    public void start() throws Exception {
-        mFrame = new JFrame(mConfigIni.getWindowTitle("Train Motion"));
-        mFrame.setSize(800, 600); // random startup value; most of the time it is maximized below.
-        mFrame.setMinimumSize(new Dimension(64, 64));
+    public void invokeLater(Runnable r) {
+        SwingUtilities.invokeLater(r);
+    }
+
+    public void create(
+            int width, int height,
+            int minWidth, int minHeight,
+            int displayFps,
+            Cameras cameras, String windowTitle,
+            boolean maximize,
+            KioskController.Callbacks callbacks) throws Exception {
+        mCallbacks = callbacks;
+
+        mFrame = new JFrame(windowTitle);
+        mFrame.setSize(width, height);
+        mFrame.setMinimumSize(new Dimension(minWidth, minHeight));
         mFrame.setLayout(null);
         mFrame.setBackground(Color.BLACK);
 
         mMediaPlayer = new EmbeddedMediaPlayerComponent();
         mMediaPlayer.setBackground(Color.BLACK);
-        mMediaPlayer.setBounds(0, 0, 800, 600); // matches initial frame
+        mMediaPlayer.setBounds(0, 0, width, height); // matches initial frame
         mFrame.add(mMediaPlayer);
 
         mBottomLabel = new JLabel("Please wait, initializing camera streams...");
@@ -140,24 +114,37 @@ public class KioskDisplay implements IStartStop {
             @Override
             public void windowClosing(WindowEvent windowEvent) {
                 super.windowClosing(windowEvent);
-                mConsoleTask.requestQuit();
+                mCallbacks.onWindowClosing();
             }
         });
         mFrame.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent event) {
                 super.componentResized(event);
-                onFrameResized(event);
+                mCallbacks.onFrameResized();
             }
         });
         mFrame.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent keyEvent) {
-                if (processKey(keyEvent.getKeyChar())
-                        || mConsoleTask.processKey(keyEvent.getKeyChar())) {
+                if (mCallbacks.onProcessKey(keyEvent.getKeyChar())) {
                     keyEvent.consume();
                 }
                 super.keyPressed(keyEvent);
+            }
+        });
+
+        mMediaPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+            @Override
+            public void finished(MediaPlayer mediaPlayer) {
+                super.finished(mediaPlayer);
+                mCallbacks.onMediaPlayerFinished();
+            }
+
+            @Override
+            public void error(MediaPlayer mediaPlayer) {
+                super.error(mediaPlayer);
+                mCallbacks.onMediaPlayerError();
             }
         });
 
@@ -167,7 +154,6 @@ public class KioskDisplay implements IStartStop {
             mFrame.setCursor(toolkit.createCustomCursor(toolkit.createImage(""), new Point(), "cursor"));
         } catch (Exception ignore) {}
 
-        boolean maximize = mConfigIni.getWindowMaximize();
         if (maximize) {
             // Remove window borders. Must be done before the setVisible call.
             mFrame.setUndecorated(true);
@@ -176,19 +162,40 @@ public class KioskDisplay implements IStartStop {
         mFrame.setVisible(true);
         // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
         // after the main frame is set visible.
-        createVideoCanvas();
-        onFrameResized(null /* event */);
+        createVideoCanvases(cameras);
+        mCallbacks.onFrameResized();
         if (maximize) {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         }
 
-        mRepaintTimer = new Timer(1000 / DISPLAY_FPS, this::onRepaintTimerTick);
+        mRepaintTimer = new Timer(1000 / displayFps, this::onRepaintTimerTick);
     }
 
-    private void createVideoCanvas() {
+    public int getContentWidth() {
+        return mContentWidth;
+    }
+
+    public int getContentHeight() {
+        return mContentHeight;
+    }
+
+    public int getMediaPlayerWidth() {
+        return mMediaPlayer.getWidth();
+    }
+
+    public int getMediaPlayerHeight() {
+        return mMediaPlayer.getHeight();
+    }
+
+    public void setMediaPlayerSize(int width, int height) {
+        mMediaPlayer.setBounds(0, 0, width, height);
+        mMediaPlayer.revalidate();
+    }
+
+    private void createVideoCanvases(Cameras cameras) {
         AtomicInteger posIndex = new AtomicInteger();
         synchronized (mVideoCanvas) {
-            mCameras.forEachCamera(camInfo -> {
+            cameras.forEachCamera(camInfo -> {
                 VideoCanvas canvas = new VideoCanvas(posIndex.incrementAndGet(), camInfo);
                 mVideoCanvas.add(canvas);
                 mFrame.add(canvas);
@@ -197,120 +204,57 @@ public class KioskDisplay implements IStartStop {
         }
     }
 
-    private void computeLayout() {
+    public void resizeVideoCanvases(int width, int height) {
+        if (mFrame == null) {
+            return;
+        }
+        synchronized (mVideoCanvas) {
+            for (VideoCanvas canvas : mVideoCanvas) {
+                canvas.computeAbsolutePosition(width, height);
+            }
+        }
+        mFrame.revalidate();
+    }
+
+    public void computeLayout() {
         if (mFrame != null) {
             Insets insets = mFrame.getInsets();
-            mVideosWidth = mFrame.getWidth() - insets.left - insets.right;
-            mVideosHeight = mFrame.getHeight() - insets.top - insets.bottom;
+            mContentWidth = mFrame.getWidth() - insets.left - insets.right;
+            mContentHeight = mFrame.getHeight() - insets.top - insets.bottom;
 
             Dimension labelSize = mBottomLabel.getPreferredSize();
             if (labelSize != null) {
                 int lh = labelSize.height;
-                mVideosHeight -= lh;
-                mBottomLabel.setBounds(0, mVideosHeight, mVideosWidth, lh);
+                mContentHeight -= lh;
+                mBottomLabel.setBounds(0, mContentHeight, mContentWidth, lh);
             }
-        }
-    }
-
-    public boolean processKey(char c) {
-        // Keys handled by the ConsoleTask:
-        // esc, q = quit // ?, h = help.
-        // mLogger.log(TAG, "Process key: " + c); // DEBUG
-        switch (c) {
-        case 'f':
-            // Toggle fullscreen zoom
-            mPlayerZoomEndTS = 0;
-            mForceZoom = !mForceZoom;
-            return true;
-        case 'm':
-            // Toggle mute sound
-            if (mMediaPlayer != null) {
-                // Note mMediaPlayer.mediaPlayer().audio().setMute(!muted) seems to work in reverse
-                // (and/or differently per platform) so let's avoid it. Just control volume.
-                mPlayerMuted = !mPlayerMuted;
-                mMediaPlayer.mediaPlayer().audio().setVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
-                mLogger.log(TAG, "Audio: volume " + mMediaPlayer.mediaPlayer().audio().volume() + "%");
-            }
-            return true;
-        case 's':
-            // Toggle shuffle
-            mPlaylist.setShuffle(!mPlaylist.isShuffle());
-            return true;
-        case 'n':
-            playNext();
-            return true;
-        case 'k':
-            mToggleMask = !mToggleMask;
-            mLogger.log(TAG, "Mask toggled " + (mToggleMask ? "on" : "off"));
-            return true;
-        }
-
-        return false; // not consumed
-    }
-
-    private void onFrameResized(ComponentEvent event) {
-        if (mFrame != null) {
-            computeLayout();
-            final int width = mVideosWidth;
-            final int height = mVideosHeight;
-            mLogger.log(TAG, String.format("onFrameResized --> %dx%d", width, height));
-
-            synchronized (mVideoCanvas) {
-                for (VideoCanvas canvas : mVideoCanvas) {
-                    canvas.computeAbsolutePosition(width, height);
-                }
-            }
-
-            mFrame.revalidate();
         }
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame != null && mMediaPlayer != null && !mConsoleTask.isQuitRequested()) {
-            mBottomLabel.setText(mConsoleTask.computeLineInfo());
-
-            boolean hasHighlight = false;
-            synchronized (mVideoCanvas) {
-                for (VideoCanvas canvas : mVideoCanvas) {
-                    canvas.displayFrame();
-                    hasHighlight |= canvas.isHighlighted();
-                }
-            }
-
-            // frame (window) size
-            computeLayout();
-            final int fw = mVideosWidth;
-            final int fh = mVideosHeight;
-            // target size for media player
-            int tw = fw, th = fh;
-            if (hasHighlight && !mForceZoom) {
-                // Desired player is half size screen
-                tw = fw / 2;
-                th = fh / 2;
-            }
-            // current player size
-            int pw = mMediaPlayer.getWidth();
-            int ph = mMediaPlayer.getHeight();
-            if (Math.abs(tw - pw) > 1 || Math.abs(th - ph) > 1) {
-                if (mPlayerZoomEndTS < mClock.elapsedRealtime()) { // don't change too fast
-                    /* if (tw != pw) {
-                        tw = pw + (tw - pw) / 2;
-                    }
-                    if (th != ph) {
-                        th = ph + (th - ph) / 2;
-                    } */
-                    mMediaPlayer.setBounds(0, 0, tw, th);
-                    mMediaPlayer.revalidate();
-                    mPlayerZoomEndTS = mClock.elapsedRealtime() + PLAYER_ZOOM_MIN_DURATION_MS;
-                }
-            }
+        if (mFrame == null || mMediaPlayer == null) {
+            return;
         }
+        mCallbacks.onRepaintTimerTick();
     }
 
-    @Override
-    public void stop() throws Exception {
+    public void setBottomLabelText(String lineInfo) {
+        mBottomLabel.setText(lineInfo);
+    }
+
+    public boolean getVideoCanvasesHighlight() {
+        boolean hasHighlight = false;
+        synchronized (mVideoCanvas) {
+            for (VideoCanvas canvas : mVideoCanvas) {
+                canvas.displayFrame();
+                hasHighlight |= canvas.isHighlighted();
+            }
+        }
+        return hasHighlight;
+    }
+
+    public void release() {
         SwingUtilities.invokeLater(() -> {
-            mLogger.log(TAG, "Stop");
             mRepaintTimer.stop();
             if (mMediaPlayer != null) {
                 mMediaPlayer.release();
@@ -323,52 +267,31 @@ public class KioskDisplay implements IStartStop {
         });
     }
 
-    public void initialize() throws Exception {
-        // Start shuffled
-        mPlaylist.setShuffle(true);
-
-        // Get desired volume
-        mPlayerMaxVolume = mConfigIni.getVolumePct(PLAYER_VOLUME_DEFAULT);
-
-        mMediaPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
-            @Override
-            public void finished(MediaPlayer mediaPlayer) {
-                super.finished(mediaPlayer);
-                mLogger.log(TAG, "Media Finished: " + mediaPlayer);
-                playNext();
-            }
-
-            @Override
-            public void error(MediaPlayer mediaPlayer) {
-                super.error(mediaPlayer);
-                mLogger.log(TAG, "Media Error: " + mediaPlayer);
-                playNext();
-            }
-        });
-
-        SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null && !mConsoleTask.isQuitRequested()) {
-                mRepaintTimer.start();
-                mMediaPlayer.mediaPlayer().audio().setMute(false);
-                playNext();
-            }
-        });
+    public void startTimer() {
+        // TODO does this really need SwingUtilities.invokeLater ?
+        mRepaintTimer.start();
     }
 
-    private void playNext() {
-        SwingUtilities.invokeLater(() -> {
-            if (mMediaPlayer != null && !mConsoleTask.isQuitRequested()) {
-                Optional<File> next = mPlaylist.getNext();
-                if (next.isPresent()) {
-                    File file = next.get();
-                    mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
-                    mAnalytics.sendEvent("PlayVideo", file.getName());
+    public void setMediaPlayerMute(boolean isMuted) {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.mediaPlayer().audio().setMute(isMuted);
+        }
+    }
 
-                    mMediaPlayer.mediaPlayer().audio().setVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
-                    mMediaPlayer.mediaPlayer().media().play(file.getAbsolutePath());
-                }
-            }
-        });
+    public void setMediaPlayerVolume(int percent) {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.mediaPlayer().audio().setVolume(percent);
+        }
+    }
+
+    public int getMediaPlayerVolume() {
+        return mMediaPlayer == null ? -1 : mMediaPlayer.mediaPlayer().audio().volume();
+    }
+
+    public void playMediaPlayer(File media) {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.mediaPlayer().media().play(media.getAbsolutePath());
+        }
     }
 
     /** Based on org/bytedeco/javacv/CanvasFrame.java */
@@ -479,13 +402,14 @@ public class KioskDisplay implements IStartStop {
         /** Must be invoked on the Swing UI thread. */
         public void displayFrame() {
             Frame frame;
-            if (mToggleMask) {
+            if (mCallbacks.showMask()) {
                 frame = mCamInfo.getAnalyzer().getLastFrame();
             } else {
                 frame = mCamInfo.getGrabber().getLastFrame();
             }
 
-            long nowMs = mClock.elapsedRealtime();
+            // TBD move logic to controller or helper class
+            long nowMs = mCallbacks.elapsedRealtime();
             boolean motionDetected = mCamInfo.getAnalyzer().isMotionDetected();
             if (mHighlightOnMS == 0) {
                 if (motionDetected) {
@@ -505,7 +429,7 @@ public class KioskDisplay implements IStartStop {
                     // Motion was ON and has stopped for at least the OFF duration.
                     mHighlightOnMS = 0;
                     mHighlightOffMS = 0;
-                    mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
+                    // TODO (move to controller) mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
                 }
             }
 
