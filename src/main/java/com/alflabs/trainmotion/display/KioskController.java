@@ -56,6 +56,7 @@ public class KioskController implements IStartStop {
     private final ConfigIni mConfigIni;
     private final Analytics mAnalytics;
     private final ConsoleTask mConsoleTask;
+    private final HighlighterFactory mHighlighterFactory;
     private final KioskView mView;
 
     private boolean mForceZoom;
@@ -84,7 +85,8 @@ public class KioskController implements IStartStop {
             ConfigIni configIni,
             Analytics analytics,
             ConsoleTask consoleTask,
-            KioskView kioskView) {
+            KioskView kioskView,
+            HighlighterFactory highlighterFactory) {
         mClock = clock;
         mLogger = logger;
         mCameras = cameras;
@@ -93,6 +95,7 @@ public class KioskController implements IStartStop {
         mAnalytics = analytics;
         mConsoleTask = consoleTask;
         mView = kioskView;
+        mHighlighterFactory = highlighterFactory;
     }
 
     @Override
@@ -102,6 +105,7 @@ public class KioskController implements IStartStop {
                 64, 64,
                 DISPLAY_FPS,
                 mCameras,
+                mHighlighterFactory,
                 mConfigIni.getWindowTitle("Train Motion"),
                 mConfigIni.getWindowMaximize(),
                 mCallbacks
@@ -168,17 +172,11 @@ public class KioskController implements IStartStop {
                 tw = fw / 2;
                 th = fh / 2;
             }
-            // current player size
+            // current player size -- only update if not matching the target.
             int pw = mView.getMediaPlayerWidth();
             int ph = mView.getMediaPlayerHeight();
-            if (Math.abs(tw - pw) > 1 || Math.abs(th - ph) > 1) {
+            if (tw != pw || th != ph) {
                 if (mPlayerZoomEndTS < mClock.elapsedRealtime()) { // don't change too fast
-                    /* if (tw != pw) {
-                        tw = pw + (tw - pw) / 2;
-                    }
-                    if (th != ph) {
-                        th = ph + (th - ph) / 2;
-                    } */
                     mView.setMediaPlayerSize(tw, th);
                     mPlayerZoomEndTS = mClock.elapsedRealtime() + PLAYER_ZOOM_MIN_DURATION_MS;
                 }

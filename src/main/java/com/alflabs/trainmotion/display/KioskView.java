@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_COLOR;
+import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_SIZE;
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
 /**
@@ -54,15 +56,6 @@ import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 @Singleton
 public class KioskView {
     private static final String TAG = KioskView.class.getSimpleName();
-
-    // Highlight color
-    private static final Color HIGHLIGHT_LINE_COLOR = Color.YELLOW;
-    // Highlight minimum display duration with video motion ON. Total with OFF is 3 seconds.
-    private static final long HIGHLIGHT_DURATION_ON_MS = 2500;
-    // Highlight minimum display duration with video motion OFF after a ON event.
-    private static final long HIGHLIGHT_DURATION_OFF_MS = 500;
-    // Highlight stroke width
-    private static final int HIGHLIGHT_LINE_SIZE = 10;
 
     private KioskController.Callbacks mCallbacks;
     @GuardedBy("mVideoCanvas")
@@ -86,7 +79,7 @@ public class KioskView {
             int width, int height,
             int minWidth, int minHeight,
             int displayFps,
-            Cameras cameras, String windowTitle,
+            Cameras cameras, HighlighterFactory highlighterFactory, String windowTitle,
             boolean maximize,
             KioskController.Callbacks callbacks) throws Exception {
         mCallbacks = callbacks;
@@ -162,7 +155,7 @@ public class KioskView {
         mFrame.setVisible(true);
         // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
         // after the main frame is set visible.
-        createVideoCanvases(cameras);
+        createVideoCanvases(cameras, highlighterFactory);
         mCallbacks.onFrameResized();
         if (maximize) {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
@@ -192,11 +185,14 @@ public class KioskView {
         mMediaPlayer.revalidate();
     }
 
-    private void createVideoCanvases(Cameras cameras) {
+    private void createVideoCanvases(Cameras cameras, HighlighterFactory highlighterFactory) {
         AtomicInteger posIndex = new AtomicInteger();
         synchronized (mVideoCanvas) {
             cameras.forEachCamera(camInfo -> {
-                VideoCanvas canvas = new VideoCanvas(posIndex.incrementAndGet(), camInfo);
+                VideoCanvas canvas = new VideoCanvas(
+                        posIndex.incrementAndGet(),
+                        camInfo,
+                        highlighterFactory.create(camInfo));
                 mVideoCanvas.add(canvas);
                 mFrame.add(canvas);
                 canvas.initialize();
@@ -247,7 +243,7 @@ public class KioskView {
         synchronized (mVideoCanvas) {
             for (VideoCanvas canvas : mVideoCanvas) {
                 canvas.displayFrame();
-                hasHighlight |= canvas.isHighlighted();
+                hasHighlight |= canvas.mHighlighter.isHighlighted();
             }
         }
         return hasHighlight;
@@ -301,15 +297,13 @@ public class KioskView {
 
         private final int mPosIndex;
         private final CamInfo mCamInfo;
-        /** Show highlight if > 0. Indicates when highlight ON started. */
-        private long mHighlightOnMS;
-        /** Show highlight if > 0. Indicates when highlight OFF started. */
-        private long mHighlightOffMS;
+        private final Highlighter mHighlighter;
         private Image mImage;
 
-        public VideoCanvas(int posIndex, CamInfo camInfo) {
+        public VideoCanvas(int posIndex, CamInfo camInfo, Highlighter highlighter) {
             mPosIndex = posIndex;
             mCamInfo = camInfo;
+            mHighlighter = highlighter;
             setBackground(Color.BLACK);
         }
 
@@ -386,17 +380,13 @@ public class KioskView {
         private void drawImageAndContour(Graphics g, int dw, int dh, int dx, int dy) {
             g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
 
-            if (isHighlighted()) {
+            if (mHighlighter.isHighlighted()) {
                 g.setColor(HIGHLIGHT_LINE_COLOR);
                 g.fillRect(dx, dy, dw, HIGHLIGHT_LINE_SIZE);
                 g.fillRect(dx, dy + dh - HIGHLIGHT_LINE_SIZE, dw, HIGHLIGHT_LINE_SIZE);
                 g.fillRect(dx, dy, HIGHLIGHT_LINE_SIZE, dh);
                 g.fillRect(dx + dw - HIGHLIGHT_LINE_SIZE, dy, HIGHLIGHT_LINE_SIZE, dh);
             }
-        }
-
-        public boolean isHighlighted() {
-            return mHighlightOnMS > 0;
         }
 
         /** Must be invoked on the Swing UI thread. */
@@ -408,30 +398,7 @@ public class KioskView {
                 frame = mCamInfo.getGrabber().getLastFrame();
             }
 
-            // TBD move logic to controller or helper class
-            long nowMs = mCallbacks.elapsedRealtime();
-            boolean motionDetected = mCamInfo.getAnalyzer().isMotionDetected();
-            if (mHighlightOnMS == 0) {
-                if (motionDetected) {
-                    mHighlightOnMS = nowMs;
-                }
-            } else {
-                long duration = nowMs - mHighlightOnMS;
-                if (mHighlightOffMS == 0
-                        && !motionDetected
-                        && duration >= HIGHLIGHT_DURATION_ON_MS) {
-                    // mHighlightOnMS is > 0 ... motion was ON and stopped.
-                    mHighlightOffMS = nowMs;
-                } else if (mHighlightOffMS > 0
-                        && !motionDetected
-                        && duration >= (HIGHLIGHT_DURATION_ON_MS + HIGHLIGHT_DURATION_OFF_MS)) {
-                    // mHighlightOnMS is > 0 and mHighlightOffMS is > 0.
-                    // Motion was ON and has stopped for at least the OFF duration.
-                    mHighlightOnMS = 0;
-                    mHighlightOffMS = 0;
-                    // TODO (move to controller) mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
-                }
-            }
+            mHighlighter.update();
 
             if (frame != null) {
                 mImage = mConverter.getBufferedImage(frame);
