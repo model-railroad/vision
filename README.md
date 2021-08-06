@@ -98,6 +98,7 @@ The project is written in Java 8 (JDK or OpenJDK) and relies on the following ex
 * [VLC](https://www.videolan.org/) and [vlcj](https://github.com/caprica/vlcj).
 * FasterXML [Jackson Databind](https://github.com/FasterXML/jackson-databind).
 * Eclipse [Jetty](https://www.eclipse.org/jetty/).
+* [LibUtils android-lib-v2](https://bitbucket.org/ralfoide/libutils/src/android-lib-v2/).
 
 Rendering for v0.2 relies on VLC, found here:
 
@@ -116,6 +117,17 @@ Rendering for v0.1 relies on:
 * [Debian](https://www.debian.org/) Linux.
 * [Chromium](https://www.chromium.org/).
 * [Youtube Player API](https://developers.google.com/youtube/iframe_api_reference).
+
+
+## Source checkout and setup
+
+The proper way to check out the source is:
+
+    $ git clone https://bitbucket.org/ralfoide/train-motion.git
+    $ ./_init.sh [-f]
+
+The `_init.sh` script checks out the git sub-repository [LibUtils](https://bitbucket.org/ralfoide/libutils)
+and then switches it to its [android-lib-v2](https://bitbucket.org/ralfoide/libutils/src/android-lib-v2/) branch.
 
 
 ## Building with IJ
