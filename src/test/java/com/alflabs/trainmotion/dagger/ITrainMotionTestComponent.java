@@ -20,7 +20,6 @@ package com.alflabs.trainmotion.dagger;
 
 import com.alflabs.trainmotion.PlaylistTest;
 import com.alflabs.trainmotion.display.HighlighterTest;
-import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.AnalyticsTest;
 import com.alflabs.trainmotion.util.FpsMeasurerTest;
 import dagger.Component;
