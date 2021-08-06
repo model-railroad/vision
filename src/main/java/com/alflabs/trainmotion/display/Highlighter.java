@@ -19,6 +19,8 @@
 package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.cam.CamInfo;
+import com.alflabs.trainmotion.cam.IMotionDetector;
+import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.utils.IClock;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
@@ -38,7 +40,9 @@ public class Highlighter {
     static final int HIGHLIGHT_LINE_SIZE = 10;
 
     private final IClock mClock;
-    private final CamInfo mCamInfo;
+    private final Analytics mAnalytics;
+    private final int mCamIndex;
+    private final IMotionDetector mMotionDetector;
 
     /** Show highlight if > 0. Indicates when highlight ON started. */
     private long mHighlightOnMS;
@@ -48,9 +52,13 @@ public class Highlighter {
 
     public Highlighter(
             @Provided IClock clock,
-            @Nonnull CamInfo camInfo) {
+            @Provided Analytics analytics,
+            int camIndex,
+            @Nonnull IMotionDetector motionDetector) {
         mClock = clock;
-        mCamInfo = camInfo;
+        mAnalytics = analytics;
+        mCamIndex = camIndex;
+        mMotionDetector = motionDetector;
     }
 
     public boolean isHighlighted() {
@@ -59,26 +67,26 @@ public class Highlighter {
 
     public void update() {
         long nowMs = mClock.elapsedRealtime();
-        boolean motionDetected = mCamInfo.getAnalyzer().isMotionDetected();
+        boolean motionDetected = mMotionDetector.isMotionDetected();
         if (mHighlightOnMS == 0) {
             if (motionDetected) {
                 mHighlightOnMS = nowMs;
             }
         } else {
-            long duration = nowMs - mHighlightOnMS;
+            long durationSinceOn = nowMs - mHighlightOnMS;
             if (mHighlightOffMS == 0
                     && !motionDetected
-                    && duration >= HIGHLIGHT_DURATION_ON_MS) {
+                    && durationSinceOn >= HIGHLIGHT_DURATION_ON_MS) {
                 // mHighlightOnMS is > 0 ... motion was ON and stopped.
                 mHighlightOffMS = nowMs;
             } else if (mHighlightOffMS > 0
                     && !motionDetected
-                    && duration >= (HIGHLIGHT_DURATION_ON_MS + HIGHLIGHT_DURATION_OFF_MS)) {
+                    && nowMs - mHighlightOffMS >= HIGHLIGHT_DURATION_OFF_MS) {
                 // mHighlightOnMS is > 0 and mHighlightOffMS is > 0.
                 // Motion was ON and has stopped for at least the OFF duration.
                 mHighlightOnMS = 0;
                 mHighlightOffMS = 0;
-                // TODO (move to controller) mAnalytics.sendEvent("Highlight", "cam" + mCamInfo.getIndex(), Long.toString(duration));
+                mAnalytics.sendEvent("Highlight", "cam" + mCamIndex, Long.toString(durationSinceOn));
             }
         }
     }

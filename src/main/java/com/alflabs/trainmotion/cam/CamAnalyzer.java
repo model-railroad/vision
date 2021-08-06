@@ -51,7 +51,7 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
  * https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_video/py_bg_subtraction/py_bg_subtraction.html
  */
 @AutoFactory
-public class CamAnalyzer extends ThreadLoop {
+public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final IClock mClock;
     private final ConsoleTask mConsoleTask;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
@@ -87,6 +87,7 @@ public class CamAnalyzer extends ThreadLoop {
         mMotionThreshold = camInfo.getConfig().getMotionThreshold();
     }
 
+    @Override
     public boolean isMotionDetected() {
         return mMotionDetected.getAndSet(false);
     }

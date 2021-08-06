@@ -192,7 +192,9 @@ public class KioskView {
                 VideoCanvas canvas = new VideoCanvas(
                         posIndex.incrementAndGet(),
                         camInfo,
-                        highlighterFactory.create(camInfo));
+                        highlighterFactory.create(
+                                camInfo.getIndex(),
+                                camInfo.getAnalyzer()));
                 mVideoCanvas.add(canvas);
                 mFrame.add(canvas);
                 canvas.initialize();

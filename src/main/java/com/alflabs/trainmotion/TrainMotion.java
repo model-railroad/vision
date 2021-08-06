@@ -36,7 +36,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class TrainMotion {
     private static final String TAG = TrainMotion.class.getSimpleName();
-    private static final double MOTION_THRESHOLD = 0.3;
+    public static final double MOTION_THRESHOLD = 0.3;
 
     private final ITrainMotionComponent mComponent;
 
