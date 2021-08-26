@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
-JAR=train-motion/build/libs/train-motion-0.2-SNAPSHOT-all.jar
+DST="build"
+if [[ ! -d "build" ]]; then
+    DST="train-motion/$DST"
+fi
+JAR="$DST/libs/train-motion-0.2-SNAPSHOT-all.jar"
 
 if [[ ! -x "$JAR" || "$USER" != "vision" ]]; then
 (
@@ -20,6 +24,6 @@ if [[ ! -x "$JAR" || "$USER" != "vision" ]]; then
 fi
 
 # List & run
-ls -1sh $(find train-motion/build/ -name "*.jar")
+ls -1sh $(find $DST/ -name "*.jar")
 set -x
 java -jar $JAR $@

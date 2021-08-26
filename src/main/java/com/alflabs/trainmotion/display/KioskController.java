@@ -28,7 +28,6 @@ import com.alflabs.utils.IClock;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.*;
 import java.io.File;
 import java.util.Optional;
 
@@ -251,6 +250,7 @@ public class KioskController implements IStartStop {
                 File file = next.get();
                 mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
                 mAnalytics.sendEvent("PlayVideo", file.getName());
+                mConsoleTask.updateLineInfo("9f", " | " + file.getName().replace(".mp4", ""));
 
                 mView.setMediaPlayerVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
                 mView.playMediaPlayer(file);

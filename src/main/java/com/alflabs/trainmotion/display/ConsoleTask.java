@@ -85,9 +85,6 @@ public class ConsoleTask implements IStartStop {
         _sTempBuf.setLength(0);
         synchronized (mLineInfo) {
             for (String info : mLineInfo.values()) {
-                //if (_sTempBuf.length() > 0) {
-                //    _sTempBuf.append(" || ");
-                //}
                 _sTempBuf.append(info);
             }
         }
