@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e
+JAR=train-motion/build/libs/train-motion-0.2-SNAPSHOT-all.jar
+
+if [[ ! -x "$JAR" || "$USER" != "vision" ]]; then
 (
     # Change to this script direcoty (following symlinks as needed)
     cd $(dirname $(readlink "$BASH_SOURCE" || echo "$BASH_SOURCE"))
@@ -14,7 +17,9 @@ set -e
     ./gradlew test ass fatJar --console=plain --info
     # ./gradlew --stop
 )
+fi
+
 # List & run
-ls -1sh $(find build/ -name "*.jar")
+ls -1sh $(find train-motion/build/ -name "*.jar")
 set -x
-java -jar build/libs/train-motion-0.2-SNAPSHOT-all.jar $@
+java -jar $JAR $@
