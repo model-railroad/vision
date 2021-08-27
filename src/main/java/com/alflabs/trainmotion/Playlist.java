@@ -20,6 +20,7 @@ package com.alflabs.trainmotion;
 
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.FileOps;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -122,19 +123,23 @@ public class Playlist {
     }
 
     @VisibleForTesting
-    protected TreeMap<String, FileProperties> readPropertiesFile() throws IOException {
+    protected TreeMap<String, FileProperties> readPropertiesFile() {
         File propsFile = new File(mPlaylistDir, PROPS);
         mLogger.log(TAG, "Reading playlist properties: " + propsFile.getAbsolutePath());
         if (mFileOps.isFile(propsFile)) {
-            byte[] content = mFileOps.readBytes(propsFile);
+            try {
+                byte[] content = mFileOps.readBytes(propsFile);
 
-            TypeReference<TreeMap<String, FileProperties>> mapTypeRef =
-                    new TypeReference<TreeMap<String, FileProperties>>() { };
+                TypeReference<TreeMap<String, FileProperties>> mapTypeRef =
+                        new TypeReference<TreeMap<String, FileProperties>>() { };
 
-            return mJsonMapper.readValue(content, mapTypeRef);
-        } else {
-            return new TreeMap<>();
+                return mJsonMapper.readValue(content, mapTypeRef);
+            } catch (IOException e) {
+                mLogger.log(TAG, "Invalid JSON syntax in properties: " + propsFile.getAbsolutePath());
+            }
         }
+
+        return new TreeMap<>();
     }
 
     public void setShuffle(boolean shuffle) {
@@ -193,25 +198,25 @@ public class Playlist {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class FileProperties {
-        private int seconds;            // JSON field name
-        private int volume;             // JSON field name
-        public FileProperties() {}
+        private int seconds = -1;           // JSON field name
+        private int volume  = -1;           // JSON field name
+
+        @SuppressWarnings("unused")
+        public FileProperties() {}          // JSON constructor
+
+        public FileProperties(int seconds, int volume) {
+            this.seconds = seconds;
+            this.volume = volume;
+        }
 
         public int getSeconds() {
             return seconds;
         }
 
-        void setSeconds(int seconds) {
-            this.seconds = seconds;
-        }
-
         public int getVolume() {
             return volume;
-        }
-
-        void setVolume(int volume) {
-            this.volume = volume;
         }
     }
 }

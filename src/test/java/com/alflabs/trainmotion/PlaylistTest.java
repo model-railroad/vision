@@ -103,7 +103,41 @@ public class PlaylistTest {
         final String dir = "/tmp/media_dir";
         File props = new File(dir, PROPS);
         mFileOps.writeBytes(
-                ("{ \"FooBar.mp4\": { \"volume\": 25, \"seconds\": 314 } } "
+                ("{ \"FooBar.mp4\": { \"volume\": 25, \"seconds\": 314 }," +
+                        "\"no-volume\": { \"seconds\": 314 }," +
+                        "\"no-seconds\": { \"volume\": 25 }, " +
+                        "\"invalid\": { \"something\": \"unrelated\" } } "
+                ).getBytes(StandardCharsets.UTF_8),
+                props);
+        mPlaylist.initialize(props.getParent());
+
+        File f_foo = new File(dir, "foobar");
+        assertThat(mPlaylist.getProperties(f_foo).isPresent()).isTrue();
+        assertThat(mPlaylist.getProperties(f_foo).get().getVolume()).isEqualTo(25);
+        assertThat(mPlaylist.getProperties(f_foo).get().getSeconds()).isEqualTo(314);
+
+        File f_no_vol = new File(dir, "no-volume");
+        assertThat(mPlaylist.getProperties(f_no_vol).isPresent()).isTrue();
+        assertThat(mPlaylist.getProperties(f_no_vol).get().getVolume()).isEqualTo(-1);
+        assertThat(mPlaylist.getProperties(f_no_vol).get().getSeconds()).isEqualTo(314);
+
+        File f_no_sec = new File(dir, "no-seconds");
+        assertThat(mPlaylist.getProperties(f_no_sec).isPresent()).isTrue();
+        assertThat(mPlaylist.getProperties(f_no_sec).get().getVolume()).isEqualTo(25);
+        assertThat(mPlaylist.getProperties(f_no_sec).get().getSeconds()).isEqualTo(-1);
+
+        File f_inv = new File(dir, "invalid");
+        assertThat(mPlaylist.getProperties(f_inv).isPresent()).isTrue();
+        assertThat(mPlaylist.getProperties(f_inv).get().getVolume()).isEqualTo(-1);
+        assertThat(mPlaylist.getProperties(f_inv).get().getSeconds()).isEqualTo(-1);
+    }
+
+    @Test
+    public void testGetProperties_invalidProps() throws IOException {
+        final String dir = "/tmp/media_dir";
+        File props = new File(dir, PROPS);
+        mFileOps.writeBytes(
+                ("{ \"FooBar.mp4\": { \"blah\": 1, \"volume\": 25, \"seconds\": 314 } } "
                 ).getBytes(StandardCharsets.UTF_8),
                 props);
         mPlaylist.initialize(props.getParent());
@@ -115,10 +149,22 @@ public class PlaylistTest {
     }
 
     @Test
+    public void testGetProperties_invalidSyntaxOrDataType() throws IOException {
+        final String dir = "/tmp/media_dir";
+        File props = new File(dir, PROPS);
+        mFileOps.writeBytes(
+                ("{ \"whatever\" : \"unexpected data type\" } "
+                ).getBytes(StandardCharsets.UTF_8),
+                props);
+        mPlaylist.initialize(props.getParent());
+
+        Optional<Playlist.FileProperties> fp = mPlaylist.getProperties(new File(dir, "whatever"));
+        assertThat(fp.isPresent()).isFalse();
+    }
+
+    @Test
     public void testGenerateProperties() throws JsonProcessingException {
-        Playlist.FileProperties fp = new Playlist.FileProperties();
-        fp.setSeconds(12);
-        fp.setVolume(25);
+        Playlist.FileProperties fp = new Playlist.FileProperties(/* seconds */ 12, /* volume */ 25);
         Map<String, Playlist.FileProperties> map = new TreeMap<>();
         map.put("foobar", fp);
 
