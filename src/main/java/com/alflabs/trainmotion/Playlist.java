@@ -20,6 +20,9 @@ package com.alflabs.trainmotion;
 
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.FileOps;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.io.ByteSource;
 import com.google.common.io.LineProcessor;
 
@@ -30,9 +33,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.TreeMap;
 
 /**
  * Parses the video playlist.
@@ -44,33 +51,51 @@ import java.util.Random;
 public class Playlist {
     private static final String TAG = Playlist.class.getSimpleName();
     static final String INDEX = "_index.txt";
+    static final String PROPS = "_props.json";
 
     private final List<File> mVideos = new ArrayList<>();
     private final List<File> mNext = new ArrayList<>();
+    private final FilesProperties mProps = new FilesProperties();
     private final ILogger mLogger;
     private final FileOps mFileOps;
     private final Random mRandom;
+    private final ObjectMapper mJsonMapper;
 
     private File mPlaylistDir;
     private boolean mShuffle;
 
     @Inject
-    public Playlist(ILogger logger, FileOps fileOps, Random random) {
+    public Playlist(
+            ILogger logger,
+            FileOps fileOps,
+            Random random,
+            ObjectMapper jsonMapper) {
         mLogger = logger;
         mFileOps = fileOps;
         mRandom = random;
+        mJsonMapper = jsonMapper;
     }
 
     public void initialize(@Nonnull String playlistDir) throws IOException {
         mPlaylistDir = new File(playlistDir);
+        mVideos.addAll(readIndexFile());
+        mProps.addAll(readPropertiesFile());
+        mLogger.log(TAG, "Found " + mVideos.size() + " videos");
+    }
+
+    @Nonnull
+    private List<File> readIndexFile() throws IOException {
+        List<File> videos = new ArrayList<>();
         File indexFile = new File(mPlaylistDir, INDEX);
         if (!mFileOps.isFile(indexFile)) {
             mLogger.log(TAG, "Missing playlist index: " + indexFile.getAbsolutePath());
-            return;
+            return videos;
         }
 
         // Read the index
+        mLogger.log(TAG, "Reading playlist index: " + indexFile.getAbsolutePath());
         byte[] content = mFileOps.readBytes(indexFile);
+        //noinspection UnstableApiUsage
         ByteSource.wrap(content).asCharSource(StandardCharsets.UTF_8).readLines(new LineProcessor<Void>() {
             @Override
             public boolean processLine(String line) throws IOException {
@@ -81,7 +106,7 @@ public class Playlist {
 
                 File videoFile = new File(mPlaylistDir, line);
                 if (mFileOps.isFile(videoFile)) {
-                    mVideos.add(videoFile);
+                    videos.add(videoFile);
                 } else {
                     mLogger.log(TAG, "Ignore missing file '" + line + "' from index.");
                 }
@@ -93,7 +118,23 @@ public class Playlist {
                 return null;
             }
         });
-        mLogger.log(TAG, "Found " + mVideos.size() + " videos at " + indexFile.getAbsolutePath());
+        return videos;
+    }
+
+    @VisibleForTesting
+    protected TreeMap<String, FileProperties> readPropertiesFile() throws IOException {
+        File propsFile = new File(mPlaylistDir, PROPS);
+        mLogger.log(TAG, "Reading playlist properties: " + propsFile.getAbsolutePath());
+        if (mFileOps.isFile(propsFile)) {
+            byte[] content = mFileOps.readBytes(propsFile);
+
+            TypeReference<TreeMap<String, FileProperties>> mapTypeRef =
+                    new TypeReference<TreeMap<String, FileProperties>>() { };
+
+            return mJsonMapper.readValue(content, mapTypeRef);
+        } else {
+            return new TreeMap<>();
+        }
     }
 
     public void setShuffle(boolean shuffle) {
@@ -119,5 +160,58 @@ public class Playlist {
             index = mRandom.nextInt(mNext.size());
         }
         return Optional.of(mNext.remove(index));
+    }
+
+    @Nonnull
+    public Optional<FileProperties> getProperties(@Nonnull File file) {
+        return mProps.get(file);
+    }
+
+    static class FilesProperties {
+        private final Map<String, FileProperties> mProperties = new HashMap<>();
+        public FilesProperties() {}
+
+        public void addAll(Map<String, FileProperties> props) {
+            for (Map.Entry<String, FileProperties> entry : props.entrySet()) {
+                mProperties.put(
+                        entry.getKey()
+                                .trim()
+                                .toLowerCase(Locale.US)
+                                .replace(".mp4", ""),
+                        entry.getValue());
+            }
+        }
+
+        public Optional<FileProperties> get(@Nonnull File file) {
+            String name = file.getName().trim().toLowerCase(Locale.US);
+            FileProperties property = mProperties.get(name);
+            if (property == null) {
+                name = name.replace(".mp4", "");
+                property = mProperties.get(name);
+            }
+            return Optional.ofNullable(property);
+        }
+    }
+
+    static class FileProperties {
+        private int seconds;            // JSON field name
+        private int volume;             // JSON field name
+        public FileProperties() {}
+
+        public int getSeconds() {
+            return seconds;
+        }
+
+        void setSeconds(int seconds) {
+            this.seconds = seconds;
+        }
+
+        public int getVolume() {
+            return volume;
+        }
+
+        void setVolume(int volume) {
+            this.volume = volume;
+        }
     }
 }

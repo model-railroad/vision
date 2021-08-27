@@ -21,6 +21,8 @@ package com.alflabs.trainmotion;
 import com.alflabs.trainmotion.dagger.DaggerITrainMotionTestComponent;
 import com.alflabs.trainmotion.dagger.ITrainMotionTestComponent;
 import com.alflabs.utils.FileOps;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,9 +30,14 @@ import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
+import java.util.TreeMap;
 
 import static com.alflabs.trainmotion.Playlist.INDEX;
+import static com.alflabs.trainmotion.Playlist.PROPS;
 import static com.google.common.truth.Truth.assertThat;
 
 public class PlaylistTest {
@@ -38,6 +45,7 @@ public class PlaylistTest {
     @Inject Playlist mPlaylist;
     @Inject FileOps mFileOps;
     @Inject Random mRandom;
+    @Inject ObjectMapper mJsonMapper;
 
     public interface _injector {
         void inject(PlaylistTest test);
@@ -88,6 +96,35 @@ public class PlaylistTest {
         assertThat(mPlaylist.getNext().get()).isEqualTo(new File(dir, "file4"));
         assertThat(mPlaylist.getNext().get()).isEqualTo(new File(dir, "file2"));
         assertThat(mPlaylist.getNext().get()).isEqualTo(new File(dir, "file1"));
+    }
+
+    @Test
+    public void testGetProperties() throws IOException {
+        final String dir = "/tmp/media_dir";
+        File props = new File(dir, PROPS);
+        mFileOps.writeBytes(
+                ("{ \"FooBar.mp4\": { \"volume\": 25, \"seconds\": 314 } } "
+                ).getBytes(StandardCharsets.UTF_8),
+                props);
+        mPlaylist.initialize(props.getParent());
+
+        Optional<Playlist.FileProperties> fp = mPlaylist.getProperties(new File(dir, "foobar"));
+        assertThat(fp.isPresent()).isTrue();
+        assertThat(fp.get().getSeconds()).isEqualTo(314);
+        assertThat(fp.get().getVolume()).isEqualTo(25);
+    }
+
+    @Test
+    public void testGenerateProperties() throws JsonProcessingException {
+        Playlist.FileProperties fp = new Playlist.FileProperties();
+        fp.setSeconds(12);
+        fp.setVolume(25);
+        Map<String, Playlist.FileProperties> map = new TreeMap<>();
+        map.put("foobar", fp);
+
+        String json = mJsonMapper.writeValueAsString(map);
+        assertThat(json.replaceAll("[\r\n ]+", " ")).isEqualTo(
+                "{ \"foobar\" : { \"seconds\" : 12, \"volume\" : 25 } }");
     }
 
     private File setupPlaylist3Files(String dir) throws IOException {
