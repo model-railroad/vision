@@ -199,8 +199,10 @@ public class Playlist {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    static class FileProperties {
+    public static class FileProperties {
+        /** Number of seconds to play before switching to the next video. -1 if unspecified. */
         private int seconds = -1;           // JSON field name
+        /** Volume override for video, in 0-100 percentage. -1 to use the default. */
         private int volume  = -1;           // JSON field name
 
         @SuppressWarnings("unused")
@@ -211,10 +213,12 @@ public class Playlist {
             this.volume = volume;
         }
 
+        /** Number of seconds to play before switching to the next video. -1 if unspecified. */
         public int getSeconds() {
             return seconds;
         }
 
+        /** Volume override for video, in 0-100 percentage. -1 to use the default. */
         public int getVolume() {
             return volume;
         }

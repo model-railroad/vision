@@ -47,6 +47,8 @@ public class KioskController implements IStartStop {
     private static final long PLAYER_ZOOM_MIN_DURATION_MS = 5*1000;
     // Player default volume percentage
     private static final int PLAYER_VOLUME_DEFAULT = 50;
+    // Player max volume percentage
+    private static final int PLAYER_VOLUME_MAX = 75;
 
     private final IClock mClock;
     private final ILogger mLogger;
@@ -61,7 +63,7 @@ public class KioskController implements IStartStop {
     private boolean mForceZoom;
     private boolean mPlayerMuted;
     private boolean mToggleMask;
-    private int mPlayerMaxVolume = PLAYER_VOLUME_DEFAULT;
+    private int mPlayerDefaultVolume = PLAYER_VOLUME_DEFAULT;
     private long mPlayerZoomEndTS;
 
     public interface Callbacks {
@@ -115,7 +117,7 @@ public class KioskController implements IStartStop {
         // Start shuffled
         mPlaylist.setShuffle(true);
         // Get desired volume
-        mPlayerMaxVolume = mConfigIni.getVolumePct(PLAYER_VOLUME_DEFAULT);
+        mPlayerDefaultVolume = mConfigIni.getVolumePct(PLAYER_VOLUME_DEFAULT);
 
         mView.startTimer();
         mView.setMediaPlayerMute(false);
@@ -220,7 +222,7 @@ public class KioskController implements IStartStop {
             // Note mMediaPlayer.mediaPlayer().audio().setMute(!muted) seems to work in reverse
             // (and/or differently per platform) so let's avoid it. Just control volume.
             mPlayerMuted = !mPlayerMuted;
-            mView.setMediaPlayerVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
+            mView.setMediaPlayerVolume(mPlayerMuted ? 0 : mPlayerDefaultVolume);
             mLogger.log(TAG, "Audio: volume " + mView.getMediaPlayerVolume() + "%");
             return true;
         case 's':
@@ -252,7 +254,16 @@ public class KioskController implements IStartStop {
                 mAnalytics.sendEvent("PlayVideo", file.getName());
                 mConsoleTask.updateLineInfo("9f", " | " + file.getName().replace(".mp4", ""));
 
-                mView.setMediaPlayerVolume(mPlayerMuted ? 0 : mPlayerMaxVolume);
+                int volume = mPlayerDefaultVolume;
+                Optional<Playlist.FileProperties> props = mPlaylist.getProperties(file);
+                if (props.isPresent()) {
+                    int v = props.get().getVolume();
+                    if (v >= 0) {
+                        volume = Math.min(v, PLAYER_VOLUME_MAX);
+                    }
+                }
+
+                mView.setMediaPlayerVolume(mPlayerMuted ? 0 : volume);
                 mView.playMediaPlayer(file);
             }
 
