@@ -120,6 +120,7 @@ public class TrainMotion {
         mLogger.log(TAG, "Shutdown Hook release");
         shutdownLatch.countDown();
         mLogger.log(TAG, "End");
+        System.exit(0);
     }
 
     private void addCamera(int index) {
