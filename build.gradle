@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 /*
  * Project: Train-Motion
  * Copyright (C) 2021 alf.labs gmail com,
@@ -127,12 +129,83 @@ task fatJar(type: Jar) {
     with jar
 }
 
-task run(type: Exec) {
+// Create a single fat JAR embedding all dependencies. JAR is about ~760 MB and takes 4 min to build.
+task fatRun(type: Exec) {
     dependsOn fatJar
     group = "Execution"
     commandLine "java", "-jar", fatJar.archiveFile.get(),
             "--config", "src/main/resources/config.ini",
             "--help"
+}
+
+// Attempts to run by specifying the full classpath. This fails on Windows (classpath too long).
+task run(type: Exec) {
+    dependsOn jar
+    group = "Execution"
+    commandLine "java",
+            "-classpath", _computeClasspath(),
+            "-jar", jar.archiveFile.get(),
+            "--config", "src/main/resources/config.ini",
+            "--help"
+}
+
+// For Windows with Java >= 9, use a @arg file to work around the classpath too long.
+task runJava9(type: Exec) {
+    dependsOn jar
+    group = "Execution"
+    commandLine "java",
+            "@" + _generateClasspathFile(),
+            "-jar", jar.archiveFile.get(),
+            "--config", "src/main/resources/config.ini",
+            "--help"
+}
+
+task runJava9cp(type: Exec) {
+    dependsOn jar
+    group = "Execution"
+    commandLine "java",
+            "@" + _generateClasspathCopy(),
+            "-jar", jar.archiveFile.get(),
+            "--config", "src/main/resources/config.ini",
+            "--help"
+}
+
+def _computeClasspath() {
+    return configurations.compileClasspath.collect { it.path }.unique().join(File.pathSeparator)
+}
+
+def _generateClasspathFile() {
+    File f = new File(".classpath")
+    if (f.exists()) { f.delete() }
+    // Java doc indicates to escape all windows backslashes
+    f << ("-cp \"" + _computeClasspath().replace("\\", "\\\\").replace(File.pathSeparator, File.pathSeparator + "\n") + "\"")
+    return f.path
+}
+
+def _generateClasspathCopy() {
+    File d = new File("_jardeps")
+    d.mkdir()
+    List<String> names = new ArrayList<String>()
+    configurations.compileClasspath.collect {
+        def n = it.name
+        File dst = new File(d, n)
+        names.add(dst.path)
+        if (!dst.exists()) {
+            println "@@ copy " + it.path + " to " + dst.path  // TBD use copy rules
+            Files.copy(it.toPath(), dst.toPath())
+        }
+    }
+    File f = new File(".classpath")
+    if (f.exists()) { f.delete() }
+    def allNames = names.unique().join(File.pathSeparator + "\n")
+    f << ("-cp \"" + allNames.replace("\\", "\\\\") + "\"")
+    return f.path
+}
+
+task _printClasspath {
+    doFirst {
+        println _computeClasspath()
+    }
 }
 
 artifacts {

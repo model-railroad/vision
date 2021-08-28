@@ -10,3 +10,5 @@ build/
 hs_err*.log
 /config.ini
 /media
+.classpath
+_jardeps
