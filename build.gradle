@@ -24,6 +24,11 @@ apply plugin: "idea"
 group   "org.alflabs.trainmotion"
 version "0.2-SNAPSHOT"
 
+project.ext {
+    javaManifestClass = "com.alflabs.trainmotion.Main"
+    cmdArgs = ""
+}
+
 repositories {
     mavenCentral()
 }
@@ -61,6 +66,7 @@ dependencies {
     // Note: jetty-server:10.0.0.beta0 requires JDK 9.
     runtimeCompile "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
 
+    runtimeCompile          "javax.inject:javax.inject:1"
     runtimeCompile          "com.google.dagger:dagger:2.28"
     annotationProcessor     "com.google.dagger:dagger-compiler:2.28"
     testAnnotationProcessor "com.google.dagger:dagger-compiler:2.28"
@@ -85,7 +91,9 @@ compileJava {
 }
 
 clean {
-    delete generatedDaggerDir
+    doFirst {
+        delete generatedDaggerDir
+    }
 }
 
 sourceSets {
@@ -108,7 +116,7 @@ idea {
 jar {
     manifest {
         attributes(
-                "Main-Class": "com.alflabs.trainmotion.Main",
+                "Main-Class": project.ext.javaManifestClass,
         )
     }
 }
@@ -129,85 +137,55 @@ task fatJar(type: Jar) {
     with jar
 }
 
-// Create a single fat JAR embedding all dependencies. JAR is about ~760 MB and takes 4 min to build.
-task fatRun(type: Exec) {
-    dependsOn fatJar
-    group = "Execution"
-    commandLine "java", "-jar", fatJar.archiveFile.get(),
-            "--config", "src/main/resources/config.ini",
-            "--help"
+// Pass run arguments using gradlew ... -Pargs='multiple args'
+if (project.hasProperty("args")) {
+    project.ext.cmdArgs = project.getProperty("args")
+} else {
+    project.ext.cmdArgs = "--config src/main/resources/config.ini --help"
 }
 
-// Attempts to run by specifying the full classpath. This fails on Windows (classpath too long).
+// Create a single fat JAR embedding all dependencies. JAR is about ~760 MB and takes 4 min to build.
+task runFat(type: Exec) {
+    dependsOn fatJar
+    group = "Execution"
+    commandLine "java",
+            "-jar", fatJar.archiveFile.get()
+    args project.ext.cmdArgs.split()
+}
+
+// Attempts to run by specifying the full classpath.
+//  This fails on Windows (classpath too long, use runFat instead).
 task run(type: Exec) {
     dependsOn jar
     group = "Execution"
     commandLine "java",
-            "-classpath", _computeClasspath(),
-            "-jar", jar.archiveFile.get(),
-            "--config", "src/main/resources/config.ini",
-            "--help"
+            // "-verbose:class",  // display each class opened (to default jar load issues).
+            "-cp", _computeClasspath(jar.archiveFile),
+            project.ext.javaManifestClass
+    args project.ext.cmdArgs.split()
 }
 
-// For Windows with Java >= 9, use a @arg file to work around the classpath too long.
-task runJava9(type: Exec) {
-    dependsOn jar
-    group = "Execution"
-    commandLine "java",
-            "@" + _generateClasspathFile(),
-            "-jar", jar.archiveFile.get(),
-            "--config", "src/main/resources/config.ini",
-            "--help"
-}
-
-task runJava9cp(type: Exec) {
-    dependsOn jar
-    group = "Execution"
-    commandLine "java",
-            "@" + _generateClasspathCopy(),
-            "-jar", jar.archiveFile.get(),
-            "--config", "src/main/resources/config.ini",
-            "--help"
-}
-
-def _computeClasspath() {
-    return configurations.compileClasspath.collect { it.path }.unique().join(File.pathSeparator)
-}
-
-def _generateClasspathFile() {
-    File f = new File(".classpath")
-    if (f.exists()) { f.delete() }
-    // Java doc indicates to escape all windows backslashes
-    f << ("-cp \"" + _computeClasspath().replace("\\", "\\\\").replace(File.pathSeparator, File.pathSeparator + "\n") + "\"")
-    return f.path
-}
-
-def _generateClasspathCopy() {
-    File d = new File("_jardeps")
-    d.mkdir()
-    List<String> names = new ArrayList<String>()
-    configurations.compileClasspath.collect {
-        def n = it.name
-        File dst = new File(d, n)
-        names.add(dst.path)
-        if (!dst.exists()) {
-            println "@@ copy " + it.path + " to " + dst.path  // TBD use copy rules
-            Files.copy(it.toPath(), dst.toPath())
-        }
-    }
-    File f = new File(".classpath")
-    if (f.exists()) { f.delete() }
-    def allNames = names.unique().join(File.pathSeparator + "\n")
-    f << ("-cp \"" + allNames.replace("\\", "\\\\") + "\"")
-    return f.path
+def _computeClasspath(jarFile) {
+    def files = configurations.compileClasspath.collect { it.path }
+    if (jarFile) { files.add(0, jarFile.get().getAsFile().path) }
+    return files.unique().join(File.pathSeparator)
 }
 
 task _printClasspath {
+    dependsOn jar
     doFirst {
-        println _computeClasspath()
+        println "-cp " + _computeClasspath(jar.archiveFile)
+    }
+}
+
+task _printRunCmdLine {
+    dependsOn jar
+    doFirst {
+        println "-cp " + _computeClasspath(jar.archiveFile) + " " + project.ext.javaManifestClass
     }
 }
 
 artifacts {
     archives fatJar
 }
+
