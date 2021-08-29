@@ -13,6 +13,11 @@ CONFIG=""
 if [[ -f "$C_DIR/config.ini" ]]; then CONFIG="--config $C_DIR/config.ini"; fi
 
 # Build & invoke with command line pargs
+# Option 1: cd $G_DIR && ./gradlew run -Pargs="$CONFIG $@" --console=plain
+# ==> this works but we loose terminal output formatting from train-motion + keyboard input.
+# Option 2: ./gradlew _printRunCmdLine and execute directly from here.
+rm -f /tmp/_g
 set -x
-cd $G_DIR && ./gradlew run -Pargs="$CONFIG $@" --console=plain
+(cd $G_DIR && ./gradlew _printRunCmdLine --console=plain | tee /tmp/_g)
+$JV $(grep -- "-cp" /tmp/_g | head -n 1) $CONFIG $@
 
