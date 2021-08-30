@@ -145,6 +145,8 @@ if (project.hasProperty("args")) {
 }
 
 // Create a single fat JAR embedding all dependencies. JAR is about ~760 MB and takes 4 min to build.
+// Useful to share a single JAR with all embedded dependencies, and to work around the classpath
+// size limitation on Windows.
 task runFat(type: Exec) {
     dependsOn fatJar
     group = "Execution"
@@ -154,7 +156,7 @@ task runFat(type: Exec) {
 }
 
 // Attempts to run by specifying the full classpath.
-//  This fails on Windows (classpath too long, use runFat instead).
+// This fails on Windows (classpath too long, use runFat instead).
 task run(type: Exec) {
     dependsOn jar
     group = "Execution"
@@ -171,17 +173,19 @@ def _computeClasspath(jarFile) {
     return files.unique().join(File.pathSeparator)
 }
 
-task _printClasspath {
-    dependsOn jar
-    doFirst {
-        println "-cp " + _computeClasspath(jar.archiveFile)
-    }
-}
-
+// For Linux were we can run a command line with a long classpath.
 task _printRunCmdLine {
     dependsOn jar
     doFirst {
         println "-cp " + _computeClasspath(jar.archiveFile) + " " + project.ext.javaManifestClass
+    }
+}
+
+// For Windows were we cannot run a command line with a long classpath.
+task _printRunFatJarCmdLine {
+    dependsOn jar
+    doFirst {
+        println "-jar " + fatJar.archiveFile.get()
     }
 }
 

@@ -6,7 +6,6 @@ if [[ ! -d "build" ]]; then
 fi
 JAR="$DST/libs/train-motion-0.2-SNAPSHOT-all.jar"
 
-if [[ ! -x "$JAR" || "$USER" != "vision" ]]; then
 (
     # Change to this script direcoty (following symlinks as needed)
     cd $(dirname $(readlink "$BASH_SOURCE" || echo "$BASH_SOURCE"))
@@ -21,7 +20,6 @@ if [[ ! -x "$JAR" || "$USER" != "vision" ]]; then
     ./gradlew test ass fatJar --console=plain --info
     # ./gradlew --stop
 )
-fi
 
 # List & run
 ls -1sh $(find $DST/ -name "*.jar")
