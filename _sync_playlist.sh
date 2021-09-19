@@ -59,17 +59,19 @@ function parse_config() {
 function do_download() {
     cd "$PLAYLIST_DIR"
     pwd
-
+   
     LOG="_download.log"
     INDEX="_index.txt"
     URL="http://www.youtube.com/playlist?list=$PLAYLIST_ID"
     OPT=""
     if [[ -n "$DRY_RUN" ]]; then
         OPT="--skip-download"
+        echo "## Dry-run mode. $YOUTUBE_DL does not actually download videos, only metadata."
     fi
     # For debugging
     # OPT="$OPT --playlist-start 1 --playlist-end 3"
     
+    echo "## Downloading playlist $PLAYLIST_ID"
     "$YOUTUBE_DL" $OPT --id --yes-playlist "$URL" | tee "$LOG"
 
     if [[ -z "$DRY_RUN" ]]; then
@@ -84,6 +86,21 @@ function do_download() {
             fi
         done
         echo "Index: $N files"
+    else
+        echo "# Dry-run mode. Estimate which videos would be downloaded:"
+        N_FOUND=0
+        N_NEW=0
+        for v in $(sed -n '/\[youtube\] [0-9A-Za-z_-]\+: Download/s/.*\] \(.*\):.*/\1/p' "$LOG" | uniq); do
+            a=( $(find . -name "*$v*") )
+            if [[ -f "${a[0]}" ]]; then
+                N_FOUND=$((N_FOUND+1))
+            else
+                echo "New video ID: $v"
+                N_NEW=$((N_NEW+1))
+            fi
+        done
+        echo "Found $N_FOUND existing video IDs."
+        echo "Found $N_NEW new video IDs."
     fi
 }
 
