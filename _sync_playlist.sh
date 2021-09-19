@@ -4,7 +4,9 @@ DRY_RUN="echo"
 CONFIG="config.ini"
 PLAYLIST_ID=""
 PLAYLIST_DIR=""
+DL_PLAYLIST="yes"
 YOUTUBE_DL="youtube-dl"
+FORMAT="--format 299" # mp4 1920x1080
 
 function die() {
     echo "Error: $*"
@@ -28,6 +30,10 @@ function parse_flags() {
             -d | --dir )
                 PLAYLIST_DIR="$2"
                 shift
+                ;;
+            --keep-playlist )
+                # Keep LOG playlist if present (for debugging purposes). Default is to refresh it.
+                DL_PLAYLIST=""
                 ;;
             -h | --help | -help )
                 echo
@@ -63,45 +69,47 @@ function do_download() {
     LOG="_download.log"
     INDEX="_index.txt"
     URL="http://www.youtube.com/playlist?list=$PLAYLIST_ID"
-    OPT=""
     if [[ -n "$DRY_RUN" ]]; then
-        OPT="--skip-download"
         echo "## Dry-run mode. $YOUTUBE_DL does not actually download videos, only metadata."
+        LOG="_dry_${LOG}"
+        INDEX="_dry_${INDEX}"
     fi
     # For debugging
     # OPT="$OPT --playlist-start 1 --playlist-end 3"
-    
-    echo "## Downloading playlist $PLAYLIST_ID"
-    "$YOUTUBE_DL" $OPT --id --yes-playlist "$URL" | tee "$LOG"
 
-    if [[ -z "$DRY_RUN" ]]; then
-        echo "# " $(date) > "$INDEX"
-        N=0
-        # Filter 1: grep "\[download\] Destination:" $LOG | sed -n -e 's/.*: \(.*\)/\1/p'
-        # Filter 2: grep "\[download\] .* has already been downloaded" $LOG | sed -n -e 's/.* \(.*\.mp4\).*/\1/p'
-        for f in $(  grep ".mp4" "$LOG" | sed -n -e 's/.* \(.*\.mp4\).*/\1/p' | uniq ); do
-            if [[ -f "$f" ]]; then
-                echo "$f" >> "$INDEX"
-                N=$((N+1))
-            fi
-        done
-        echo "Index: $N files"
-    else
-        echo "# Dry-run mode. Estimate which videos would be downloaded:"
-        N_FOUND=0
-        N_NEW=0
-        for v in $(sed -n '/\[youtube\] [0-9A-Za-z_-]\+: Download/s/.*\] \(.*\):.*/\1/p' "$LOG" | uniq); do
-            a=( $(find . -name "*$v*") )
-            if [[ -f "${a[0]}" ]]; then
-                N_FOUND=$((N_FOUND+1))
-            else
-                echo "New video ID: $v"
-                N_NEW=$((N_NEW+1))
-            fi
-        done
-        echo "Found $N_FOUND existing video IDs."
-        echo "Found $N_NEW new video IDs."
+    if [[ ! -f "$LOG" || -n $DL_PLAYLIST ]]; then
+        echo "## Downloading playlist $PLAYLIST_ID"
+        "$YOUTUBE_DL" --skip-download --id --yes-playlist "$URL" | tee "$LOG"
     fi
+
+    echo "# " $(date) > "$INDEX"
+    N_FOUND=0
+    N_NEW=0
+    for v in $(sed -n '/\[youtube\] [0-9A-Za-z_-]\+: Download/s/.*\] \(.*\):.*/\1/p' "$LOG" | uniq); do
+        a=( $(find . -name "*$v*") )
+        F="${a[0]}"
+        F="${F##./}"    # remove ./ prefix if present
+        if [[ -f "$F" ]]; then
+            echo "Existing  : $F"
+            echo "$F" >> "$INDEX"
+            N_FOUND=$((N_FOUND+1))
+        else
+            echo "New video : $v"
+            $DRY_RUN "$YOUTUBE_DL" $FORMAT --id --no-playlist "https://youtu.be/$v"
+            a=( $(find . -name "*$v*") )
+            F="${a[0]}"
+            F="${F##./}"    # remove ./ prefix if present
+            if [[ -f "$F" ]]; then
+                echo "Downloaded: $F"
+                echo "$F" >> "$INDEX"
+            fi
+            N_NEW=$((N_NEW+1))
+        fi
+    done
+    [[ -n "$DRY_RUN" ]] && echo "# Dry-run mode. Estimate which videos would be downloaded:"
+    echo "Found $N_FOUND existing video IDs."
+    echo "Found $N_NEW new video IDs."
+    echo "Index: " $(wc --lines "$INDEX" | cut -d " " -f 1 ) " files"
 }
 
 parse_flags "$@"
