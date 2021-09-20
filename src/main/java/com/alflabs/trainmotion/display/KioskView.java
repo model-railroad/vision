@@ -20,6 +20,7 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
+import com.alflabs.utils.IClock;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
@@ -42,10 +43,12 @@ import java.awt.image.BufferStrategy;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_COLOR;
-import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_SIZE;
+import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_SIZE_MAX;
+import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_SIZE_MIN;
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
 /**
@@ -56,6 +59,11 @@ import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 @Singleton
 public class KioskView {
     private static final String TAG = KioskView.class.getSimpleName();
+
+    private static final Color LIVE_COLOR = Color.RED;
+    private static final String LIVE_TEXT = "LIVE CAM %d";
+
+    private final IClock mClock;
 
     private KioskController.Callbacks mCallbacks;
     @GuardedBy("mVideoCanvas")
@@ -68,7 +76,8 @@ public class KioskView {
     private int mContentHeight;
 
     @Inject
-    public KioskView() {
+    public KioskView(IClock clock) {
+        mClock = clock;
     }
 
     public void invokeLater(Runnable r) {
@@ -300,12 +309,17 @@ public class KioskView {
         private final int mPosIndex;
         private final CamInfo mCamInfo;
         private final Highlighter mHighlighter;
+        private final String mLiveText;
         private Image mImage;
+        private int mHighlightLineSize = HIGHLIGHT_LINE_SIZE_MAX;
+        private int mLiveCircleRadius = HIGHLIGHT_LINE_SIZE_MAX;
+        private Font mLiveFont;
 
         public VideoCanvas(int posIndex, CamInfo camInfo, Highlighter highlighter) {
             mPosIndex = posIndex;
             mCamInfo = camInfo;
             mHighlighter = highlighter;
+            mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
             setBackground(Color.BLACK);
         }
 
@@ -364,9 +378,10 @@ public class KioskView {
                         do {
                             g = strategy.getDrawGraphics();
                             if (mImage != null) {
-                                drawImageAndContour(g, dw, dh, dx, dy);
+                                drawImage(g, dw, dh, dx, dy);
+                                drawContour(g, dw, dh, dx, dy);
+                                drawLive(g, dw, dh, dx, dy);
                             }
-                            // g.drawRect(0, 0, cw-1, ch-1); // DEBUG
                             g.dispose();
                         } while (strategy.contentsRestored());
                         strategy.show();
@@ -374,21 +389,45 @@ public class KioskView {
                 } catch (NullPointerException | IllegalStateException ignored) {
                 }
             } else {
-                drawImageAndContour(g, dw, dh, dx, dy);
-                // g.drawRect(0, 0, cw-1, ch-1); // DEBUG
+                drawImage(g, dw, dh, dx, dy);
+                drawContour(g, dw, dh, dx, dy);
+                drawLive(g, dw, dh, dx, dy);
             }
         }
 
-        private void drawImageAndContour(Graphics g, int dw, int dh, int dx, int dy) {
+        private void drawImage(Graphics g, int dw, int dh, int dx, int dy) {
             g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
+        }
 
+        private void drawContour(Graphics g, int dw, int dh, int dx, int dy) {
             if (mHighlighter.isHighlighted()) {
                 g.setColor(HIGHLIGHT_LINE_COLOR);
-                g.fillRect(dx, dy, dw, HIGHLIGHT_LINE_SIZE);
-                g.fillRect(dx, dy + dh - HIGHLIGHT_LINE_SIZE, dw, HIGHLIGHT_LINE_SIZE);
-                g.fillRect(dx, dy, HIGHLIGHT_LINE_SIZE, dh);
-                g.fillRect(dx + dw - HIGHLIGHT_LINE_SIZE, dy, HIGHLIGHT_LINE_SIZE, dh);
+                g.fillRect(dx, dy, dw, mHighlightLineSize);
+                g.fillRect(dx, dy + dh - mHighlightLineSize, dw, mHighlightLineSize);
+                g.fillRect(dx, dy, mHighlightLineSize, dh);
+                g.fillRect(dx + dw - mHighlightLineSize, dy, mHighlightLineSize, dh);
             }
+        }
+
+        private void drawLive(Graphics g, int dw, int dh, int dx, int dy) {
+            // Blink at 1 fps
+            long secondsNow = mClock.elapsedRealtime() / 1000;
+            if ((secondsNow & 0x1) == 0) return;
+
+            final int radius = mLiveCircleRadius;
+            final int diam = 2 * mLiveCircleRadius;
+            if (mLiveFont == null) {
+                mLiveFont = new Font("Arial", Font.BOLD | Font.ITALIC, diam);
+            }
+            g.setFont(mLiveFont);
+
+            g.setColor(LIVE_COLOR);
+
+            int x = dx      + 2 * mHighlightLineSize + radius;
+            int y = dy + dh - 2 * mHighlightLineSize - radius;
+
+            g.fillOval(x - radius, y - radius, diam, diam);
+            g.drawString(mLiveText, x + diam , y + radius);
         }
 
         /** Must be invoked on the Swing UI thread. */
@@ -412,12 +451,18 @@ public class KioskView {
             if (frameH <= 0 || frameW <= 0) {
                 return;
             }
+
             int x = mPosIndex % 2;
             int y = mPosIndex / 2;
             int w = frameW / 2;
             int h = frameH / 2;
             x *= w;
             y *= h;
+
+            mHighlightLineSize = Math.max(HIGHLIGHT_LINE_SIZE_MIN, (int) Math.ceil((double)(HIGHLIGHT_LINE_SIZE_MAX * w) / (1980. / 2)));
+            mLiveCircleRadius = mHighlightLineSize;
+            mLiveFont = null;
+
             this.setBounds(x, y, w, h);
             //mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
             //        mPosIndex, mCamInfo.getIndex(), x, y, w, h));

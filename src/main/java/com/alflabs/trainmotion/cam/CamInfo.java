@@ -31,6 +31,7 @@ public class CamInfo {
     private final CamAnalyzer mAnalyzer;
     private final CamInputGrabber mGrabber;
 
+    /** New camera info. Index is 1-based. */
     CamInfo(
             @Provided CamAnalyzerFactory camAnalyzerFactory,
             @Provided CamInputGrabberFactory camInputGrabberFactory,
@@ -42,6 +43,7 @@ public class CamInfo {
         mAnalyzer = camAnalyzerFactory.create(this);
     }
 
+    /** The 1-base index for this camera. */
     public int getIndex() {
         return mIndex;
     }

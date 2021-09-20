@@ -18,7 +18,6 @@
 
 package com.alflabs.trainmotion.display;
 
-import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.IMotionDetector;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.utils.IClock;
@@ -37,7 +36,8 @@ public class Highlighter {
     // Highlight minimum display duration with video motion OFF after a ON event.
     static final long HIGHLIGHT_DURATION_OFF_MS = 500;
     // Highlight stroke width
-    static final int HIGHLIGHT_LINE_SIZE = 10;
+    static final int HIGHLIGHT_LINE_SIZE_MAX = 10;
+    static final int HIGHLIGHT_LINE_SIZE_MIN = 3;
 
     private final IClock mClock;
     private final Analytics mAnalytics;
