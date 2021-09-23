@@ -124,10 +124,11 @@ public class TrainMotion {
     }
 
     private void addCamera(int index) {
-        Optional<String> camProp = mConfigIniReader.getCamN(index);
+        Optional<String> camProp = mConfigIniReader.getCamUrlN(index);
         if (camProp.isPresent()) {
+            double threshold = mConfigIniReader.getCamThresholdN(index, MOTION_THRESHOLD);
             String camUrl = mCommandLineArgs.resolve(camProp.get());
-            mCameras.add(new CamConfig(camUrl, MOTION_THRESHOLD));
+            mCameras.add(new CamConfig(camUrl, threshold));
             mLogger.log(TAG, "Added camera " + index);
         }
     }

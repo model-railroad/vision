@@ -44,7 +44,8 @@ public class ConfigIni {
 
     public static final String DEFAULT_CONFIG_INI = "config.ini";
 
-    private static final String KEY_CAM = "cam%d";
+    private static final String KEY_CAM_URL = "cam%d_url";
+    private static final String KEY_CAM_THRESHOLD = "cam%d_threshold";
     private static final String KEY_PlAYLIST_ID = "playlist_id";
     private static final String KEY_PlAYLIST_DIR = "playlist_dir";
     private static final String KEY_VOLUME_PERCENT = "volume_pct";
@@ -83,12 +84,23 @@ public class ConfigIni {
 
     /** Returns the URL configuration for cam1..cam3 if present. */
     @Nonnull
-    public Optional<String> getCamN(int index) {
-        final String key = String.format(Locale.US, KEY_CAM, index);
+    public Optional<String> getCamUrlN(int index) {
+        final String key = String.format(Locale.US, KEY_CAM_URL, index);
         if (mProps.containsKey(key)) {
             return Optional.of(mProps.getProperty(key));
         } else {
             return Optional.empty();
+        }
+    }
+
+    /** Returns the threshold for cam1..cam3 if present. */
+    @Nonnull
+    public double getCamThresholdN(int index, double defaultThreshold) {
+        final String key = String.format(Locale.US, KEY_CAM_THRESHOLD, index);
+        if (mProps.containsKey(key)) {
+            return Double.parseDouble(mProps.getProperty(key));
+        } else {
+            return defaultThreshold;
         }
     }
 
