@@ -20,6 +20,7 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
+import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.IClock;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
@@ -60,9 +61,12 @@ import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 public class KioskView {
     private static final String TAG = KioskView.class.getSimpleName();
 
+    private static final Color BG_COLOR = Color.BLACK;
     private static final Color LIVE_COLOR = Color.RED;
     private static final String LIVE_TEXT = "LIVE CAM %d";
+    private static final int VIEW_GAP_PX = 2;
 
+    private final ILogger mLogger;
     private final IClock mClock;
 
     private KioskController.Callbacks mCallbacks;
@@ -76,7 +80,8 @@ public class KioskView {
     private int mContentHeight;
 
     @Inject
-    public KioskView(IClock clock) {
+    public KioskView(ILogger logger, IClock clock) {
+        mLogger = logger;
         mClock = clock;
     }
 
@@ -93,20 +98,25 @@ public class KioskView {
             KioskController.Callbacks callbacks) throws Exception {
         mCallbacks = callbacks;
 
+        mLogger.log(TAG, "Look and Feel: " + UIManager.getLookAndFeel().getName());
+
         mFrame = new JFrame(windowTitle);
         mFrame.setSize(width, height);
         mFrame.setMinimumSize(new Dimension(minWidth, minHeight));
         mFrame.setLayout(null);
-        mFrame.setBackground(Color.BLACK);
+        mFrame.setBackground(BG_COLOR);
+        if (mFrame.getRootPane() != null && mFrame.getRootPane().getContentPane() != null) {
+            mFrame.getRootPane().getContentPane().setBackground(BG_COLOR);
+        }
 
         mMediaPlayer = new EmbeddedMediaPlayerComponent();
-        mMediaPlayer.setBackground(Color.BLACK);
+        mMediaPlayer.setBackground(BG_COLOR);
         mMediaPlayer.setBounds(0, 0, width, height); // matches initial frame
         mFrame.add(mMediaPlayer);
 
         mBottomLabel = new JLabel("Please wait, initializing camera streams...");
         mBottomLabel.setOpaque(true);
-        mBottomLabel.setBackground(Color.BLACK);
+        mBottomLabel.setBackground(BG_COLOR);
         mBottomLabel.setForeground(Color.LIGHT_GRAY);
         mBottomLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         mFrame.add(mBottomLabel);
@@ -320,7 +330,7 @@ public class KioskView {
             mCamInfo = camInfo;
             mHighlighter = highlighter;
             mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
-            setBackground(Color.BLACK);
+            setBackground(BG_COLOR);
         }
 
         public void initialize() {
@@ -452,19 +462,31 @@ public class KioskView {
                 return;
             }
 
+            // Our videos are 16/9.
+            // If our videos are wider (our ratio > frame ratio), we want a horizontal gap between views.
+            // If our videos are taller (our ratio < frame ratio), we want a vertical gap between views.
+            final double refRatio = 16./9;
+            final double frameRatio = ((double) frameW)/frameH;
+            final int gapH = (refRatio >= frameRatio) ? VIEW_GAP_PX : 0;
+            final int gapV = (refRatio <= frameRatio) ? VIEW_GAP_PX : 0;
+
             int x = mPosIndex % 2;
             int y = mPosIndex / 2;
             int w = frameW / 2;
             int h = frameH / 2;
             x *= w;
             y *= h;
+            w -= gapH;
+            h -= gapV;
+            if (x > 0) { x += gapH; }
+            if (y > 0) { y += gapV; }
 
             mHighlightLineSize = Math.max(HIGHLIGHT_LINE_SIZE_MIN, (int) Math.ceil((double)(HIGHLIGHT_LINE_SIZE_MAX * w) / (1980. / 2)));
             mLiveCircleRadius = mHighlightLineSize;
             mLiveFont = null;
 
             this.setBounds(x, y, w, h);
-            //mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
+            // mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
             //        mPosIndex, mCamInfo.getIndex(), x, y, w, h));
         }
     }
