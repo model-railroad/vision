@@ -31,10 +31,10 @@ import java.awt.Color;
 public class Highlighter {
     // Highlight color
     static final Color HIGHLIGHT_LINE_COLOR = Color.YELLOW;
-    // Highlight minimum display duration with video motion ON. Total with OFF is 3 seconds.
-    static final long HIGHLIGHT_DURATION_ON_MS = 2500;
+    // Highlight minimum display duration with video motion ON. Total with OFF is 5 seconds.
+    static final long HIGHLIGHT_DURATION_ON_MS = 3000;
     // Highlight minimum display duration with video motion OFF after a ON event.
-    static final long HIGHLIGHT_DURATION_OFF_MS = 500;
+    static final long HIGHLIGHT_DURATION_OFF_MS = 2000;
     // Highlight stroke width
     static final int HIGHLIGHT_LINE_SIZE_MAX = 10;
     static final int HIGHLIGHT_LINE_SIZE_MIN = 3;
@@ -45,7 +45,7 @@ public class Highlighter {
     private final IMotionDetector mMotionDetector;
 
     /** Show highlight if > 0. Indicates when highlight ON started. */
-    private long mHighlightOnMS;
+    private long mHighlightInitialOnMS;
     /** Show highlight if > 0. Indicates when highlight OFF started. */
     private long mHighlightOffMS;
 
@@ -62,31 +62,38 @@ public class Highlighter {
     }
 
     public boolean isHighlighted() {
-        return mHighlightOnMS > 0;
+        return mHighlightInitialOnMS > 0;
     }
 
     public void update() {
         long nowMs = mClock.elapsedRealtime();
         boolean motionDetected = mMotionDetector.isMotionDetected();
-        if (mHighlightOnMS == 0) {
+        if (mHighlightInitialOnMS == 0) {
             if (motionDetected) {
-                mHighlightOnMS = nowMs;
+                mHighlightInitialOnMS = nowMs;
+                mHighlightOffMS = 0;
             }
         } else {
-            long durationSinceOn = nowMs - mHighlightOnMS;
-            if (mHighlightOffMS == 0
-                    && !motionDetected
-                    && durationSinceOn >= HIGHLIGHT_DURATION_ON_MS) {
-                // mHighlightOnMS is > 0 ... motion was ON and stopped.
-                mHighlightOffMS = nowMs;
-            } else if (mHighlightOffMS > 0
-                    && !motionDetected
-                    && nowMs - mHighlightOffMS >= HIGHLIGHT_DURATION_OFF_MS) {
-                // mHighlightOnMS is > 0 and mHighlightOffMS is > 0.
-                // Motion was ON and has stopped for at least the OFF duration.
-                mHighlightOnMS = 0;
+            if (motionDetected) {
                 mHighlightOffMS = 0;
-                mAnalytics.sendEvent("Highlight", "cam" + mCamIndex, Long.toString(durationSinceOn));
+            }
+
+            long durationSinceLastOn = nowMs - mHighlightInitialOnMS;
+
+            if (!motionDetected) {
+                if (mHighlightOffMS == 0
+                        && durationSinceLastOn >= HIGHLIGHT_DURATION_ON_MS) {
+                    // mHighlightOnMS is > 0 ... motion was ON and stopped.
+                    mHighlightOffMS = nowMs;
+                } else if (mHighlightOffMS > 0
+                        && nowMs - mHighlightOffMS >= HIGHLIGHT_DURATION_OFF_MS) {
+                    // mHighlightOnMS is > 0 and mHighlightOffMS is > 0.
+                    // Motion was ON and has stopped for at least the OFF duration.
+                    mHighlightInitialOnMS = 0;
+                    mHighlightOffMS = 0;
+                    mAnalytics.sendEvent("Highlight", "cam" + mCamIndex,
+                            Long.toString(durationSinceLastOn));
+                }
             }
         }
     }

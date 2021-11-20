@@ -64,22 +64,21 @@ public class HighlighterTest {
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
 
-        // off after 2 sec --> still on for another 1.5 sec on + 0.5 sec off
+        // off after 2 sec --> still on for another 1 sec on + 2 sec off
         mClock.add(2000);
         mIsMotion.set(false);
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
 
-        // check for the extra 1/2 sec on
-        mClock.add(500);
+        mClock.add(1000);
+        mIsMotion.set(false);
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
 
-        // check before/after the +500 ms off mark
-        mClock.add(500-1);
+        // check for the extra 2 sec on
+        mClock.add(2000-1);
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
-
         mClock.add(1);
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isFalse();
@@ -87,7 +86,7 @@ public class HighlighterTest {
 
 
     @Test
-    public void testDetector_OnFor3sec() {
+    public void testDetector_OnFor5sec() {
         // init off
         assertThat(mHighlighter.isHighlighted()).isFalse();
 
@@ -102,14 +101,82 @@ public class HighlighterTest {
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
 
-        // off after 3 sec --> still on for 1/2 sec
-        mClock.add(3000);
+        // off after 5 sec --> still on for 2 sec
+        mClock.add(5000);
         mIsMotion.set(false);
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
 
-        // check before/after the +500 ms mark
-        mClock.add(500-1);
+        // check before/after the 2s mark
+        mClock.add(2000-1);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+
+        mClock.add(1);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isFalse();
+    }
+
+
+    @Test
+    public void testDetector_OnFor5sec_Blink() {
+        // init off
+        assertThat(mHighlighter.isHighlighted()).isFalse();
+
+        mClock.setNow(100);
+        mIsMotion.set(false);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isFalse();
+
+        // on
+        mClock.setNow(1000);
+        mIsMotion.set(true);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+
+        // blink during on period is ignored
+        mClock.setNow(2000);
+        mIsMotion.set(false);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+        mClock.add(1);
+        mIsMotion.set(true);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+
+        mClock.setNow(3000);
+        mIsMotion.set(false);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+        mClock.add(1);
+        mIsMotion.set(true);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+
+        mClock.setNow(4000);
+        mIsMotion.set(false);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+        mClock.add(1);
+        mIsMotion.set(true);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+
+        mClock.setNow(5000-2);
+        mIsMotion.set(false);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+        mClock.add(1);
+        mIsMotion.set(true);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+        mClock.add(1);
+        mIsMotion.set(false);
+        mHighlighter.update();
+        assertThat(mHighlighter.isHighlighted()).isTrue();
+
+        // off last 2 sec delay
+        mClock.setNow(5000+2000-1);
         mHighlighter.update();
         assertThat(mHighlighter.isHighlighted()).isTrue();
 
