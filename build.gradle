@@ -63,8 +63,6 @@ dependencies {
     runtimeCompile "uk.co.caprica:vlcj:4.7.1"
     runtimeCompile "com.fasterxml.jackson.core:jackson-databind:2.10.2"
     runtimeCompile "com.squareup.okhttp3:okhttp:3.10.0"
-    // Note: jetty-server:10.0.0.beta0 requires JDK 9.
-    runtimeCompile "org.eclipse.jetty:jetty-server:9.4.29.v20200521"
 
     runtimeCompile          "javax.inject:javax.inject:1"
     runtimeCompile          "com.google.dagger:dagger:2.28"

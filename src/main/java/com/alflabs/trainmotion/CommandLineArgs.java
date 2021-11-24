@@ -44,7 +44,6 @@ public class CommandLineArgs {
 
     public static final String OPT_VERBOSE_LOG = "v";
     public static final String OPT_HELP = "h";
-    public static final String OPT_HTTP_PORT = "p";
     public static final String OPT_USER_VALUE = "u";
     public static final String OPT_WEB_ROOT = "w";
     public static final String OPT_SIZE_WIDTH = "s"; // can't be w/width or p/pixels...
@@ -62,13 +61,6 @@ public class CommandLineArgs {
 
         mOptions.addOption(OPT_HELP, "help", false, "This usage help.");
         mOptions.addOption(OPT_VERBOSE_LOG, "verbose", false, "Verbose log.");
-        mOptions.addOption(Option.builder(OPT_HTTP_PORT)
-                .longOpt("port")
-                .hasArg()
-                .type(Integer.class)
-                .argName("port")
-                .desc("Web server port.")
-                .build());
         mOptions.addOption(Option.builder(OPT_SIZE_WIDTH)
                 .longOpt("size")
                 .hasArg()

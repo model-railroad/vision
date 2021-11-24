@@ -20,7 +20,6 @@ package com.alflabs.trainmotion;
 
 import com.alflabs.trainmotion.cam.CamConfig;
 import com.alflabs.trainmotion.cam.Cameras;
-import com.alflabs.trainmotion.cam.HttpServ;
 import com.alflabs.trainmotion.dagger.DaggerITrainMotionComponent;
 import com.alflabs.trainmotion.dagger.ITrainMotionComponent;
 import com.alflabs.trainmotion.display.ConsoleTask;
@@ -49,7 +48,6 @@ public class TrainMotion {
     @Inject Analytics mAnalytics;
     @Inject ILogger mLogger;
     @Inject Cameras mCameras;
-    @Inject HttpServ mHttpServ;
 
     public TrainMotion() {
         mComponent = DaggerITrainMotionComponent.factory().createComponent();
@@ -101,7 +99,6 @@ public class TrainMotion {
                             mConfigIniReader.getPlaylistDir()) );
             mConsoleTask.start();
             mKioskDisplay.start();
-            mHttpServ.start();
             mCameras.start();
             mKioskDisplay.initialize();
             mAnalytics.sendEvent("Start", "");
@@ -111,7 +108,6 @@ public class TrainMotion {
             mLogger.log(TAG, e.toString());
         } finally {
             safeStop(mCameras);
-            safeStop(mHttpServ);
             safeStop(mKioskDisplay);
             safeStop(mConsoleTask);
             safeStop(mAnalytics);
