@@ -68,6 +68,7 @@ public class CamInputGrabber extends ThreadLoop {
     private final CommandLineArgs mCommandLineArgs;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
     private final FakeFrameGrabberFactory mFakeFrameGrabberFactory;
+    private final FakeInputStreamProvider mFakeInputStreamProvider;
     private final String TAG;
 
     private final ILogger mLogger;
@@ -84,11 +85,13 @@ public class CamInputGrabber extends ThreadLoop {
             @Provided CommandLineArgs commandLineArgs,
             @Provided FpsMeasurerFactory fpsMeasurerFactory,
             @Provided FakeFrameGrabberFactory fakeFrameGrabberFactory,
+            @Provided FakeInputStreamProvider fakeInputStreamProvider,
             CamInfo camInfo) {
         mConsoleTask = consoleTask;
         mCommandLineArgs = commandLineArgs;
         mFpsMeasurerFactory = fpsMeasurerFactory;
         mFakeFrameGrabberFactory = fakeFrameGrabberFactory;
+        mFakeInputStreamProvider = fakeInputStreamProvider;
         TAG = "CamIn-" + camInfo.getIndex();
         mLogger = logger;
         mCamInfo = camInfo;
@@ -183,7 +186,10 @@ public class CamInputGrabber extends ThreadLoop {
 
             String inputUrl = mCamInfo.getConfig().getInputUrl();
             if (!Strings.isNullOrEmpty(inputUrl) && inputUrl.startsWith(FakeFrameGrabber.PREFIX)) {
-                grabber = mFakeFrameGrabberFactory.create(inputUrl);
+                // TESTING
+                // --grabber = mFakeFrameGrabberFactory.create(inputUrl);
+                InputStream is = mFakeInputStreamProvider.create();
+                grabber = FrameGrabberAdapter.of(new FFmpegFrameGrabber(is));
             } else {
                 grabber = FrameGrabberAdapter.of(new FFmpegFrameGrabber(inputUrl));
             }
