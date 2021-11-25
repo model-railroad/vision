@@ -20,6 +20,3 @@ rootProject.name = "train-motion"
 
 include "LibUtilsJava"
 project(":LibUtilsJava").projectDir = new File(rootProject.projectDir, "LibUtils/LibUtilsJava")
-
-include "LibRTSP"
-project(":LibRTSP").projectDir = new File(rootProject.projectDir, "external")
