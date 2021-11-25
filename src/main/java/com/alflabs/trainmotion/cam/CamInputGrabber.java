@@ -36,6 +36,7 @@ import org.bytedeco.opencv.opencv_core.Rect;
 import org.bytedeco.opencv.opencv_core.Size;
 
 import javax.annotation.Nullable;
+import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -152,7 +153,7 @@ public class CamInputGrabber extends ThreadLoop {
         mMatConverter = new OpenCVFrameConverter.ToMat();
         FFmpegFrameGrabber.tryLoad(); // must be initialized on main thread
 
-        super.start();
+        super.start("Thread-" + TAG);
     }
 
     @Override
@@ -165,7 +166,7 @@ public class CamInputGrabber extends ThreadLoop {
     protected void _runInThreadLoop() {
         boolean verboseLog = mCommandLineArgs.hasOption(CommandLineArgs.OPT_VERBOSE_LOG);
         if (verboseLog) {
-            mLogger.log(TAG, "Thread loop begin");
+            mLogger.log(TAG, "Thread loop begin cam " + mCamInfo.getIndex());
         }
 
         final String key = String.format("%da", mCamInfo.getIndex());

@@ -121,7 +121,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         boolean detectShadows = false;  // default: true
         mSubtractor = createBackgroundSubtractorMOG2(history, varThreshold, detectShadows);
 
-        super.start();
+        super.start("Thread-" + TAG);
     }
 
     @Override

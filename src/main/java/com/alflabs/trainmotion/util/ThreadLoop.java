@@ -18,14 +18,24 @@
 
 package com.alflabs.trainmotion.util;
 
+import com.google.common.base.Strings;
+
 public abstract class ThreadLoop implements IStartStop {
     protected Thread mThread;
     protected volatile boolean mQuit;
 
     @Override
     public void start() throws Exception {
+        this.start("" /* default thread name */);
+    }
+
+    public void start(String name) throws Exception {
         if (mThread == null) {
-            mThread = new Thread(this::_runInThread);
+            if (Strings.isNullOrEmpty(name)) {
+                mThread = new Thread(this::_runInThread);
+            } else {
+                mThread = new Thread(this::_runInThread, name);
+            }
             mQuit = false;
             mThread.start();
         }

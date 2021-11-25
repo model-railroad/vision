@@ -168,7 +168,7 @@ public class KioskController implements IStartStop {
             final int fh = mView.getContentHeight();
             // target size for media player
             int tw = fw, th = fh;
-            if (hasHighlight && !mForceZoom) {
+            if (true) { // -- DEBUG DEFORCE SPLIT -- hasHighlight && !mForceZoom) {
                 // Desired player is half size screen
                 tw = fw / 2;
                 th = fh / 2;

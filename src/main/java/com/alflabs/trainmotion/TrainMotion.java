@@ -42,8 +42,7 @@ public class TrainMotion {
     @Inject ConfigIni mConfigIniReader;
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject ConsoleTask mConsoleTask;
-    @Inject
-    KioskController mKioskDisplay;
+    @Inject KioskController mKioskDisplay;
     @Inject Playlist mPlaylist;
     @Inject Analytics mAnalytics;
     @Inject ILogger mLogger;

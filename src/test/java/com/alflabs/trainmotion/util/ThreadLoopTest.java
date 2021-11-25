@@ -41,8 +41,8 @@ public class ThreadLoopTest {
         CountDownLatch latch = new CountDownLatch(42);
         ThreadLoop threadLoop = new ThreadLoop() {
             @Override
-            public void start() throws Exception {
-                super.start();
+            public void start(String name) throws Exception {
+                super.start(name);
                 started.set(true);
             }
 
@@ -62,7 +62,7 @@ public class ThreadLoopTest {
             }
         };
 
-        threadLoop.start();
+        threadLoop.start("test-thread-name");
         latch.await();
         threadLoop.stop();
         assertThat(iterations.get()).isEqualTo(42);
@@ -78,8 +78,8 @@ public class ThreadLoopTest {
         CountDownLatch latch = new CountDownLatch(1);
         ThreadLoop threadLoop = new ThreadLoop() {
             @Override
-            public void start() throws Exception {
-                super.start();
+            public void start(String name) throws Exception {
+                super.start(name);
                 started.set(true);
             }
 
@@ -98,7 +98,7 @@ public class ThreadLoopTest {
             }
         };
 
-        threadLoop.start();
+        threadLoop.start("test-thread-name");
         latch.await();
         threadLoop.stop();
         assertThat(iterations.get()).isEqualTo(42);
