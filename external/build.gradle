@@ -1,5 +1,4 @@
 /*
- * Project: Train-Motion
  * Copyright (C) 2021 alf.labs gmail com,
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -16,10 +15,23 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-rootProject.name = "train-motion"
+group "com.external.librtsp"
+version "1.0-SNAPSHOT"
 
-include "LibUtilsJava"
-project(":LibUtilsJava").projectDir = new File(rootProject.projectDir, "LibUtils/LibUtilsJava")
+apply plugin: "java"
 
-include "LibRTSP"
-project(":LibRTSP").projectDir = new File(rootProject.projectDir, "external")
+compileJava {
+    sourceCompatibility = "1.8"
+    targetCompatibility = "1.8"
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "LibRTSP/project/src"
+        }
+    }
+}
+
+dependencies {
+}

@@ -2,6 +2,7 @@ package com.alflabs.trainmotion.cam;
 
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.IClock;
+import com.net.rtsp.RtspURLStreamHandlerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -28,6 +29,8 @@ public class FakeInputStreamProvider {
         mLogger = logger;
         mClock = clock;
         mDir = new File("src/test/resources/cam_records".replace('/', File.separatorChar));
+
+        java.net.URL.setURLStreamHandlerFactory(new RtspURLStreamHandlerFactory());
     }
 
     public InputStream create() {
