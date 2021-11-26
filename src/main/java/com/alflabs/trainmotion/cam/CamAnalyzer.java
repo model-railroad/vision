@@ -27,6 +27,7 @@ import com.alflabs.utils.IClock;
 import com.google.auto.factory.AutoFactory;
 import com.google.auto.factory.Provided;
 import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.bytedeco.opencv.global.opencv_core;
 import org.bytedeco.opencv.opencv_core.CvSize;
@@ -36,9 +37,11 @@ import org.bytedeco.opencv.opencv_video.BackgroundSubtractor;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.awt.image.BufferedImage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.bytedeco.opencv.global.opencv_core.cvCreateImage;
 import static org.bytedeco.opencv.global.opencv_imgproc.medianBlur;
@@ -67,6 +70,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
     private CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private OpenCVFrameConverter.ToMat mMatConverter;
+    private Java2DFrameConverter mBufImageConverter;
     private BackgroundSubtractor mSubtractor;
     @SuppressWarnings("FieldCanBeLocal") // Must remain scoped as a field to keep allocated
     private IplImage mOutputImage;
@@ -113,6 +117,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         // Most JavaCV objects must be allocated on the main thread
         // and after the dagger constructor.
         mMatConverter = new OpenCVFrameConverter.ToMat();
+        mBufImageConverter = new Java2DFrameConverter();
 
         // Defaults from https://docs.opencv.org/master/de/de1/group__video__motion.html
         // and same in org\bytedeco\opencv\global\opencv_video.java :
@@ -130,6 +135,25 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         super.stop();
     }
 
+    private AtomicReference<Frame> mOfferedFrame = new AtomicReference<>(null);
+    private CountDownLatch mOfferedLatch = new CountDownLatch(1);
+    private FpsMeasurer mOfferFpsMeasurer = null;
+    public void offerImage(BufferedImage image, int[] buffer) {
+        if (mOfferFpsMeasurer == null) {
+            mOfferFpsMeasurer = mFpsMeasurerFactory.create();
+        }
+        mOfferFpsMeasurer.startTick();
+
+        if (mOfferedFrame.get() == null) {
+            Frame frame = mBufImageConverter.convert(image);
+//            mLogger.log(TAG, "Offer   frame for " + TAG); // DEBUG
+            synchronized (this) {
+                mOfferedFrame.set(frame);
+                mOfferedLatch.countDown();
+            }
+        }
+    }
+
     @Override
     protected void _runInThreadLoop() {
         mLogger.log(TAG, "Thread loop begin");
@@ -145,22 +169,45 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
             while (!mQuit) {
                 fpsMeasurer.startTick();
                 String info = "";
-                Frame frame = mCamInfo.getGrabber().refreshAndGetFrame(loopMs, TimeUnit.MILLISECONDS);
-                if (targetFps <= 0 && frame != null) {
-                    // We only need to process frames at 1/2 or 1/3 the original
-                    // so slow down if 1/3 is less than our default 10 fps value.
-                    targetFps = Math.min(ANALYZER_FPS, (int)(mCamInfo.getGrabber().getFrameRate() / 3));
-                    fpsMeasurer.setFrameRate(targetFps);
-                    loopMs = fpsMeasurer.getLoopMs();
+
+//                Frame frame = mCamInfo.getGrabber().refreshAndGetFrame(loopMs, TimeUnit.MILLISECONDS);
+
+                Frame frame = mOfferedFrame.get();
+                if (frame == null) {
+                    try {
+                        mOfferedLatch.await(loopMs, TimeUnit.MILLISECONDS);
+                    } catch (InterruptedException e) {
+                        if (mQuit) {
+                            break;
+                        }
+                    }
                 }
+                synchronized (this) {
+                    if (frame == null) {
+                        frame = mOfferedFrame.getAndSet(null);
+                    }
+                    mOfferedLatch = new CountDownLatch(1);
+                }
+//                mLogger.log(TAG, "Receive frame for " + TAG + " -> " + frame); // DEBUG
+
+//                if (targetFps <= 0 && frame != null) {
+//                    // We only need to process frames at 1/2 or 1/3 the original
+//                    // so slow down if 1/3 is less than our default 10 fps value.
+//                    targetFps = Math.min(ANALYZER_FPS, (int)(mCamInfo.getGrabber().getFrameRate() / 3));
+//                    fpsMeasurer.setFrameRate(targetFps);
+//                    loopMs = fpsMeasurer.getLoopMs();
+//                }
                 long computeMs = System.currentTimeMillis();
                 if (frame != null) {
                     info = processFrame(frame);
                 }
 
                 computeMs = mClock.elapsedRealtime() - computeMs;
+                double displayFps = (mOfferFpsMeasurer == null ?
+                        fpsMeasurer :
+                        mOfferFpsMeasurer).getFps();
                 mConsoleTask.updateLineInfo(key,
-                        String.format(" %s [%2d%+4d ms]", info, computeMs, extraMs));
+                        String.format(" | %6.1f fps %s [%2d%+4d ms]", displayFps, info, computeMs, extraMs));
 
                 extraMs = fpsMeasurer.endWait();
             }

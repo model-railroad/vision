@@ -63,7 +63,6 @@ public class TrainMotion {
                                 CommandLineArgs.OPT_CONFIG_INI,
                                 ConfigIni.DEFAULT_CONFIG_INI)));
 
-
         addCamera(1);
         addCamera(2);
         addCamera(3);

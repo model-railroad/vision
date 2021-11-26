@@ -73,7 +73,7 @@ public class Cameras implements IStartStop {
     @Override
     public void start() throws Exception {
         for (CamInfo camInfo : mCamInfos) {
-            camInfo.getGrabber().start();
+            //--camInfo.getGrabber().start();
             camInfo.getAnalyzer().start();
         }
     }
@@ -86,11 +86,11 @@ public class Cameras implements IStartStop {
             } catch (Exception e) {
                 mLogger.log(TAG, "Stopping analyzer-" + camInfo.getIndex() + ": " + e);
             }
-            try {
-                camInfo.getGrabber().stop();
-            } catch (Exception e) {
-                mLogger.log(TAG, "Stopping grab-" + camInfo.getIndex() + ": " + e);
-            }
+//            try {
+//                camInfo.getGrabber().stop();
+//            } catch (Exception e) {
+//                mLogger.log(TAG, "Stopping grab-" + camInfo.getIndex() + ": " + e);
+//            }
         }
     }
 }

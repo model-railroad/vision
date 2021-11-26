@@ -26,14 +26,32 @@ import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
+import uk.co.caprica.vlcj.player.component.CallbackMediaPlayerComponent;
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
-import uk.co.caprica.vlcj.player.component.MediaPlayerSpecs;
+import uk.co.caprica.vlcj.player.component.callback.ScaledCallbackImagePainter;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormat;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormatCallbackAdapter;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.RenderCallbackAdapter;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.format.RV32BufferFormat;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.UIManager;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -41,7 +59,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -333,9 +352,9 @@ public class KioskView {
             for (VlcMediaComponent canvas : mVideoCanvas) {
                 String media = medias.get(index);
                 mLogger.log(TAG, "Play index " + index + " -> " + media);
-                canvas.mediaPlayer().media().play(media);
-                canvas.mediaPlayer().controls().setRepeat(true);
-                canvas.mediaPlayer().overlay().enable(true);
+                canvas.mPlayer.mediaPlayer().media().play(media);
+                canvas.mPlayer.mediaPlayer().controls().setRepeat(true);
+                canvas.mPlayer.mediaPlayer().overlay().enable(true);
                 index = (index + 1) % medias.size();
             }
         }
@@ -531,30 +550,66 @@ public class KioskView {
 //        }
 //    }
 
-    private class VlcMediaComponent extends EmbeddedMediaPlayerComponent {
+    private class VlcMediaComponent extends JPanel {
 
         private final int mPosIndex;
         private final CamInfo mCamInfo;
         private final String mLiveText;
         private final Highlighter mHighlighter;
         private final VlcWrapperOverlay mOverlay;
+        private final CallbackMediaPlayerComponent mPlayer;
+        private final VlcMediaComponent mVideoSurface;
+        private final VlcRenderCallback mRenderCallback;
+        private final ScaledCallbackImagePainter mImagePainter;
+        private BufferedImage mImage;
 
         public VlcMediaComponent(int posIndex, CamInfo camInfo, Highlighter highlighter) {
-            super();
             mPosIndex = posIndex;
             mCamInfo = camInfo;
             mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
             mHighlighter = highlighter;
             setBackground(BG_COLOR);
-            mOverlay = new VlcWrapperOverlay(mFrame, camInfo, highlighter);
-            this.mediaPlayer().overlay().set(mOverlay);
+            mVideoSurface = this;
+
+            mImagePainter = new ScaledCallbackImagePainter();
+            mRenderCallback = new VlcRenderCallback();
+            VlcBufferFormatCallback bufferFormatCallback = new VlcBufferFormatCallback();
+
+            mPlayer = new CallbackMediaPlayerComponent(
+                    null /* mediaPlayerFactory */,
+                    null /* fullScreenFactory */,
+                    null /* inputEvents */,
+                    false /* lockBuffers */,
+                    null /* ignore ScaledCallbackImagePainter() */,
+                    mRenderCallback /* renderCallback */,
+                    bufferFormatCallback /* bufferFormatCallback */,
+                    mVideoSurface /* videoSurfaceComponent */
+                    );
+
+            mOverlay = new VlcWrapperOverlay(camInfo, highlighter);
         }
 
+        @Override
+        public void paint(Graphics g) {
+            Graphics2D g2 = (Graphics2D)g;
+
+            int scaledW = getWidth();
+            int scaledH = getHeight();
+            if (mImage != null) {
+                mImagePainter.prepare(g2, this);
+                mImagePainter.paint(g2, this, mImage);
+
+                scaledW = mImage.getWidth();
+                scaledH = mImage.getHeight();
+            }
+
+            mOverlay.paint(g2, scaledW, scaledH);
+        }
 
         public void initialize() {
             setVisible(true);
 
-            this.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+            mPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
                 @Override
                 public void finished(MediaPlayer mediaPlayer) {
                     mLogger.log(TAG, "VLC for " + mLiveText + " EVENT Finished");
@@ -567,6 +622,11 @@ public class KioskView {
                     super.error(mediaPlayer);
                 }
             });
+        }
+
+        public void release() {
+            mPlayer.mediaPlayer().controls().stop();
+            mPlayer.release();
         }
 
         public void computeAbsolutePosition(int frameW, int frameH) {
@@ -616,51 +676,70 @@ public class KioskView {
             if (mCallbacks.showMask()) {
                 Frame frame = mCamInfo.getAnalyzer().getLastFrame();
                 if (frame != null) {
-                    mOverlay.mImage = mOverlay.mConverter.getBufferedImage(frame);
+                    mOverlay.mMaskImage = mOverlay.mConverter.getBufferedImage(frame);
                 }
-            } else if (mOverlay.mImage != null) {
-                mOverlay.mImage = null;
+            } else if (mOverlay.mMaskImage != null) {
+                mOverlay.mMaskImage = null;
             }
-            mOverlay.repaint();
-            mLogger.log(TAG, "DEBUG " + mPosIndex + " highlight=" + mHighlighter.isHighlighted() + " // showMask=" + mCallbacks.showMask() + " // image=" + mOverlay.mImage);
+//            mOverlay.repaint();
+//            mLogger.log(TAG, "DEBUG " + mPosIndex + " highlight=" + mHighlighter.isHighlighted() + " // showMask=" + mCallbacks.showMask() + " // image=" + mOverlay.mImage);
+        }
+
+        private void newVideoBuffer(int width, int height) {
+            mImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            mRenderCallback.setImageBuffer(mImage);
+            if (mVideoSurface != null) {
+                mVideoSurface.setPreferredSize(new Dimension(width, height));
+            }
+        }
+
+        private class VlcRenderCallback extends RenderCallbackAdapter {
+
+            public VlcRenderCallback() {}
+
+            private void setImageBuffer(BufferedImage image) {
+                setBuffer(((DataBufferInt) image.getRaster().getDataBuffer()).getData());
+            }
+
+            @Override
+            protected void onDisplay(MediaPlayer mediaPlayer, int[] buffer) {
+                mCamInfo.getAnalyzer().offerImage(mImage, buffer);
+                mVideoSurface.repaint();
+            }
+        }
+
+        private class VlcBufferFormatCallback extends BufferFormatCallbackAdapter {
+            @Override
+            public BufferFormat getBufferFormat(int sourceWidth, int sourceHeight) {
+                newVideoBuffer(sourceWidth, sourceHeight);
+                return new RV32BufferFormat(sourceWidth, sourceHeight);
+            }
         }
     }
 
-    private class VlcWrapperOverlay extends Window {
+    private class VlcWrapperOverlay {
         private final Java2DFrameConverter mConverter = new Java2DFrameConverter();
         private final String mLiveText;
         private final Highlighter mHighlighter;
         public int mHighlightLineSize = HIGHLIGHT_LINE_SIZE_MAX;
         public int mLiveCircleRadius = HIGHLIGHT_LINE_SIZE_MAX;
         public Font mLiveFont;
-        public Image mImage;
+        public Image mMaskImage;
 
-        public VlcWrapperOverlay(Window owner, CamInfo camInfo, Highlighter highlighter) {
-            super(owner);
+        public VlcWrapperOverlay(CamInfo camInfo, Highlighter highlighter) {
             mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
             mHighlighter = highlighter;
-            setBackground(new Color(0, 0, 0, 0));
         }
 
-        @Override
-        public void update(Graphics g) {
-            paint(g);
-        }
-
-        @Override
-        public void paint(Graphics g) {
-            super.paint(g);
-
-            final int cw = getWidth();
-            final int ch = getHeight();
+        public void paint(Graphics g, int cw, int ch) {
             drawImage(g, cw, ch, 0, 0);
             drawContour(g, cw, ch, 0, 0);
             drawLive(g, cw, ch, 0, 0);
         }
 
         private void drawImage(Graphics g, int dw, int dh, int dx, int dy) {
-            if (mImage != null) {
-                g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
+            if (mMaskImage != null) {
+                g.drawImage(mMaskImage, dx, dy, dw, dh, null /* observer */);
             }
         }
 
@@ -677,7 +756,7 @@ public class KioskView {
         private void drawLive(Graphics g, int dw, int dh, int dx, int dy) {
             // Blink at 1 fps
             long secondsNow = mClock.elapsedRealtime() / 1000;
-            mLogger.log(TAG, "DRAW TEXT " + mLiveText + " ? --> " + ((secondsNow & 0x1) == 0) );
+            //mLogger.log(TAG, "DRAW TEXT " + mLiveText + " ? --> " + ((secondsNow & 0x1) == 0) );
             if ((secondsNow & 0x1) == 0) return;
 
             final int radius = mLiveCircleRadius;
@@ -695,6 +774,5 @@ public class KioskView {
             g.fillOval(x - radius, y - radius, diam, diam);
             g.drawString(mLiveText, x + diam, y + radius);
         }
-
     }
 }

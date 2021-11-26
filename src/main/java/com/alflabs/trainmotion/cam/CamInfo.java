@@ -29,7 +29,7 @@ public class CamInfo {
     private final int mIndex;
     private final CamConfig mConfig;
     private final CamAnalyzer mAnalyzer;
-    private final CamInputGrabber mGrabber;
+//    private final CamInputGrabber mGrabber;
 
     /** New camera info. Index is 1-based. */
     CamInfo(
@@ -39,7 +39,7 @@ public class CamInfo {
             @Nonnull CamConfig config) {
         mIndex = index;
         mConfig = config;
-        mGrabber = camInputGrabberFactory.create(this);
+//        mGrabber = camInputGrabberFactory.create(this);
         mAnalyzer = camAnalyzerFactory.create(this);
     }
 
@@ -55,7 +55,8 @@ public class CamInfo {
 
     @Nonnull
     public CamInputGrabber getGrabber() {
-        return mGrabber;
+//        return mGrabber;
+throw new IllegalStateException("deprecated");
     }
 
     public CamAnalyzer getAnalyzer() {
