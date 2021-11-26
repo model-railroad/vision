@@ -23,23 +23,20 @@ import com.google.auto.factory.Provided;
 
 import javax.annotation.Nonnull;
 
-/** Live information about each camera: configuration, video grabber, analyzer. */
+/** Live information about each camera: configuration, video analyzer. */
 @AutoFactory
 public class CamInfo {
     private final int mIndex;
     private final CamConfig mConfig;
     private final CamAnalyzer mAnalyzer;
-//    private final CamInputGrabber mGrabber;
 
     /** New camera info. Index is 1-based. */
     CamInfo(
             @Provided CamAnalyzerFactory camAnalyzerFactory,
-            @Provided CamInputGrabberFactory camInputGrabberFactory,
             int index,
             @Nonnull CamConfig config) {
         mIndex = index;
         mConfig = config;
-//        mGrabber = camInputGrabberFactory.create(this);
         mAnalyzer = camAnalyzerFactory.create(this);
     }
 
@@ -51,12 +48,6 @@ public class CamInfo {
     @Nonnull
     public CamConfig getConfig() {
         return mConfig;
-    }
-
-    @Nonnull
-    public CamInputGrabber getGrabber() {
-//        return mGrabber;
-throw new IllegalStateException("deprecated");
     }
 
     public CamAnalyzer getAnalyzer() {

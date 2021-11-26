@@ -41,6 +41,7 @@ import static org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24;
  * The RGB is used as a color background, and the speed dictates how a motion rectangle is
  * generated on top of the background.
  */
+@Deprecated
 @AutoFactory
 public class FakeFrameGrabber implements IFrameGrabber {
     private static final double OUTPUT_ASPECT_RATIO = 16./9;

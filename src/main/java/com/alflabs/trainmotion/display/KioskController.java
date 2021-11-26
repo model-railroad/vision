@@ -274,6 +274,7 @@ public class KioskController implements IStartStop {
     }
 
     private void initPlayCanvasesHack() {
+        // DEBUG only, remove for PROD or even better configure via config.ini options.
         final String[] filenames = new String[] { "cam_4.mp4", "cam_5.mp4", "cam_6.mp4", "cam_7.mp4"  };
         File dir = new File("src/test/resources/cam_records".replace('/', File.separatorChar));
 

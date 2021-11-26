@@ -21,6 +21,7 @@ package com.alflabs.trainmotion.cam;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 
+@Deprecated
 public interface IFrameGrabber {
     void setOption(String key, String value);
     void setTimeout(int timeout);

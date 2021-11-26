@@ -229,13 +229,6 @@ public class KioskView {
         AtomicInteger posIndex = new AtomicInteger();
         synchronized (mVideoCanvas) {
             cameras.forEachCamera(camInfo -> {
-//                VideoCanvas canvas = new VideoCanvas(
-//                        posIndex.incrementAndGet(),
-//                        camInfo,
-//                        highlighterFactory.create(
-//                                camInfo.getIndex(),
-//                                camInfo.getAnalyzer()));
-
                 VlcMediaComponent canvas = new VlcMediaComponent(
                         posIndex.incrementAndGet(),
                         camInfo,
@@ -360,203 +353,13 @@ public class KioskView {
         }
     }
 
-//    /**
-//     * Based on org/bytedeco/javacv/CanvasFrame.java
-//     */
-//    private class VideoCanvas extends Canvas {
-//        private static final boolean USE_BUFFERS = true;
-//        private final Java2DFrameConverter mConverter = new Java2DFrameConverter();
-//
-//        private final int mPosIndex;
-//        private final CamInfo mCamInfo;
-//        private final Highlighter mHighlighter;
-//        private final String mLiveText;
-//        private Image mImage;
-//        private int mHighlightLineSize = HIGHLIGHT_LINE_SIZE_MAX;
-//        private int mLiveCircleRadius = HIGHLIGHT_LINE_SIZE_MAX;
-//        private Font mLiveFont;
-//
-//        public VideoCanvas(int posIndex, CamInfo camInfo, Highlighter highlighter) {
-//            mPosIndex = posIndex;
-//            mCamInfo = camInfo;
-//            mHighlighter = highlighter;
-//            mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
-//            setBackground(BG_COLOR);
-//        }
-//
-//        public void initialize() {
-//            setVisible(true);
-//            if (USE_BUFFERS) {
-//                createBufferStrategy(2);
-//            }
-//        }
-//
-//        public void release() {}
-//
-//        @Override
-//        public void update(Graphics g) {
-//            paint(g);
-//        }
-//
-//        @Override
-//        public void paint(Graphics g) {
-//            if (mImage == null) {
-//                super.paint(g);
-//                return;
-//            }
-//
-//            // Aspect ratio computation
-//            // Canvas ratio cr = cw / ch.
-//            // Image  ratio ir = iw / ih.
-//            // If ir < cr, image is thinner, canvas is wider: fit H, resize W.
-//            // If ir > cr, image is wider, canvas is thinner: fit W, resize H.
-//            final int cw = getWidth();
-//            final int ch = getHeight();
-//            final int iw = mImage.getWidth(null /* observer */);
-//            final int ih = mImage.getHeight(null /* observer */);
-//            if (cw <= 0 || ch <= 0 || iw <= 0 || ih <= 0) {
-//                return;
-//            }
-//            double cr = (double) cw / (double) ch;
-//            double ir = (double) iw / (double) ih;
-//            int dw, dh;
-//            if (ir < cr) {
-//                dh = ch;
-//                dw = (int) (ch * ir);
-//            } else {
-//                dw = cw;
-//                dh = (int) (cw / ir);
-//            }
-//            final int dx = (cw - dw) / 2;
-//            final int dy = (ch - dh) / 2;
-//
-//            if (USE_BUFFERS) {
-//                // Calling BufferStrategy.show() here sometimes throws
-//                // NullPointerException or IllegalStateException,
-//                // but otherwise seems to work fine.
-//                try {
-//
-//                    BufferStrategy strategy = getBufferStrategy();
-//                    do {
-//                        do {
-//                            g = strategy.getDrawGraphics();
-//                            if (mImage != null) {
-//                                drawImage(g, dw, dh, dx, dy);
-//                                drawContour(g, dw, dh, dx, dy);
-//                                drawLive(g, dw, dh, dx, dy);
-//                            }
-//                            g.dispose();
-//                        } while (strategy.contentsRestored());
-//                        strategy.show();
-//                    } while (strategy.contentsLost());
-//                } catch (NullPointerException | IllegalStateException ignored) {
-//                }
-//            } else {
-//                drawImage(g, dw, dh, dx, dy);
-//                drawContour(g, dw, dh, dx, dy);
-//                drawLive(g, dw, dh, dx, dy);
-//            }
-//        }
-//
-//        private void drawImage(Graphics g, int dw, int dh, int dx, int dy) {
-//            g.drawImage(mImage, dx, dy, dw, dh, null /* observer */);
-//        }
-//
-//        private void drawContour(Graphics g, int dw, int dh, int dx, int dy) {
-//            if (mHighlighter.isHighlighted()) {
-//                g.setColor(HIGHLIGHT_LINE_COLOR);
-//                g.fillRect(dx, dy, dw, mHighlightLineSize);
-//                g.fillRect(dx, dy + dh - mHighlightLineSize, dw, mHighlightLineSize);
-//                g.fillRect(dx, dy, mHighlightLineSize, dh);
-//                g.fillRect(dx + dw - mHighlightLineSize, dy, mHighlightLineSize, dh);
-//            }
-//        }
-//
-//        private void drawLive(Graphics g, int dw, int dh, int dx, int dy) {
-//            // Blink at 1 fps
-//            long secondsNow = mClock.elapsedRealtime() / 1000;
-//            if ((secondsNow & 0x1) == 0) return;
-//
-//            final int radius = mLiveCircleRadius;
-//            final int diam = 2 * mLiveCircleRadius;
-//            if (mLiveFont == null) {
-//                mLiveFont = new Font("Arial", Font.BOLD | Font.ITALIC, diam);
-//            }
-//            g.setFont(mLiveFont);
-//
-//            g.setColor(LIVE_COLOR);
-//
-//            int x = dx + 2 * mHighlightLineSize + radius;
-//            int y = dy + dh - 2 * mHighlightLineSize - radius;
-//
-//            g.fillOval(x - radius, y - radius, diam, diam);
-//            g.drawString(mLiveText, x + diam, y + radius);
-//        }
-//
-//        /**
-//         * Must be invoked on the Swing UI thread.
-//         */
-//        public void displayFrame() {
-//            Frame frame;
-//            if (mCallbacks.showMask()) {
-//                frame = mCamInfo.getAnalyzer().getLastFrame();
-//            } else {
-//                frame = mCamInfo.getGrabber().getLastFrame();
-//            }
-//
-//            mHighlighter.update();
-//
-//            if (frame != null) {
-//                mImage = mConverter.getBufferedImage(frame);
-//                repaint();
-//            }
-//        }
-//
-//        public void computeAbsolutePosition(int frameW, int frameH) {
-//            if (frameH <= 0 || frameW <= 0) {
-//                return;
-//            }
-//
-//            // Our videos are 16/9.
-//            // If our videos are wider (our ratio > frame ratio), we want a horizontal gap between views.
-//            // If our videos are taller (our ratio < frame ratio), we want a vertical gap between views.
-//            final double refRatio = 16. / 9;
-//            final double frameRatio = ((double) frameW) / frameH;
-//            final int gapH = (refRatio >= frameRatio) ? VIEW_GAP_PX : 0;
-//            final int gapV = (refRatio <= frameRatio) ? VIEW_GAP_PX : 0;
-//
-//            int x = mPosIndex % 2;
-//            int y = mPosIndex / 2;
-//            int w = frameW / 2;
-//            int h = frameH / 2;
-//            x *= w;
-//            y *= h;
-//            w -= gapH;
-//            h -= gapV;
-//            if (x > 0) {
-//                x += gapH;
-//            }
-//            if (y > 0) {
-//                y += gapV;
-//            }
-//
-//            mHighlightLineSize = Math.max(HIGHLIGHT_LINE_SIZE_MIN, (int) Math.ceil((double) (HIGHLIGHT_LINE_SIZE_MAX * w) / (1980. / 2)));
-//            mLiveCircleRadius = mHighlightLineSize;
-//            mLiveFont = null;
-//
-//            this.setBounds(x, y, w, h);
-//            // mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
-//            //        mPosIndex, mCamInfo.getIndex(), x, y, w, h));
-//        }
-//    }
-
     private class VlcMediaComponent extends JPanel {
 
         private final int mPosIndex;
         private final CamInfo mCamInfo;
         private final String mLiveText;
         private final Highlighter mHighlighter;
-        private final VlcWrapperOverlay mOverlay;
+        private final VlcOverlayHelper mOverlay;
         private final CallbackMediaPlayerComponent mPlayer;
         private final VlcMediaComponent mVideoSurface;
         private final VlcRenderCallback mRenderCallback;
@@ -586,7 +389,7 @@ public class KioskView {
                     mVideoSurface /* videoSurfaceComponent */
                     );
 
-            mOverlay = new VlcWrapperOverlay(camInfo, highlighter);
+            mOverlay = new VlcOverlayHelper(camInfo, highlighter);
         }
 
         @Override
@@ -662,8 +465,6 @@ public class KioskView {
             mOverlay.mLiveFont = null;
 
             this.setBounds(x, y, w, h);
-            // mLogger.log(TAG, String.format("   Video %d, cam%d = %dx%d [ %dx%d ]",
-            //        mPosIndex, mCamInfo.getIndex(), x, y, w, h));
         }
 
 
@@ -681,8 +482,6 @@ public class KioskView {
             } else if (mOverlay.mMaskImage != null) {
                 mOverlay.mMaskImage = null;
             }
-//            mOverlay.repaint();
-//            mLogger.log(TAG, "DEBUG " + mPosIndex + " highlight=" + mHighlighter.isHighlighted() + " // showMask=" + mCallbacks.showMask() + " // image=" + mOverlay.mImage);
         }
 
         private void newVideoBuffer(int width, int height) {
@@ -717,7 +516,7 @@ public class KioskView {
         }
     }
 
-    private class VlcWrapperOverlay {
+    private class VlcOverlayHelper {
         private final Java2DFrameConverter mConverter = new Java2DFrameConverter();
         private final String mLiveText;
         private final Highlighter mHighlighter;
@@ -726,7 +525,7 @@ public class KioskView {
         public Font mLiveFont;
         public Image mMaskImage;
 
-        public VlcWrapperOverlay(CamInfo camInfo, Highlighter highlighter) {
+        public VlcOverlayHelper(CamInfo camInfo, Highlighter highlighter) {
             mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
             mHighlighter = highlighter;
         }
@@ -756,7 +555,6 @@ public class KioskView {
         private void drawLive(Graphics g, int dw, int dh, int dx, int dy) {
             // Blink at 1 fps
             long secondsNow = mClock.elapsedRealtime() / 1000;
-            //mLogger.log(TAG, "DRAW TEXT " + mLiveText + " ? --> " + ((secondsNow & 0x1) == 0) );
             if ((secondsNow & 0x1) == 0) return;
 
             final int radius = mLiveCircleRadius;

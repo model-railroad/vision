@@ -158,7 +158,6 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     protected void _runInThreadLoop() {
         mLogger.log(TAG, "Thread loop begin");
 
-        double targetFps = 0;
         final String key = String.format("%db", mCamInfo.getIndex());
 
         FpsMeasurer fpsMeasurer = mFpsMeasurerFactory.create();
@@ -169,8 +168,6 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
             while (!mQuit) {
                 fpsMeasurer.startTick();
                 String info = "";
-
-//                Frame frame = mCamInfo.getGrabber().refreshAndGetFrame(loopMs, TimeUnit.MILLISECONDS);
 
                 Frame frame = mOfferedFrame.get();
                 if (frame == null) {
@@ -190,13 +187,6 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
                 }
 //                mLogger.log(TAG, "Receive frame for " + TAG + " -> " + frame); // DEBUG
 
-//                if (targetFps <= 0 && frame != null) {
-//                    // We only need to process frames at 1/2 or 1/3 the original
-//                    // so slow down if 1/3 is less than our default 10 fps value.
-//                    targetFps = Math.min(ANALYZER_FPS, (int)(mCamInfo.getGrabber().getFrameRate() / 3));
-//                    fpsMeasurer.setFrameRate(targetFps);
-//                    loopMs = fpsMeasurer.getLoopMs();
-//                }
                 long computeMs = System.currentTimeMillis();
                 if (frame != null) {
                     info = processFrame(frame);
