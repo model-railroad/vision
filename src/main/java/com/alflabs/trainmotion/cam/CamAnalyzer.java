@@ -99,7 +99,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
     /**
      * Get a clone of the last output of the analyzer (aka the mask frame), if any.
-     * Note that this is only used to display the mask for informational/debug purposes.
+     * Note that this is only used to displaying the mask for informational/debug purposes.
      */
     @Nullable
     public Frame getMaskFrame() {
