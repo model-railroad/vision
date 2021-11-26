@@ -179,7 +179,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
                 computeMs = mClock.elapsedRealtime() - computeMs;
                 mConsoleTask.updateLineInfo(/* B */ key,
-                        String.format(" > %6.1f fps %s [%2d%+4d ms]", fpsMeasurer.getFps(), info, computeMs, extraMs));
+                        String.format(" > %2.0f fps %s [%2d%+4d ms]", fpsMeasurer.getFps(), info, computeMs, extraMs));
 
                 extraMs = fpsMeasurer.endWait();
             }
@@ -224,7 +224,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
             mMaskFrameQueue.offer(maskFrame);
         }
 
-        return String.format("%s %.2f >= %.2f%%",
+        return String.format("%s %5.2f >= %.2f%%",
                 hasMotion ? "/\\" : "..",
                 noisePercent2,
                 mMotionThreshold

@@ -299,18 +299,22 @@ public class KioskView {
         mBottomLabel.setText(lineInfo);
     }
 
-    public void updateAllHighlights() {
+    public boolean updateAllHighlights() {
+        boolean hasHighlight = false;
         synchronized (mCameraPlayers) {
             for (VlcMediaComponent canvas : mCameraPlayers) {
                 canvas.updateFrame();
+                hasHighlight |= canvas.mHighlighter.isHighlighted();
             }
         }
+        return hasHighlight;
     }
 
     public void release() {
         SwingUtilities.invokeLater(() -> {
             mRepaintTimer.stop();
             if (mMainPlayer != null) {
+                mMainPlayer.mediaPlayer().controls().stop();
                 mMainPlayer.release();
                 mMainPlayer = null;
             }
@@ -365,7 +369,8 @@ public class KioskView {
     }
 
     private class VlcMediaComponent extends JPanel {
-
+        private final FpsMeasurer mFpsMeasurer;
+        private final String mKey;
         private final int mPosIndex;
         private final CamInfo mCamInfo;
         private final Highlighter mHighlighter;
@@ -382,6 +387,8 @@ public class KioskView {
             mHighlighter = highlighter;
             setBackground(BG_COLOR);
             mVideoSurface = this;
+            mKey = String.format("%da", mCamInfo.getIndex());
+            mFpsMeasurer = mFpsMeasurerFactory.create();
 
             mImagePainter = new ScaledCallbackImagePainter();
             mRenderCallback = new VlcRenderCallback();
@@ -407,12 +414,13 @@ public class KioskView {
 
             int scaledW = getWidth();
             int scaledH = getHeight();
-            if (mImage != null) {
+            BufferedImage image = mImage;
+            if (image != null) {
                 mImagePainter.prepare(g2, this);
-                mImagePainter.paint(g2, this, mImage);
+                mImagePainter.paint(g2, this, image);
 
-                scaledW = mImage.getWidth();
-                scaledH = mImage.getHeight();
+                scaledW = image.getWidth();
+                scaledH = image.getHeight();
             }
 
             mOverlay.paint(g2, scaledW, scaledH);
@@ -439,6 +447,7 @@ public class KioskView {
         public void release() {
             mPlayer.mediaPlayer().controls().stop();
             mPlayer.release();
+            mImage = null;
         }
 
         public void computeAbsolutePosition(int frameW, int frameH) {
@@ -494,6 +503,9 @@ public class KioskView {
                 mOverlay.mMaskImage = null;
                 mOverlay.mNoiseLevel = -1;
             }
+
+            mConsoleTask.updateLineInfo(/* A */ mKey,
+                    String.format(" [%d] %5.1f fps", mCamInfo.getIndex(), mFpsMeasurer.getFps()));
         }
 
         private void newVideoBuffer(int width, int height) {
@@ -505,8 +517,6 @@ public class KioskView {
         }
 
         private class VlcRenderCallback extends RenderCallbackAdapter {
-            private final FpsMeasurer mFpsMeasurer = mFpsMeasurerFactory.create();
-            private final String mKey = String.format("%da", mCamInfo.getIndex());
 
             public VlcRenderCallback() {}
 
@@ -518,10 +528,11 @@ public class KioskView {
             protected void onDisplay(MediaPlayer mediaPlayer, int[] buffer) {
                 mFpsMeasurer.startTick();
 
-                mCamInfo.getAnalyzer().offerPlayerImage(mImage);
+                BufferedImage image = mImage;
+                if (image != null) {
+                    mCamInfo.getAnalyzer().offerPlayerImage(image);
+                }
                 mVideoSurface.repaint();
-
-                mConsoleTask.updateLineInfo(/* A */ mKey, String.format(" | %6.1f fps", mFpsMeasurer.getFps()));
             }
         }
 

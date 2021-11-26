@@ -26,6 +26,7 @@ import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
 import com.alflabs.utils.IClock;
+import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -167,7 +168,7 @@ public class KioskController implements IStartStop {
 
             mView.setBottomLabelText(mConsoleTask.computeLineInfo());
 
-            mView.updateAllHighlights();
+            boolean hasHighlight = mView.updateAllHighlights();
 
             // frame (window) size
             mView.computeLayout();
@@ -175,7 +176,7 @@ public class KioskController implements IStartStop {
             final int fh = mView.getContentHeight();
             // target size for media player
             int tw = fw, th = fh;
-            if (true) { // -- DEBUG DEFORCE SPLIT -- hasHighlight && !mForceZoom) {
+            if (hasHighlight && !mForceZoom) {
                 // Desired player is half size screen
                 tw = fw / 2;
                 th = fh / 2;
@@ -313,23 +314,24 @@ public class KioskController implements IStartStop {
         private int mIndex = -1;
 
         public CameraPlaylist(@Nonnull CamInfo camInfo) {
-            // DEBUG only, remove for PROD or even better configure via config.ini options.
-            switch (camInfo.getIndex()) {
-            case 1:
-                mMedias.add("rtsp://username:password@192.168.3.117:554/ipcam_h264.sdp");
-                break;
-            case 2:
-                mMedias.addAll(Arrays.asList(
-                        "src/test/resources/cam_records/cam_4.mp4".replace('/', File.separatorChar),
-                        "src/test/resources/cam_records/cam_5.mp4".replace('/', File.separatorChar)));
-                break;
-            case 3:
-                mMedias.addAll(Arrays.asList(
-                        "src/test/resources/cam_records/cam_6.mp4".replace('/', File.separatorChar),
-                        "src/test/resources/cam_records/cam_7.mp4".replace('/', File.separatorChar)));
-                break;
-            default:
-                throw new IllegalArgumentException("Unexpected init camera " + camInfo);
+            int index = camInfo.getIndex();
+            Optional<String> camUrl = mConfigIni.getCamUrlN(index);
+            if (camUrl.isPresent()) {
+                for (String uri : camUrl.get().split(",")) {
+                    if (uri.contains("://")) {
+                        mMedias.add(uri);
+                    } else {
+                        String path = uri.replace('/', File.separatorChar);
+                        Preconditions.checkState(
+                                new File(path).exists(),
+                                "Invalid file for cam" + index + "_url in config.ini: " + path);
+                        mMedias.add(path);
+                    }
+                }
+            } else if (index == 1) {
+                throw new IllegalArgumentException("Error: Missing cam" + index + "_url in config.ini");
+            } else {
+                mLogger.log(TAG, "Warning: Missing cam" + index + "_url in config.ini");
             }
         }
 
