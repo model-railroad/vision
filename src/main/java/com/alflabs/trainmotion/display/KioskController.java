@@ -20,17 +20,23 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.Playlist;
+import com.alflabs.trainmotion.cam.CamInfo;
+import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
 import com.alflabs.utils.IClock;
-import com.google.common.base.Preconditions;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -54,11 +60,13 @@ public class KioskController implements IStartStop {
 
     private final IClock mClock;
     private final ILogger mLogger;
-    private final Playlist mPlaylist;
+    private final Cameras mCameras;
+    private final Playlist mMainPlaylist;
     private final ConfigIni mConfigIni;
     private final Analytics mAnalytics;
     private final ConsoleTask mConsoleTask;
     private final KioskView mView;
+    private final Map<CamInfo, CameraPlaylist> mCameraPlaylist = new HashMap<>();
 
     private boolean mForceZoom;
     private boolean mPlayerMuted;
@@ -71,8 +79,10 @@ public class KioskController implements IStartStop {
         void onFrameResized();
         boolean onProcessKey(char keyChar);
         void onRepaintTimerTick();
-        void onMediaPlayerFinished();
-        void onMediaPlayerError();
+        void onMainPlayerFinished();
+        void onMainPlayerError();
+        void onCameraPlayerFinished(@Nonnull CamInfo camInfo);
+        void onCameraPlayerError(@Nonnull CamInfo camInfo);
         boolean showMask();
         long elapsedRealtime();
     }
@@ -81,6 +91,7 @@ public class KioskController implements IStartStop {
     public KioskController(
             IClock clock,
             ILogger logger,
+            Cameras cameras,
             Playlist playlist,
             ConfigIni configIni,
             Analytics analytics,
@@ -88,7 +99,8 @@ public class KioskController implements IStartStop {
             KioskView kioskView) {
         mClock = clock;
         mLogger = logger;
-        mPlaylist = playlist;
+        mCameras = cameras;
+        mMainPlaylist = playlist;
         mConfigIni = configIni;
         mAnalytics = analytics;
         mConsoleTask = consoleTask;
@@ -107,16 +119,16 @@ public class KioskController implements IStartStop {
         );
     }
 
-    public void initialize() throws Exception {
+    public void initialize() {
         // Start shuffled
-        mPlaylist.setShuffle(true);
+        mMainPlaylist.setShuffle(true);
         // Get desired volume
         mPlayerDefaultVolume = mConfigIni.getVolumePct(PLAYER_VOLUME_DEFAULT);
 
         mView.startTimer();
-        mView.setMediaPlayerMute(false);
-        playNext();
-        initPlayCanvasesHack();
+        mView.setMainPlayerMute(false);
+        playNextMain();
+        mCameras.forEachCamera(this::playNextCamera);
     }
 
     @Override
@@ -180,15 +192,27 @@ public class KioskController implements IStartStop {
         }
 
         @Override
-        public void onMediaPlayerFinished() {
-            mLogger.log(TAG, "Media Finished");
-            playNext();
+        public void onMainPlayerFinished() {
+            mLogger.log(TAG, "Media Finished for main player");
+            playNextMain();
         }
 
         @Override
-        public void onMediaPlayerError() {
-            mLogger.log(TAG, "Media Error");
-            playNext();
+        public void onMainPlayerError() {
+            mLogger.log(TAG, "Media Error for main player");
+            playNextMain();
+        }
+
+        @Override
+        public void onCameraPlayerFinished(@Nonnull CamInfo camInfo) {
+            mLogger.log(TAG, "Media Finished for Cam " + camInfo.getIndex());
+            playNextCamera(camInfo);
+        }
+
+        @Override
+        public void onCameraPlayerError(@Nonnull CamInfo camInfo) {
+            mLogger.log(TAG, "Media Error for Cam " + camInfo.getIndex());
+            playNextCamera(camInfo);
         }
 
         @Override
@@ -217,15 +241,15 @@ public class KioskController implements IStartStop {
             // Note mMediaPlayer.mediaPlayer().audio().setMute(!muted) seems to work in reverse
             // (and/or differently per platform) so let's avoid it. Just control volume.
             mPlayerMuted = !mPlayerMuted;
-            mView.setMediaPlayerVolume(mPlayerMuted ? 0 : mPlayerDefaultVolume);
-            mLogger.log(TAG, "Audio: volume " + mView.getMediaPlayerVolume() + "%");
+            mView.setMainPlayerVolume(mPlayerMuted ? 0 : mPlayerDefaultVolume);
+            mLogger.log(TAG, "Audio: volume " + mView.getMainPlayerVolume() + "%");
             return true;
         case 's':
             // Toggle shuffle
-            mPlaylist.setShuffle(!mPlaylist.isShuffle());
+            mMainPlaylist.setShuffle(!mMainPlaylist.isShuffle());
             return true;
         case 'n':
-            playNext();
+            playNextMain();
             return true;
         case 'k':
             mToggleMask = !mToggleMask;
@@ -236,21 +260,21 @@ public class KioskController implements IStartStop {
         return false; // not consumed
     }
 
-    public void playNext() {
+    public void playNextMain() {
         mView.invokeLater(() -> {
             if (mConsoleTask.isQuitRequested()) {
                 return;
             }
 
-            Optional<File> next = mPlaylist.getNext();
+            Optional<File> next = mMainPlaylist.getNext();
             if (next.isPresent()) {
                 File file = next.get();
-                mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
+                mLogger.log(TAG, "MAIN Player file = " + file.getAbsolutePath());
                 mAnalytics.sendEvent("PlayVideo", file.getName());
                 mConsoleTask.updateLineInfo(/* F */ "9f", " | " + file.getName().replace(".mp4", ""));
 
                 int volume = mPlayerDefaultVolume;
-                Optional<Playlist.FileProperties> props = mPlaylist.getProperties(file);
+                Optional<Playlist.FileProperties> props = mMainPlaylist.getProperties(file);
                 if (props.isPresent()) {
                     int v = props.get().getVolume();
                     if (v >= 0) {
@@ -258,33 +282,65 @@ public class KioskController implements IStartStop {
                     }
                 }
 
-                mView.setMediaPlayerVolume(mPlayerMuted ? 0 : volume);
-                mView.playMediaPlayer(file);
+                mView.setMainPlayerVolume(mPlayerMuted ? 0 : volume);
+                mView.startMainPlayer(file);
             }
         });
     }
 
-    private void initPlayCanvasesHack() {
-        // DEBUG only, remove for PROD or even better configure via config.ini options.
-        final String[] filenames = new String[] { "cam_4.mp4", "cam_5.mp4", "cam_6.mp4", "cam_7.mp4"  };
-        File dir = new File("src/test/resources/cam_records".replace('/', File.separatorChar));
-
-        List<String> files = new ArrayList<>();
-        files.add("rtsp://username:password@192.168.3.117:554/ipcam_h264.sdp");
-        for (String filename : filenames) {
-            File f = new File(dir, filename);
-            Preconditions.checkState(f.exists(), f.getPath());
-            files.add(f.getAbsolutePath());
-        }
-
+    public void playNextCamera(@Nonnull CamInfo camInfo) {
         mView.invokeLater(() -> {
             if (mConsoleTask.isQuitRequested()) {
                 return;
             }
 
-            mView.initPlayCanvasesHack(files);
+            CameraPlaylist playlist = mCameraPlaylist.computeIfAbsent(camInfo, this::createCameraPlaylist);
+            Optional<String> next = playlist.getNext();
+            next.ifPresent(media -> {
+                mLogger.log(TAG, "Camera " + camInfo.getIndex() + " Player media = " + media);
+                mView.startCameraPlayer(camInfo, media);
+            });
         });
     }
 
+    @Nonnull
+    private CameraPlaylist createCameraPlaylist(@Nonnull CamInfo camInfo) {
+        return new CameraPlaylist(camInfo);
+    }
+
+    private class CameraPlaylist {
+        private final List<String> mMedias = new ArrayList<>();
+        private int mIndex = -1;
+
+        public CameraPlaylist(@Nonnull CamInfo camInfo) {
+            // DEBUG only, remove for PROD or even better configure via config.ini options.
+            switch (camInfo.getIndex()) {
+            case 1:
+                mMedias.add("rtsp://username:password@192.168.3.117:554/ipcam_h264.sdp");
+                break;
+            case 2:
+                mMedias.addAll(Arrays.asList(
+                        "src/test/resources/cam_records/cam_4.mp4".replace('/', File.separatorChar),
+                        "src/test/resources/cam_records/cam_5.mp4".replace('/', File.separatorChar)));
+                break;
+            case 3:
+                mMedias.addAll(Arrays.asList(
+                        "src/test/resources/cam_records/cam_6.mp4".replace('/', File.separatorChar),
+                        "src/test/resources/cam_records/cam_7.mp4".replace('/', File.separatorChar)));
+                break;
+            default:
+                throw new IllegalArgumentException("Unexpected init camera " + camInfo);
+            }
+        }
+
+        @Nonnull
+        public Optional<String> getNext() {
+            if (!mMedias.isEmpty()) {
+                mIndex = (mIndex + 1) % mMedias.size();
+                return Optional.of(mMedias.get(mIndex));
+            }
+            return Optional.empty();
+        }
+    }
 
 }

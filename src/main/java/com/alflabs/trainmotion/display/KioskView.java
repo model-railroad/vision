@@ -18,6 +18,7 @@
 
 package com.alflabs.trainmotion.display;
 
+import com.alflabs.trainmotion.cam.CamAnalyzer;
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.FpsMeasurer;
@@ -98,10 +99,10 @@ public class KioskView {
 
     private KioskController.Callbacks mCallbacks;
     @GuardedBy("mVideoCanvas")
-    private final List<VlcMediaComponent> mVideoCanvas = new ArrayList<>();
+    private final List<VlcMediaComponent> mCameraPlayers = new ArrayList<>();
+    private EmbeddedMediaPlayerComponent mMainPlayer;
     private JFrame mFrame;
     private JLabel mBottomLabel;
-    private EmbeddedMediaPlayerComponent mMediaPlayer;
     private Timer mRepaintTimer;
     private int mContentWidth;
     private int mContentHeight;
@@ -146,10 +147,10 @@ public class KioskView {
             mFrame.getRootPane().getContentPane().setBackground(BG_COLOR);
         }
 
-        mMediaPlayer = new EmbeddedMediaPlayerComponent();
-        mMediaPlayer.setBackground(BG_COLOR);
-        mMediaPlayer.setBounds(0, 0, width, height); // matches initial frame
-        mFrame.add(mMediaPlayer);
+        mMainPlayer = new EmbeddedMediaPlayerComponent();
+        mMainPlayer.setBackground(BG_COLOR);
+        mMainPlayer.setBounds(0, 0, width, height); // matches initial frame
+        mFrame.add(mMainPlayer);
 
         mBottomLabel = new JLabel("Please wait, initializing camera streams...");
         mBottomLabel.setOpaque(true);
@@ -183,17 +184,17 @@ public class KioskView {
             }
         });
 
-        mMediaPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
+        mMainPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
             @Override
             public void finished(MediaPlayer mediaPlayer) {
                 super.finished(mediaPlayer);
-                mCallbacks.onMediaPlayerFinished();
+                mCallbacks.onMainPlayerFinished();
             }
 
             @Override
             public void error(MediaPlayer mediaPlayer) {
                 super.error(mediaPlayer);
-                mCallbacks.onMediaPlayerError();
+                mCallbacks.onMainPlayerError();
             }
         });
 
@@ -230,21 +231,21 @@ public class KioskView {
     }
 
     public int getMediaPlayerWidth() {
-        return mMediaPlayer.getWidth();
+        return mMainPlayer.getWidth();
     }
 
     public int getMediaPlayerHeight() {
-        return mMediaPlayer.getHeight();
+        return mMainPlayer.getHeight();
     }
 
     public void setMediaPlayerSize(int width, int height) {
-        mMediaPlayer.setBounds(0, 0, width, height);
-        mMediaPlayer.revalidate();
+        mMainPlayer.setBounds(0, 0, width, height);
+        mMainPlayer.revalidate();
     }
 
     private void createVideoCanvases() {
         AtomicInteger posIndex = new AtomicInteger();
-        synchronized (mVideoCanvas) {
+        synchronized (mCameraPlayers) {
             mCameras.forEachCamera(camInfo -> {
                 VlcMediaComponent canvas = new VlcMediaComponent(
                         posIndex.incrementAndGet(),
@@ -253,7 +254,7 @@ public class KioskView {
                                 camInfo.getIndex(),
                                 camInfo.getAnalyzer()));
 
-                mVideoCanvas.add(canvas);
+                mCameraPlayers.add(canvas);
                 mFrame.add(canvas);
                 canvas.initialize();
             });
@@ -264,8 +265,8 @@ public class KioskView {
         if (mFrame == null) {
             return;
         }
-        synchronized (mVideoCanvas) {
-            for (VlcMediaComponent canvas : mVideoCanvas) {
+        synchronized (mCameraPlayers) {
+            for (VlcMediaComponent canvas : mCameraPlayers) {
                 canvas.computeAbsolutePosition(width, height);
             }
         }
@@ -288,7 +289,7 @@ public class KioskView {
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame == null || mMediaPlayer == null) {
+        if (mFrame == null || mMainPlayer == null) {
             return;
         }
         mCallbacks.onRepaintTimerTick();
@@ -299,8 +300,8 @@ public class KioskView {
     }
 
     public void updateAllHighlights() {
-        synchronized (mVideoCanvas) {
-            for (VlcMediaComponent canvas : mVideoCanvas) {
+        synchronized (mCameraPlayers) {
+            for (VlcMediaComponent canvas : mCameraPlayers) {
                 canvas.updateFrame();
             }
         }
@@ -309,15 +310,15 @@ public class KioskView {
     public void release() {
         SwingUtilities.invokeLater(() -> {
             mRepaintTimer.stop();
-            if (mMediaPlayer != null) {
-                mMediaPlayer.release();
-                mMediaPlayer = null;
+            if (mMainPlayer != null) {
+                mMainPlayer.release();
+                mMainPlayer = null;
             }
-            synchronized (mVideoCanvas) {
-                for (VlcMediaComponent canvas : mVideoCanvas) {
+            synchronized (mCameraPlayers) {
+                for (VlcMediaComponent canvas : mCameraPlayers) {
                     canvas.release();
                 }
-                mVideoCanvas.clear();
+                mCameraPlayers.clear();
             }
             if (mFrame != null) {
                 mFrame.dispose();
@@ -331,38 +332,34 @@ public class KioskView {
         mRepaintTimer.start();
     }
 
-    public void setMediaPlayerMute(boolean isMuted) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.mediaPlayer().audio().setMute(isMuted);
+    public void setMainPlayerMute(boolean isMuted) {
+        if (mMainPlayer != null) {
+            mMainPlayer.mediaPlayer().audio().setMute(isMuted);
         }
     }
 
-    public void setMediaPlayerVolume(int percent) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.mediaPlayer().audio().setVolume(percent);
+    public void setMainPlayerVolume(int percent) {
+        if (mMainPlayer != null) {
+            mMainPlayer.mediaPlayer().audio().setVolume(percent);
         }
     }
 
-    public int getMediaPlayerVolume() {
-        return mMediaPlayer == null ? -1 : mMediaPlayer.mediaPlayer().audio().volume();
+    public int getMainPlayerVolume() {
+        return mMainPlayer == null ? -1 : mMainPlayer.mediaPlayer().audio().volume();
     }
 
-    public void playMediaPlayer(File media) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.mediaPlayer().media().play(media.getAbsolutePath());
+    public void startMainPlayer(File media) {
+        if (mMainPlayer != null) {
+            mMainPlayer.mediaPlayer().media().play(media.getAbsolutePath());
         }
     }
 
-    public void initPlayCanvasesHack(List<String> medias) {
-        synchronized (mVideoCanvas) {
-            int index = 0;
-            for (VlcMediaComponent canvas : mVideoCanvas) {
-                String media = medias.get(index);
-                mLogger.log(TAG, "Play index " + index + " -> " + media);
-                canvas.mPlayer.mediaPlayer().media().play(media);
-                canvas.mPlayer.mediaPlayer().controls().setRepeat(true);
-                canvas.mPlayer.mediaPlayer().overlay().enable(true);
-                index = (index + 1) % medias.size();
+    public void startCameraPlayer(CamInfo camInfo, String media) {
+        synchronized (mCameraPlayers) {
+            for (VlcMediaComponent canvas : mCameraPlayers) {
+                if (canvas.mCamInfo == camInfo) {
+                    canvas.mPlayer.mediaPlayer().media().play(media);
+                }
             }
         }
     }
@@ -371,7 +368,6 @@ public class KioskView {
 
         private final int mPosIndex;
         private final CamInfo mCamInfo;
-        private final String mLiveText;
         private final Highlighter mHighlighter;
         private final VlcOverlayHelper mOverlay;
         private final CallbackMediaPlayerComponent mPlayer;
@@ -383,7 +379,6 @@ public class KioskView {
         public VlcMediaComponent(int posIndex, CamInfo camInfo, Highlighter highlighter) {
             mPosIndex = posIndex;
             mCamInfo = camInfo;
-            mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
             mHighlighter = highlighter;
             setBackground(BG_COLOR);
             mVideoSurface = this;
@@ -429,14 +424,14 @@ public class KioskView {
             mPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
                 @Override
                 public void finished(MediaPlayer mediaPlayer) {
-                    mLogger.log(TAG, "VLC for " + mLiveText + " EVENT Finished");
                     super.finished(mediaPlayer);
+                    mCallbacks.onCameraPlayerFinished(mCamInfo);
                 }
 
                 @Override
                 public void error(MediaPlayer mediaPlayer) {
-                    mLogger.log(TAG, "VLC for " + mLiveText + " EVENT Error");
                     super.error(mediaPlayer);
+                    mCallbacks.onCameraPlayerError(mCamInfo);
                 }
             });
         }
@@ -489,12 +484,15 @@ public class KioskView {
             mHighlighter.update();
 
             if (mCallbacks.showMask()) {
-                Frame frame = mCamInfo.getAnalyzer().getMaskFrame();
+                CamAnalyzer analyzer = mCamInfo.getAnalyzer();
+                Frame frame = analyzer.getMaskFrame();
+                mOverlay.mNoiseLevel = analyzer.getNoisePercent();
                 if (frame != null) {
                     mOverlay.mMaskImage = mOverlay.mConverter.getBufferedImage(frame);
                 }
             } else if (mOverlay.mMaskImage != null) {
                 mOverlay.mMaskImage = null;
+                mOverlay.mNoiseLevel = -1;
             }
         }
 
@@ -544,6 +542,7 @@ public class KioskView {
         public int mLiveCircleRadius = HIGHLIGHT_LINE_SIZE_MAX;
         public Font mLiveFont;
         public Image mMaskImage;
+        public double mNoiseLevel = -1;
 
         public VlcOverlayHelper(CamInfo camInfo, Highlighter highlighter) {
             mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
@@ -575,7 +574,7 @@ public class KioskView {
         private void drawLive(Graphics g, int dw, int dh, int dx, int dy) {
             // Blink at 1 fps
             long secondsNow = mClock.elapsedRealtime() / 1000;
-            if ((secondsNow & 0x1) == 0) return;
+            if (mNoiseLevel < 0 && (secondsNow & 0x1) == 0) return;
 
             final int radius = mLiveCircleRadius;
             final int diam = 2 * mLiveCircleRadius;
@@ -590,7 +589,13 @@ public class KioskView {
             int y = dy + dh - 2 * mHighlightLineSize - radius;
 
             g.fillOval(x - radius, y - radius, diam, diam);
-            g.drawString(mLiveText, x + diam, y + radius);
+
+            String s = mLiveText;
+            if (mNoiseLevel >= 0) {
+                s = String.format("%s %.2f%%", s, mNoiseLevel);
+            }
+
+            g.drawString(s, x + diam, y + radius);
         }
     }
 }

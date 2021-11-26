@@ -76,6 +76,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     @SuppressWarnings("FieldCanBeLocal") // Must remain scoped as a field to keep allocated
     private IplImage mOutputImage;
     private Mat mOutput;
+    private double mNoisePercent;
 
     CamAnalyzer(
             @Provided IClock clock,
@@ -95,6 +96,10 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     @Override
     public boolean isMotionDetected() {
         return mMotionDetected.getAndSet(false);
+    }
+
+    public double getNoisePercent() {
+        return mNoisePercent;
     }
 
     /**
@@ -210,6 +215,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         double noisePercent2 = 100.0 * nz / npx;
 
         boolean hasMotion = noisePercent2 >= mMotionThreshold;
+        mNoisePercent = noisePercent2;
         mMotionDetected.set(hasMotion);
 
         if (mMaskFrameQueue.isEmpty()) {
