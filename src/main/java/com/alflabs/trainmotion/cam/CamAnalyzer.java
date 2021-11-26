@@ -39,7 +39,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -69,8 +68,8 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final double mMotionThreshold;
     private final AtomicBoolean mMotionDetected = new AtomicBoolean();
     private final BlockingDeque<Frame> mPlayerFrameQueue = new LinkedBlockingDeque<>(1);
+    private final BlockingDeque<Frame> mMaskFrameQueue = new LinkedBlockingDeque<>(1);
 
-    private CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private OpenCVFrameConverter.ToMat mMatConverter;
     private Java2DFrameConverter mBufImageConverter;
     private BackgroundSubtractor mSubtractor;
@@ -98,18 +97,18 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         return mMotionDetected.getAndSet(false);
     }
 
-    /** Get a clone of the last output, if any. */
+    /**
+     * Get a clone of the last output of the analyzer (aka the mask frame), if any.
+     * Note that this is only used to display the mask for informational/debug purposes.
+     */
     @Nullable
-    public Frame getLastFrame() {
-        if (mOutput != null) {
-            try {
-                mCountDownLatch.await(2*1000/ANALYZER_FPS, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException ignore) {}
-            mCountDownLatch = new CountDownLatch(1);
+    public Frame getMaskFrame() {
+        Frame frame = null;
+        try {
+            frame = mMaskFrameQueue.poll(2 * 1000 / ANALYZER_FPS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ignore) {}
 
-            return mMatConverter.convert(mOutput).clone();
-        }
-        return null;
+        return frame;
     }
 
     @Override
@@ -210,10 +209,14 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         int nz = opencv_core.countNonZero(mOutput);
         double noisePercent2 = 100.0 * nz / npx;
 
-        mCountDownLatch.countDown();
-
         boolean hasMotion = noisePercent2 >= mMotionThreshold;
         mMotionDetected.set(hasMotion);
+
+        if (mMaskFrameQueue.isEmpty()) {
+            // Prepare the next frame for the mask display, if one is requested.
+            Frame maskFrame = mMatConverter.convert(mOutput).clone();
+            mMaskFrameQueue.offer(maskFrame);
+        }
 
         return String.format("%s %.2f >= %.2f%%",
                 hasMotion ? "/\\" : "..",

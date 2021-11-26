@@ -298,15 +298,12 @@ public class KioskView {
         mBottomLabel.setText(lineInfo);
     }
 
-    public boolean getVideoCanvasesHighlight() {
-        boolean hasHighlight = false;
+    public void updateAllHighlights() {
         synchronized (mVideoCanvas) {
             for (VlcMediaComponent canvas : mVideoCanvas) {
-                canvas.displayFrame();
-                hasHighlight |= canvas.mHighlighter.isHighlighted();
+                canvas.updateFrame();
             }
         }
-        return hasHighlight;
     }
 
     public void release() {
@@ -488,11 +485,11 @@ public class KioskView {
         /**
          * Must be invoked on the Swing UI thread.
          */
-        public void displayFrame() {
+        public void updateFrame() {
             mHighlighter.update();
 
             if (mCallbacks.showMask()) {
-                Frame frame = mCamInfo.getAnalyzer().getLastFrame();
+                Frame frame = mCamInfo.getAnalyzer().getMaskFrame();
                 if (frame != null) {
                     mOverlay.mMaskImage = mOverlay.mConverter.getBufferedImage(frame);
                 }

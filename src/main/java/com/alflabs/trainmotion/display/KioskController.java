@@ -20,7 +20,6 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.Playlist;
-import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
@@ -156,7 +155,7 @@ public class KioskController implements IStartStop {
 
             mView.setBottomLabelText(mConsoleTask.computeLineInfo());
 
-            boolean hasHighlight = mView.getVideoCanvasesHighlight();
+            mView.updateAllHighlights();
 
             // frame (window) size
             mView.computeLayout();
