@@ -20,6 +20,8 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
+import com.alflabs.trainmotion.util.FpsMeasurer;
+import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.IClock;
 import org.bytedeco.javacv.Frame;
@@ -89,6 +91,11 @@ public class KioskView {
     private final ILogger mLogger;
     private final IClock mClock;
 
+    private final Cameras mCameras;
+    private final ConsoleTask mConsoleTask;
+    private final HighlighterFactory mHighlighterFactory;
+    private final FpsMeasurerFactory mFpsMeasurerFactory;
+
     private KioskController.Callbacks mCallbacks;
     @GuardedBy("mVideoCanvas")
     private final List<VlcMediaComponent> mVideoCanvas = new ArrayList<>();
@@ -100,9 +107,19 @@ public class KioskView {
     private int mContentHeight;
 
     @Inject
-    public KioskView(ILogger logger, IClock clock) {
+    public KioskView(
+            ILogger logger,
+            IClock clock,
+            Cameras cameras,
+            ConsoleTask consoleTask,
+            HighlighterFactory highlighterFactory,
+            FpsMeasurerFactory fpsMeasurerFactory) {
         mLogger = logger;
         mClock = clock;
+        mCameras = cameras;
+        mConsoleTask = consoleTask;
+        mHighlighterFactory = highlighterFactory;
+        mFpsMeasurerFactory = fpsMeasurerFactory;
     }
 
     public void invokeLater(Runnable r) {
@@ -113,7 +130,7 @@ public class KioskView {
             int width, int height,
             int minWidth, int minHeight,
             int displayFps,
-            Cameras cameras, HighlighterFactory highlighterFactory, String windowTitle,
+            String windowTitle,
             boolean maximize,
             KioskController.Callbacks callbacks) throws Exception {
         mCallbacks = callbacks;
@@ -195,7 +212,7 @@ public class KioskView {
         mFrame.setVisible(true);
         // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
         // after the main frame is set visible.
-        createVideoCanvases(cameras, highlighterFactory);
+        createVideoCanvases();
         mCallbacks.onFrameResized();
         if (maximize) {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
@@ -225,14 +242,14 @@ public class KioskView {
         mMediaPlayer.revalidate();
     }
 
-    private void createVideoCanvases(Cameras cameras, HighlighterFactory highlighterFactory) {
+    private void createVideoCanvases() {
         AtomicInteger posIndex = new AtomicInteger();
         synchronized (mVideoCanvas) {
-            cameras.forEachCamera(camInfo -> {
+            mCameras.forEachCamera(camInfo -> {
                 VlcMediaComponent canvas = new VlcMediaComponent(
                         posIndex.incrementAndGet(),
                         camInfo,
-                        highlighterFactory.create(
+                        mHighlighterFactory.create(
                                 camInfo.getIndex(),
                                 camInfo.getAnalyzer()));
 
@@ -493,6 +510,8 @@ public class KioskView {
         }
 
         private class VlcRenderCallback extends RenderCallbackAdapter {
+            private final FpsMeasurer mFpsMeasurer = mFpsMeasurerFactory.create();
+            private final String mKey = String.format("%da", mCamInfo.getIndex());
 
             public VlcRenderCallback() {}
 
@@ -502,8 +521,12 @@ public class KioskView {
 
             @Override
             protected void onDisplay(MediaPlayer mediaPlayer, int[] buffer) {
-                mCamInfo.getAnalyzer().offerImage(mImage, buffer);
+                mFpsMeasurer.startTick();
+
+                mCamInfo.getAnalyzer().offerPlayerImage(mImage);
                 mVideoSurface.repaint();
+
+                mConsoleTask.updateLineInfo(/* A */ mKey, String.format(" | %6.1f fps", mFpsMeasurer.getFps()));
             }
         }
 

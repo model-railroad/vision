@@ -38,10 +38,11 @@ import org.bytedeco.opencv.opencv_video.BackgroundSubtractor;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.awt.image.BufferedImage;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.bytedeco.opencv.global.opencv_core.cvCreateImage;
 import static org.bytedeco.opencv.global.opencv_imgproc.medianBlur;
@@ -67,6 +68,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final CamInfo mCamInfo;
     private final double mMotionThreshold;
     private final AtomicBoolean mMotionDetected = new AtomicBoolean();
+    private final BlockingDeque<Frame> mPlayerFrameQueue = new LinkedBlockingDeque<>(1);
 
     private CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private OpenCVFrameConverter.ToMat mMatConverter;
@@ -135,22 +137,10 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         super.stop();
     }
 
-    private AtomicReference<Frame> mOfferedFrame = new AtomicReference<>(null);
-    private CountDownLatch mOfferedLatch = new CountDownLatch(1);
-    private FpsMeasurer mOfferFpsMeasurer = null;
-    public void offerImage(BufferedImage image, int[] buffer) {
-        if (mOfferFpsMeasurer == null) {
-            mOfferFpsMeasurer = mFpsMeasurerFactory.create();
-        }
-        mOfferFpsMeasurer.startTick();
-
-        if (mOfferedFrame.get() == null) {
+    public void offerPlayerImage(BufferedImage image) {
+        if (mPlayerFrameQueue.isEmpty()) {
             Frame frame = mBufImageConverter.convert(image);
-//            mLogger.log(TAG, "Offer   frame for " + TAG); // DEBUG
-            synchronized (this) {
-                mOfferedFrame.set(frame);
-                mOfferedLatch.countDown();
-            }
+            mPlayerFrameQueue.offer(frame);
         }
     }
 
@@ -169,23 +159,14 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
                 fpsMeasurer.startTick();
                 String info = "";
 
-                Frame frame = mOfferedFrame.get();
-                if (frame == null) {
-                    try {
-                        mOfferedLatch.await(loopMs, TimeUnit.MILLISECONDS);
-                    } catch (InterruptedException e) {
-                        if (mQuit) {
-                            break;
-                        }
+                Frame frame = null;
+                try {
+                    frame = mPlayerFrameQueue.poll(loopMs, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    if (mQuit) {
+                        break;
                     }
                 }
-                synchronized (this) {
-                    if (frame == null) {
-                        frame = mOfferedFrame.getAndSet(null);
-                    }
-                    mOfferedLatch = new CountDownLatch(1);
-                }
-//                mLogger.log(TAG, "Receive frame for " + TAG + " -> " + frame); // DEBUG
 
                 long computeMs = System.currentTimeMillis();
                 if (frame != null) {
@@ -193,11 +174,8 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
                 }
 
                 computeMs = mClock.elapsedRealtime() - computeMs;
-                double displayFps = (mOfferFpsMeasurer == null ?
-                        fpsMeasurer :
-                        mOfferFpsMeasurer).getFps();
-                mConsoleTask.updateLineInfo(key,
-                        String.format(" | %6.1f fps %s [%2d%+4d ms]", displayFps, info, computeMs, extraMs));
+                mConsoleTask.updateLineInfo(/* B */ key,
+                        String.format(" > %6.1f fps %s [%2d%+4d ms]", fpsMeasurer.getFps(), info, computeMs, extraMs));
 
                 extraMs = fpsMeasurer.endWait();
             }

@@ -55,12 +55,10 @@ public class KioskController implements IStartStop {
 
     private final IClock mClock;
     private final ILogger mLogger;
-    private final Cameras mCameras;
     private final Playlist mPlaylist;
     private final ConfigIni mConfigIni;
     private final Analytics mAnalytics;
     private final ConsoleTask mConsoleTask;
-    private final HighlighterFactory mHighlighterFactory;
     private final KioskView mView;
 
     private boolean mForceZoom;
@@ -84,22 +82,18 @@ public class KioskController implements IStartStop {
     public KioskController(
             IClock clock,
             ILogger logger,
-            Cameras cameras,
             Playlist playlist,
             ConfigIni configIni,
             Analytics analytics,
             ConsoleTask consoleTask,
-            KioskView kioskView,
-            HighlighterFactory highlighterFactory) {
+            KioskView kioskView) {
         mClock = clock;
         mLogger = logger;
-        mCameras = cameras;
         mPlaylist = playlist;
         mConfigIni = configIni;
         mAnalytics = analytics;
         mConsoleTask = consoleTask;
         mView = kioskView;
-        mHighlighterFactory = highlighterFactory;
     }
 
     @Override
@@ -108,8 +102,6 @@ public class KioskController implements IStartStop {
                 800, 600,
                 64, 64,
                 DISPLAY_FPS,
-                mCameras,
-                mHighlighterFactory,
                 mConfigIni.getWindowTitle("Train Motion"),
                 mConfigIni.getWindowMaximize(),
                 mCallbacks
@@ -256,7 +248,7 @@ public class KioskController implements IStartStop {
                 File file = next.get();
                 mLogger.log(TAG, "Player file = " + file.getAbsolutePath());
                 mAnalytics.sendEvent("PlayVideo", file.getName());
-                mConsoleTask.updateLineInfo("9f", " | " + file.getName().replace(".mp4", ""));
+                mConsoleTask.updateLineInfo(/* F */ "9f", " | " + file.getName().replace(".mp4", ""));
 
                 int volume = mPlayerDefaultVolume;
                 Optional<Playlist.FileProperties> props = mPlaylist.getProperties(file);
