@@ -25,10 +25,13 @@ import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
 import com.alflabs.utils.IClock;
+import com.google.common.base.Preconditions;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -122,6 +125,7 @@ public class KioskController implements IStartStop {
         mView.startTimer();
         mView.setMediaPlayerMute(false);
         playNext();
+        initPlayCanvasesHack();
     }
 
     @Override
@@ -266,7 +270,27 @@ public class KioskController implements IStartStop {
                 mView.setMediaPlayerVolume(mPlayerMuted ? 0 : volume);
                 mView.playMediaPlayer(file);
             }
+        });
+    }
 
+    private void initPlayCanvasesHack() {
+        final String[] filenames = new String[] { "cam_4.mp4", "cam_5.mp4", "cam_6.mp4", "cam_7.mp4"  };
+        File dir = new File("src/test/resources/cam_records".replace('/', File.separatorChar));
+
+        List<String> files = new ArrayList<>();
+        files.add("rtsp://username:password@192.168.3.117:554/ipcam_h264.sdp");
+        for (String filename : filenames) {
+            File f = new File(dir, filename);
+            Preconditions.checkState(f.exists(), f.getPath());
+            files.add(f.getAbsolutePath());
+        }
+
+        mView.invokeLater(() -> {
+            if (mConsoleTask.isQuitRequested()) {
+                return;
+            }
+
+            mView.initPlayCanvasesHack(files);
         });
     }
 
