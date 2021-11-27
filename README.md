@@ -184,7 +184,7 @@ The first build/run will take about forever as the dependencies gets downloaded.
 
 To run it:
 
-`$ java -jar build/libs/train-motion-0.2-SNAPSHOT-all.jar <command line options>`
+`$ java -jar build/libs/train-motion-0.3-SNAPSHOT-all.jar <command line options>`
 
 
 ## Configuration and Command-line Options for v0.2
