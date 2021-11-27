@@ -69,6 +69,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final AtomicBoolean mMotionDetected = new AtomicBoolean();
     private final BlockingDeque<Frame> mPlayerFrameQueue = new LinkedBlockingDeque<>(1);
     private final BlockingDeque<Frame> mMaskFrameQueue = new LinkedBlockingDeque<>(1);
+    private final double[] mNoiseBuffer = new double[10];
 
     private OpenCVFrameConverter.ToMat mMatConverter;
     private Java2DFrameConverter mBufImageConverter;
@@ -77,6 +78,8 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private IplImage mOutputImage;
     private Mat mOutput;
     private double mNoisePercent;
+    private int mNoiseBufferIndex;
+    private double mNoiseAverage;
 
     CamAnalyzer(
             @Provided IClock clock,
@@ -98,8 +101,8 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         return mMotionDetected.getAndSet(false);
     }
 
-    public double getNoisePercent() {
-        return mNoisePercent;
+    public double getNoiseLevel() {
+        return mNoiseAverage;
     }
 
     /**
@@ -214,8 +217,22 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         int nz = opencv_core.countNonZero(mOutput);
         double noisePercent2 = 100.0 * nz / npx;
 
-        boolean hasMotion = noisePercent2 >= mMotionThreshold;
+        // Instant noise, unfiltered.
         mNoisePercent = noisePercent2;
+
+        // Filter noise with a 10-sample average window
+        int index = mNoiseBufferIndex;
+        mNoiseBuffer[index] = mNoisePercent;
+        int windowLen = mNoiseBuffer.length;
+        mNoiseBufferIndex = (index + 1) % windowLen;
+        double average = 0;
+        for (int i = 0; i < windowLen; i++) {
+            average += mNoiseBuffer[i];
+        }
+        average /= windowLen;
+        mNoiseAverage = average;
+
+        boolean hasMotion = average >= mMotionThreshold;
         mMotionDetected.set(hasMotion);
 
         if (mMaskFrameQueue.isEmpty()) {

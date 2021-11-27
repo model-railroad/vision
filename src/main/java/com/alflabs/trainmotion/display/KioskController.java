@@ -67,7 +67,8 @@ public class KioskController implements IStartStop {
     private final KioskView mView;
     private final Map<CamInfo, CameraPlaylist> mCameraPlaylist = new HashMap<>();
 
-    private boolean mForceZoom;
+    /** Force zoom: 0=default, 1=main always zoomed, 2=main never zoomed. */
+    private int mForceZoom;
     private boolean mPlayerMuted;
     private boolean mToggleMask;
     private int mPlayerDefaultVolume = PLAYER_VOLUME_DEFAULT;
@@ -174,7 +175,7 @@ public class KioskController implements IStartStop {
             final int fh = mView.getContentHeight();
             // target size for media player
             int tw = fw, th = fh;
-            if (hasHighlight && !mForceZoom) {
+            if (mForceZoom == 2 || (hasHighlight && mForceZoom == 0)) {
                 // Desired player is half size screen
                 tw = fw / 2;
                 th = fh / 2;
@@ -233,7 +234,7 @@ public class KioskController implements IStartStop {
         case 'f':
             // Toggle Fullscreen zoom
             mPlayerZoomEndTS = 0;
-            mForceZoom = !mForceZoom;
+            mForceZoom = (mForceZoom + 1) % 3;
             return true;
         case 's':
             // Toggle mute Sound

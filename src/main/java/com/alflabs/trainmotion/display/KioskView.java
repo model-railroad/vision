@@ -492,10 +492,10 @@ public class KioskView {
         public void updateFrame() {
             mHighlighter.update();
 
+            CamAnalyzer analyzer = mCamInfo.getAnalyzer();
             if (mCallbacks.showMask()) {
-                CamAnalyzer analyzer = mCamInfo.getAnalyzer();
                 Frame frame = analyzer.getMaskFrame();
-                mOverlay.mNoiseLevel = analyzer.getNoisePercent();
+                mOverlay.mNoiseLevel = analyzer.getNoiseLevel();
                 if (frame != null) {
                     mOverlay.mMaskImage = mOverlay.mConverter.getBufferedImage(frame);
                 }
@@ -503,6 +503,7 @@ public class KioskView {
                 mOverlay.mMaskImage = null;
                 mOverlay.mNoiseLevel = -1;
             }
+            mOverlay.mNoiseLevel = analyzer.getNoiseLevel(); // DEBUG
 
             mConsoleTask.updateLineInfo(/* A */ mKey,
                     String.format(" [%d] %5.1f fps", mCamInfo.getIndex(), mFpsMeasurer.getFps()));
@@ -603,7 +604,7 @@ public class KioskView {
 
             String s = mLiveText;
             if (mNoiseLevel >= 0) {
-                s = String.format("%s %.2f%%", s, mNoiseLevel);
+                s = String.format("%s      %.2f%%", s, mNoiseLevel);
             }
 
             g.drawString(s, x + diam, y + radius);
