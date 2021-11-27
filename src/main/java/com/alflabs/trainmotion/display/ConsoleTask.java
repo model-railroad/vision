@@ -21,6 +21,7 @@ package com.alflabs.trainmotion.display;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
 import com.alflabs.utils.IClock;
+import dagger.Lazy;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -42,6 +43,7 @@ public class ConsoleTask implements IStartStop {
 
     private final IClock mClock;
     private final ILogger mLogger;
+    private final Lazy<KioskController> mKioskController;
     @GuardedBy("mLineInfo")
     private final Map<String, String> mLineInfo = new TreeMap<>();
 
@@ -50,9 +52,11 @@ public class ConsoleTask implements IStartStop {
     @Inject
     public ConsoleTask(
             IClock clock,
-            ILogger logger) {
+            ILogger logger,
+            Lazy<KioskController> kioskController) {
         mClock = clock;
         mLogger = logger;
+        mKioskController = kioskController;
         mQuit = false;
     }
 
@@ -134,18 +138,18 @@ public class ConsoleTask implements IStartStop {
         switch (c) {
         case '?':
         case 'h':
-            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, s=toggle shuffle, m=toggle mute, k=toggle mask");
+            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, u=shuffle, s=sound, m=mask");
             return true;
         case 27:
         case 'q':
             requestQuit();
             return true;
-        default:
-            mLogger.log(TAG, "Key ignored: '" + c + "' int: " + (int)c);
         case KeyEvent.VK_ENTER:
         case KeyEvent.CHAR_UNDEFINED:
             // ignore silently
             return false; // not consumed
+        default:
+            return mKioskController.get().processKey(c);
         }
     }
 }

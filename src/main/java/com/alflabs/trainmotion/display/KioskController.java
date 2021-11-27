@@ -29,12 +29,10 @@ import com.alflabs.utils.IClock;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -157,7 +155,7 @@ public class KioskController implements IStartStop {
 
         @Override
         public boolean onProcessKey(char keyChar) {
-            return processKey(keyChar) || mConsoleTask.processKey(keyChar);
+            return mConsoleTask.processKey(keyChar);
         }
 
         @Override
@@ -233,26 +231,27 @@ public class KioskController implements IStartStop {
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
         switch (c) {
         case 'f':
-            // Toggle fullscreen zoom
+            // Toggle Fullscreen zoom
             mPlayerZoomEndTS = 0;
             mForceZoom = !mForceZoom;
             return true;
-        case 'm':
-            // Toggle mute sound
+        case 's':
+            // Toggle mute Sound
             // Note mMediaPlayer.mediaPlayer().audio().setMute(!muted) seems to work in reverse
             // (and/or differently per platform) so let's avoid it. Just control volume.
             mPlayerMuted = !mPlayerMuted;
             mView.setMainPlayerVolume(mPlayerMuted ? 0 : mPlayerDefaultVolume);
             mLogger.log(TAG, "Audio: volume " + mView.getMainPlayerVolume() + "%");
             return true;
-        case 's':
-            // Toggle shuffle
+        case 'u':
+            // Toggle shUffle
             mMainPlaylist.setShuffle(!mMainPlaylist.isShuffle());
             return true;
         case 'n':
             playNextMain();
             return true;
-        case 'k':
+        case 'm':
+            // Toggle Mask
             mToggleMask = !mToggleMask;
             mLogger.log(TAG, "Mask toggled " + (mToggleMask ? "on" : "off"));
             return true;
