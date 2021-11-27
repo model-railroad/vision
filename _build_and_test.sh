@@ -4,7 +4,7 @@ DST="build"
 if [[ ! -d "build" ]]; then
     DST="train-motion/$DST"
 fi
-JAR="$DST/libs/train-motion-0.2-SNAPSHOT-all.jar"
+JAR="$DST/libs/train-motion-0.3-SNAPSHOT-all.jar"
 
 (
     # Change to this script direcoty (following symlinks as needed)
