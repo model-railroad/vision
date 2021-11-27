@@ -18,7 +18,7 @@ if [[ $(uname) =~ CYGWIN ]]; then
   # Use the fatJar version to work around the issue of the classpath command line size limit.
   rm -f /tmp/_g
   set -x
-  (cd $G_DIR && ./gradlew _printRunFatJarCmdLine --console=plain | tee /tmp/_g)
+  (cd $G_DIR && ./gradlew assemble _printRunFatJarCmdLine --console=plain | tee /tmp/_g)
   JAR=$(grep -- "-jar" /tmp/_g | head -n 1 | cut -c 6- )
   "$JV" -jar "$JAR" $CONFIG $@
 else
