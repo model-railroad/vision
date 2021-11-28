@@ -63,7 +63,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final String TAG;
 
     // The analyzer does not need to run at the full input/output feed fps.
-    private static final int ANALYZER_FPS = 10;
+    private static final int ANALYZER_FPS = 5;
 
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
