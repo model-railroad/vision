@@ -20,6 +20,7 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
+import com.alflabs.trainmotion.util.StatsCollector;
 import com.alflabs.utils.IClock;
 import dagger.Lazy;
 
@@ -43,6 +44,7 @@ public class ConsoleTask implements IStartStop {
 
     private final IClock mClock;
     private final ILogger mLogger;
+    private final Lazy<StatsCollector> mStatsCollector;
     private final Lazy<KioskController> mKioskController;
     @GuardedBy("mLineInfo")
     private final Map<String, String> mLineInfo = new TreeMap<>();
@@ -53,9 +55,11 @@ public class ConsoleTask implements IStartStop {
     public ConsoleTask(
             IClock clock,
             ILogger logger,
+            Lazy<StatsCollector> statsCollector,
             Lazy<KioskController> kioskController) {
         mClock = clock;
         mLogger = logger;
+        mStatsCollector = statsCollector;
         mKioskController = kioskController;
         mQuit = false;
     }
@@ -135,14 +139,19 @@ public class ConsoleTask implements IStartStop {
 
     public boolean processKey(char c) {
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
+        // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help, t=stats.
+        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask.
         switch (c) {
         case '?':
         case 'h':
-            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, u=shuffle, s=sound, m=mask");
+            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, u=shuffle, s=sound, m=mask, t=stats");
             return true;
         case 27:
         case 'q':
             requestQuit();
+            return true;
+        case 't':
+            mStatsCollector.get().toggleWriting();
             return true;
         case KeyEvent.VK_ENTER:
         case KeyEvent.CHAR_UNDEFINED:

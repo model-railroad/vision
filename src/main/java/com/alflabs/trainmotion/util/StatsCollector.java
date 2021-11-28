@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Singleton
 public class StatsCollector extends ThreadLoop {
@@ -38,12 +39,14 @@ public class StatsCollector extends ThreadLoop {
     private static final int STATS_FPS = 5;
     private static final long COLLECT_ELAPSED_MILLIS = 1000L / STATS_FPS;
     private static final long DUMP_DELAY_MILLIS = 60 * 1000;
+    private static final int NUM_RECORDS_BUFFER = STATS_FPS * 60; // 1 minute of records
 
     private final IClock mClock;
     private final ILogger mLogger;
     private final CommandLineArgs mCommandLineArgs;
     private final Data mAccumulator = new Data(0);
     private final ConcurrentLinkedDeque<Data> mPendingData = new ConcurrentLinkedDeque<>();
+    private final AtomicBoolean mEnableWriting = new AtomicBoolean(true);
     private long mLastCollectMs;
     private String mStatsPath;
     private BufferedOutputStream mOutput;
@@ -89,6 +92,11 @@ public class StatsCollector extends ThreadLoop {
         }
     }
 
+    public void toggleWriting() {
+        mEnableWriting.set(!mEnableWriting.get());
+        mLogger.log(TAG, "Writing " + (mEnableWriting.get() ? "Enabled" : "Disabled"));
+    }
+
     synchronized
     public void collect(int camIndex, double noise1, double noise2, boolean motion) {
         long now = mClock.elapsedRealtime();
@@ -98,7 +106,6 @@ public class StatsCollector extends ThreadLoop {
             noise2 *= -1;
         }
         mAccumulator.set(camIndex - 1, (int)(noise1 * 100), (int)(noise2 * 100));
-        //--DEBUG--mLogger.log(TAG, "collect MS=" + now + ", cam " + camIndex + " > accum " + mAccumulator);
 
         if (mLastCollectMs != 0) {
             long deltaMs = now - mLastCollectMs;
@@ -106,7 +113,6 @@ public class StatsCollector extends ThreadLoop {
                 Data dup = mAccumulator.dup(now);
                 mPendingData.add(dup);
                 mLastCollectMs = now;
-                //--DEBUG--mLogger.log(TAG, "collected records " + mPendingData.size());
             }
         } else {
             mLastCollectMs = now;
@@ -117,9 +123,11 @@ public class StatsCollector extends ThreadLoop {
     protected void _runInThreadLoop() {
         mLogger.log(TAG, "Running");
 
-        try {
-            mOutput.write("[\n".getBytes(StandardCharsets.UTF_8));
-        } catch (IOException ignore) {}
+        if (mUseJson) {
+            try {
+                mOutput.write("[\n".getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ignore) {}
+        }
 
         long firstMs = 0;
         boolean canRun = true;
@@ -131,6 +139,18 @@ public class StatsCollector extends ThreadLoop {
             } catch (Exception e) {
                 mLogger.log(TAG, "Dump loop interrupted: " + e);
                 canRun = false;
+            }
+
+            if (!mEnableWriting.get()) {
+                // Limit capacity to last NUM_RECORDS_BUFFER records
+                int s = mPendingData.size() - NUM_RECORDS_BUFFER;
+                if (s > 0) {
+                    mLogger.log(TAG, "Ignore " + s + " records"); // DEBUG
+                    for (int i = 0; i < s; i++) {
+                        mPendingData.pollFirst();
+                    }
+                }
+                continue;
             }
 
             BufferedOutputStream stream = mOutput;
