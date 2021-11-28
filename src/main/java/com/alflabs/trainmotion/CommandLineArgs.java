@@ -46,9 +46,10 @@ public class CommandLineArgs {
     public static final String OPT_HELP = "h";
     public static final String OPT_USER_VALUE = "u";
     public static final String OPT_WEB_ROOT = "w";
-    public static final String OPT_SIZE_WIDTH = "s"; // can't be w/width or p/pixels...
+    public static final String OPT_SIZE_WIDTH = "s";    // can't be w/width or p/pixels...
     public static final String OPT_CONFIG_INI = "c";
     public static final String OPT_MEDIA_DIR = "m";
+    public static final String OPT_STATS_PATH = "a";    // can't be s/stats
 
     private final ILogger mLogger;
     private final Options mOptions = new Options();
@@ -91,6 +92,12 @@ public class CommandLineArgs {
                 .hasArg()
                 .argName("media/")
                 .desc("Path for playlist media directory (default: use config file playlist_dir).")
+                .build());
+        mOptions.addOption(Option.builder(OPT_STATS_PATH)
+                .longOpt("stats")
+                .hasArg()
+                .argName("stats.bin")
+                .desc("Path for stats output (supports 'bin' or 'json' extensions). Also enables stats collection.")
                 .build());
         Stream.of(1, 2, 3).forEach(i ->
                 mOptions.addOption(Option.builder(Integer.toString(i))

@@ -27,6 +27,7 @@ import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
 import com.alflabs.trainmotion.display.KioskController;
+import com.alflabs.trainmotion.util.StatsCollector;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -39,14 +40,15 @@ public class TrainMotion {
 
     private final ITrainMotionComponent mComponent;
 
-    @Inject ConfigIni mConfigIniReader;
     @Inject CommandLineArgs mCommandLineArgs;
-    @Inject ConsoleTask mConsoleTask;
+    @Inject StatsCollector mStatsCollector;
     @Inject KioskController mKioskDisplay;
-    @Inject Playlist mPlaylist;
+    @Inject ConfigIni mConfigIniReader;
+    @Inject ConsoleTask mConsoleTask;
     @Inject Analytics mAnalytics;
-    @Inject ILogger mLogger;
+    @Inject Playlist mPlaylist;
     @Inject Cameras mCameras;
+    @Inject ILogger mLogger;
 
     public TrainMotion() {
         mComponent = DaggerITrainMotionComponent.factory().createComponent();
@@ -97,6 +99,7 @@ public class TrainMotion {
                             mConfigIniReader.getPlaylistDir()) );
             mConsoleTask.start();
             mKioskDisplay.start();
+            mStatsCollector.start();
             mCameras.start();
             mKioskDisplay.initialize();
             mAnalytics.sendEvent("Start", "");
@@ -109,6 +112,7 @@ public class TrainMotion {
             safeStop(mKioskDisplay);
             safeStop(mConsoleTask);
             safeStop(mAnalytics);
+            safeStop(mStatsCollector);
         }
 
         mLogger.log(TAG, "Shutdown Hook release");

@@ -12,3 +12,4 @@ hs_err*.log
 /media
 .classpath
 _jardeps
+stats_output.*

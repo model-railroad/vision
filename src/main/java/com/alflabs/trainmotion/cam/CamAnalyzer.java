@@ -22,6 +22,7 @@ import com.alflabs.trainmotion.display.ConsoleTask;
 import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
+import com.alflabs.trainmotion.util.StatsCollector;
 import com.alflabs.trainmotion.util.ThreadLoop;
 import com.alflabs.utils.IClock;
 import com.google.auto.factory.AutoFactory;
@@ -57,6 +58,7 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
 public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final IClock mClock;
     private final ConsoleTask mConsoleTask;
+    private final StatsCollector mStatsCollector;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
     private final String TAG;
 
@@ -85,10 +87,12 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
             @Provided IClock clock,
             @Provided ILogger logger,
             @Provided ConsoleTask consoleTask,
+            @Provided StatsCollector statsCollector,
             @Provided FpsMeasurerFactory fpsMeasurerFactory,
             CamInfo camInfo) {
         mClock = clock;
         mConsoleTask = consoleTask;
+        mStatsCollector = statsCollector;
         mFpsMeasurerFactory = fpsMeasurerFactory;
         TAG = "CamAn-" + camInfo.getIndex();
         mLogger = logger;
@@ -222,7 +226,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
         // Filter noise with a 10-sample average window
         int index = mNoiseBufferIndex;
-        mNoiseBuffer[index] = mNoisePercent;
+        mNoiseBuffer[index] = noisePercent2;
         int windowLen = mNoiseBuffer.length;
         mNoiseBufferIndex = (index + 1) % windowLen;
         double average = 0;
@@ -234,6 +238,8 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
         boolean hasMotion = average >= mMotionThreshold;
         mMotionDetected.set(hasMotion);
+
+        mStatsCollector.collect(mCamInfo.getIndex(), noisePercent2, average, hasMotion);
 
         if (mMaskFrameQueue.isEmpty()) {
             // Prepare the next frame for the mask display, if one is requested.
