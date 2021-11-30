@@ -36,8 +36,8 @@ public class Highlighter {
     // Highlight minimum display duration with video motion OFF after a ON event.
     static final long HIGHLIGHT_DURATION_OFF_MS = 2000;
     // Highlight stroke width
-    static final int HIGHLIGHT_LINE_SIZE_MAX = 10;
-    static final int HIGHLIGHT_LINE_SIZE_MIN = 3;
+    static final int HIGHLIGHT_LINE_SIZE_MAX = 15;
+    static final int HIGHLIGHT_LINE_SIZE_MIN = 5;
 
     private final IClock mClock;
     private final Analytics mAnalytics;

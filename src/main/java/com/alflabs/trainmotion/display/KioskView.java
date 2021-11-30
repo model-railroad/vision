@@ -503,7 +503,6 @@ public class KioskView {
                 mOverlay.mMaskImage = null;
                 mOverlay.mNoiseLevel = -1;
             }
-            mOverlay.mNoiseLevel = analyzer.getNoiseLevel(); // DEBUG
 
             mConsoleTask.updateLineInfo(/* A */ mKey,
                     String.format(" [%d] %5.1f fps", mCamInfo.getIndex(), mFpsMeasurer.getFps()));
