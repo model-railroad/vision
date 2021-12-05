@@ -19,45 +19,69 @@
 package com.alflabs.trainmotion.util;
 
 import com.alflabs.trainmotion.CommandLineArgs;
+import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.utils.IClock;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.GZIPOutputStream;
 
+/**
+ * Collects stats about the cam analyzer levels that trigger motion detection.
+ * <p/>
+ * The stats are output in a JSON format compatible with chrome://tracing or Perfetto.
+ * That file is rather large, yet neatly compresses to only ~5% via gzip.
+ * <p/>
+ * The 3 CamAnalyzer threads call collect() from their respective threads and store that in
+ * a thread-safe queue of "motion runs". A motion run is defined as a preamble with motion off
+ * (where only the most recent N stats are kept), followed by all the stats while motion is on,
+ * followed by at most N stats with motion off (thus an off/on/off run pattern).
+ * <p/>
+ * The collector thread dumps the completed motion runs to the output file periodically.
+ */
 @Singleton
 public class StatsCollector extends ThreadLoop {
     private static final String TAG = StatsCollector.class.getSimpleName();
-    private static final int NUM_CHANNELS = 3;
     private static final int STATS_FPS = 5;
-    private static final long COLLECT_ELAPSED_MILLIS = 1000L / STATS_FPS;
-    private static final long DUMP_DELAY_MILLIS = 60 * 1000;
-    private static final int NUM_RECORDS_BUFFER = STATS_FPS * 60; // 1 minute of records
+    private static final long IDLE_SLEEP_MS = 1000 / STATS_FPS;
+    private static final int NUM_RUN_BUFFERS = STATS_FPS * 10; // 10 seconds
 
     private final IClock mClock;
     private final ILogger mLogger;
+    private final Cameras mCameras;
     private final CommandLineArgs mCommandLineArgs;
-    private final Data mAccumulator = new Data(0);
-    private final ConcurrentLinkedDeque<Data> mPendingData = new ConcurrentLinkedDeque<>();
-    private final AtomicBoolean mEnableWriting = new AtomicBoolean(true);
-    private long mLastCollectMs;
+    private final Map<Integer, MotionRun> mMotionRuns = Collections.synchronizedMap(new HashMap<>());
+    private final ConcurrentLinkedDeque<MotionRun> mCompletedRuns = new ConcurrentLinkedDeque<>();
+    private final AtomicBoolean mWriteBeforeClosing = new AtomicBoolean(false);
+    private final Map<Long, String> mWriteEntries = new TreeMap<>();
+    private final CountDownLatch mLatchEndLoop = new CountDownLatch(1);
     private String mStatsPath;
-    private BufferedOutputStream mOutput;
-    private boolean mUseJson;
+    private FilterOutputStream mOutput;
 
     @Inject
     public StatsCollector(IClock clock,
                           ILogger logger,
+                          Cameras cameras,
                           CommandLineArgs commandLineArgs) {
         mClock = clock;
         mLogger = logger;
+        mCameras = cameras;
         mCommandLineArgs = commandLineArgs;
     }
 
@@ -68,9 +92,12 @@ public class StatsCollector extends ThreadLoop {
         mStatsPath = mCommandLineArgs.getStringOption(CommandLineArgs.OPT_STATS_PATH, null);
 
         if (mStatsPath != null) {
-            mUseJson = mStatsPath.endsWith(".json");
-            mOutput = new BufferedOutputStream(new FileOutputStream(mStatsPath));
-
+            FileOutputStream fos = new FileOutputStream(mStatsPath);
+            if (mStatsPath.endsWith(".gz")) {
+                mOutput = new GZIPOutputStream(fos);
+            } else {
+                mOutput = new BufferedOutputStream(fos);
+            }
             super.start("Thread-Stats");
         }
     }
@@ -78,191 +105,226 @@ public class StatsCollector extends ThreadLoop {
     @Override
     public void stop() throws Exception {
         mLogger.log(TAG, "Stop");
+        mWriteBeforeClosing.set(true);
+        mCameras.forEachCamera(camInfo -> collect(camInfo.getIndex(), 0, 0, false));
+        mLatchEndLoop.await(10, TimeUnit.SECONDS);
         super.stop();
-        BufferedOutputStream stream = mOutput;
-        if (stream != null) {
-            mOutput = null;
-            try {
-                stream.flush();
-                stream.close();
-                mLogger.log(TAG, "Closed");
-            } catch (Exception e) {
-                mLogger.log(TAG, "Error closing stream: " + e);
-            }
-        }
-    }
-
-    public void toggleWriting() {
-        mEnableWriting.set(!mEnableWriting.get());
-        mLogger.log(TAG, "Writing " + (mEnableWriting.get() ? "Enabled" : "Disabled"));
+        mLogger.log(TAG, "Stopped");
     }
 
     synchronized
     public void collect(int camIndex, double noise1, double noise2, boolean motion) {
         long now = mClock.elapsedRealtime();
 
-        if (motion) {
-            noise1 *= -1;
-            noise2 *= -1;
-        }
-        mAccumulator.set(camIndex - 1, (int)(noise1 * 100), (int)(noise2 * 100));
+        MotionRun run = mMotionRuns.get(camIndex);
 
-        if (mLastCollectMs != 0) {
-            long deltaMs = now - mLastCollectMs;
-            if (deltaMs > COLLECT_ELAPSED_MILLIS) {
-                Data dup = mAccumulator.dup(now);
-                mPendingData.add(dup);
-                mLastCollectMs = now;
+        if (mWriteBeforeClosing.get()) {
+            if (run != null) {
+                mMotionRuns.put(camIndex, null);
+                mCompletedRuns.offerLast(run);
             }
-        } else {
-            mLastCollectMs = now;
+            return;
+        }
+
+        if (run != null && motion && run.hasEnded()) {
+            mCompletedRuns.offerLast(run);
+            run = null;
+        }
+
+        if (run == null) {
+            run = new MotionRun(camIndex);
+            mMotionRuns.put(camIndex, run);
+        }
+
+        MotionRun complete = run.collect(now, (int) (noise1 * 100), (int) (noise2 * 100), motion);
+        if (complete != null) {
+            mCompletedRuns.offerLast(complete);
+            mMotionRuns.put(camIndex, new MotionRun(camIndex));
         }
     }
 
     @Override
-    protected void _runInThreadLoop() {
+    protected void _beforeThreadLoop() {
         mLogger.log(TAG, "Running");
 
-        if (mUseJson) {
-            try {
-                mOutput.write("[\n".getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ignore) {}
-        }
-
-        long firstMs = 0;
-        boolean canRun = true;
-        while (canRun && !mQuit && mOutput != null) {
-            try {
-                Thread.sleep(DUMP_DELAY_MILLIS);
-            } catch (InterruptedException e) {
-                canRun = false;
-            } catch (Exception e) {
-                mLogger.log(TAG, "Dump loop interrupted: " + e);
-                canRun = false;
-            }
-
-            if (!mEnableWriting.get()) {
-                // Limit capacity to last NUM_RECORDS_BUFFER records
-                int s = mPendingData.size() - NUM_RECORDS_BUFFER;
-                if (s > 0) {
-                    mLogger.log(TAG, "Ignore " + s + " records"); // DEBUG
-                    for (int i = 0; i < s; i++) {
-                        mPendingData.pollFirst();
-                    }
-                }
-                continue;
-            }
-
-            BufferedOutputStream stream = mOutput;
-            if (stream == null) break;
-
-            Data data;
-            int n = 0;
-            long[] startTS = new long[3];
-            long[] endTS = new long[3];
-            while ((data = mPendingData.pollFirst()) != null) {
-                long ts = data.mTimestamp;
-                if (firstMs != 0) {
-                    ts -= firstMs;
-                } else {
-                    firstMs = ts;
-                    ts = 0;
-                }
-
-                int[] d = data.mData;
-                if (mUseJson) {
-                    // Json format for chrome://tracing
-                    // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#
-                    // Counter: {"name": "ctr", "ph": "C", "ts":  0, "args": {"cats":  0, "dogs": 7}},
-                    // Event:   {"name": "evt", "ph": "i", "ts": 1234523.3, "pid": 2343, "tid": 2347, "s": "g"}
-                    // TS in microseconds (millis * 1000)
-
-                    ts *= 1000; // millis to micros
-
-                    String s = String.format(Locale.US,
-                            "" +
-                                    "{ \"name\":\"cam1\", \"ph\":\"C\", \"ts\": %d, \"pid\": 1, \"args\":{ \"pct\": %d, \"avg\": %d }},\n" +
-                                    "{ \"name\":\"cam2\", \"ph\":\"C\", \"ts\": %d, \"pid\": 2, \"args\":{ \"pct\": %d, \"avg\": %d }},\n" +
-                                    "{ \"name\":\"cam3\", \"ph\":\"C\", \"ts\": %d, \"pid\": 3, \"args\":{ \"pct\": %d, \"avg\": %d }},\n",
-                            ts, Math.abs(d[0]), Math.abs(d[1]),
-                            ts, Math.abs(d[2]), Math.abs(d[3]),
-                            ts, Math.abs(d[4]), Math.abs(d[5]));
-
-                    for (int i = 0; i <3; i++) {
-                        final int i2 = i * 2;
-                        final boolean motion = (d[i2] < 0) || (d[i2 +1] < 0);
-                        final long start = startTS[i];
-                        if (motion) {
-                            if (start == 0) {
-                                startTS[i] = ts;
-                            }
-                            endTS[i] = ts;
-                        } else {
-                            if (start != 0) {
-                                final int i1 = i + 1;
-                                s += String.format(Locale.US, "{ \"name\":\"cam%d_hl\", \"ph\":\"X\", \"ts\": %d, \"dur\": %d, \"pid\": %d, \"tid\": %d },\n",
-                                        i1, startTS[i], endTS[i] - startTS[i], i1, i1);
-                                startTS[i] = 0;
-                            }
-                        }
-                    }
-                    try {
-                        stream.write(s.getBytes(StandardCharsets.UTF_8));
-                    } catch (IOException e) {
-                        mLogger.log(TAG, "Error write json stream: " + e);
-                        canRun = false;
-                    }
-
-                } else {
-                    // Raw binary or text formats (easier to write parsers for later)
-                    String s = String.format(Locale.US, "%s %s\n", ts, Arrays.toString(d));
-                    try {
-                        stream.write(s.getBytes(StandardCharsets.UTF_8));
-                    } catch (IOException e) {
-                        mLogger.log(TAG, "Error write json stream: " + e);
-                        canRun = false;
-                    }
-                }
-                n++;
-            }
-            mLogger.log(TAG, "Write " + n + " records"); // DEBUG
-
-            try {
-                stream.flush();
-            } catch (IOException e) {
-                mLogger.log(TAG, "Error flush stream: " + e);
-                canRun = false;
-            }
-        }
-        mLogger.log(TAG, "End Loop");
+        try {
+            mOutput.write("[\n".getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignore) {}
     }
 
-    private static class Data {
-        private final long mTimestamp;
-        private final int[] mData = new int[2 * NUM_CHANNELS];
+    @Override
+    protected void _runInThreadLoop() {
+        mWriteEntries.clear();
 
-        public Data(long timestamp) {
-            mTimestamp = timestamp;
+        if (mCompletedRuns.isEmpty()) return;
+        // mLogger.log(TAG, "Processing " + mCompletedRuns.size() + " motion runs to write"); // DEBUG
+
+        FilterOutputStream stream = mOutput;
+        if (stream == null) return;
+        MotionRun run;
+
+        while ((run = mCompletedRuns.pollFirst()) != null) {
+            int id = run.mCamId;
+            appendLevels(id, mWriteEntries, run.mBefore);
+            appendLevels(id, mWriteEntries, run.mDuring);
+            appendLevels(id, mWriteEntries, run.mAfter);
+            appendMotionSpan(id, mWriteEntries, run);
         }
 
-        public void set(int index, int val1, int val2) {
-            index *= 2;
-            mData[index] = val1;
-            mData[++index] = val2;
+        for (String entry : mWriteEntries.values()) {
+            if (!writeEntry(stream, entry)) {
+                break;
+            }
         }
 
-        public Data dup(long newTimestamp) {
-            Data dest = new Data(newTimestamp);
-            System.arraycopy(this.mData, 0, dest.mData, 0, this.mData.length);
-            return dest;
+        try {
+            stream.flush();
+        } catch (IOException e) {
+            mLogger.log(TAG, "Error flush stream: " + e);
         }
 
-        @Override
-        public String toString() {
-            return "Data{" +
-                    "mTimestamp=" + mTimestamp +
-                    ", mData=" + Arrays.toString(mData) +
-                    '}';
+        mLogger.log(TAG, "Wrote " + mWriteEntries.size() + " records");
+
+        try {
+            Thread.sleep(IDLE_SLEEP_MS);
+        } catch (Exception e) {
+            mLogger.log(TAG, "Stats idle loop interrupted: " + e);
+        }
+    }
+
+    @Override
+    protected void _afterThreadLoop() {
+        mLogger.log(TAG, "End Loop");
+
+        FilterOutputStream stream = mOutput;
+        if (stream != null) {
+            mOutput = null;
+            try {
+                stream.flush();
+                stream.close();
+            } catch (Exception e) {
+                mLogger.log(TAG, "Error closing stream: " + e);
+            }
+        }
+
+        mLatchEndLoop.countDown();
+    }
+
+    private void appendLevels(int id, Map<Long, String> entries, Deque<Level> levels) {
+        for (Level level : levels) {
+            final long ts = level.mNowTS;
+            if (ts == 0) continue;
+
+            String s;
+            s = String.format(Locale.US,
+                    "{ \"name\":\"pct%d\", \"ph\":\"C\", \"ts\": %d, \"pid\": %d, \"args\":{ \"pct\": %d }},\n",
+                    id,
+                    ts * 1000,
+                    id,
+                    level.mLevel1);
+
+            s += String.format(Locale.US,
+                    "{ \"name\":\"avg%d\", \"ph\":\"C\", \"ts\": %d, \"pid\": %d, \"args\":{ \"avg\": %d }},\n",
+                    id,
+                    ts * 1000,
+                    id,
+                    level.mLevel2);
+            entries.put(ts, s);
+        }
+        levels.clear();
+    }
+
+    private void appendMotionSpan(int id, Map<Long, String> entries, MotionRun run) {
+        final long startTS = run.mStartTS;
+        final long endTS = run.mEndTS;
+        if (startTS == 0) return;
+        String s = String.format(Locale.US,
+                "{ \"name\":\"cam%d_hl\", \"ph\":\"X\", \"ts\": %d, \"dur\": %d, \"pid\": %d, \"tid\": %d },\n",
+                id,
+                startTS * 1000,
+                (endTS - startTS) * 1000,
+                id, id);
+        String existing = entries.get(startTS);
+        if (existing != null) {
+            s += existing;
+        }
+        entries.put(startTS, s);
+    }
+
+    private boolean writeEntry(FilterOutputStream stream, String s) {
+        try {
+            stream.write(s.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            mLogger.log(TAG, "Error write json stream: " + e);
+            return false;
+        }
+        return true;
+    }
+
+    private static class MotionRun {
+        private final int mCamId;
+        private final Deque<Level> mBefore = new LinkedList<>();
+        private final Deque<Level> mDuring = new LinkedList<>();
+        private final Deque<Level> mAfter = new LinkedList<>();
+        private long mStartTS;
+        private long mEndTS;
+
+
+        private MotionRun(int camId) {
+            mCamId = camId;
+        }
+
+        public boolean hasEnded() {
+            return mEndTS > 0 && !mAfter.isEmpty();
+        }
+
+        /**
+         * Returns null when accumulating.
+         * Returns this when the run is full and a new run should be started.
+         */
+        public MotionRun collect(long nowTS, int level1, int level2, boolean hasMotion) {
+            // 3 states: before motion, during motion, after motion.
+            Level level = new Level(nowTS, level1, level2);
+            if (!hasMotion && mStartTS == 0) {
+                // State 1: before motion.
+
+                if (mBefore.size() >= NUM_RUN_BUFFERS) {
+                    mBefore.pollFirst();
+                }
+                mBefore.offerLast(level);
+
+            } else if (hasMotion) {
+                // State 2: during motion.
+
+                if (mStartTS == 0) {
+                    mStartTS = nowTS;
+                }
+                mEndTS = nowTS;
+
+                mDuring.offerLast(level);
+
+            } else if (!hasMotion && mEndTS != 0) {
+                // State 3: after motion.
+
+                mAfter.offerLast(level);
+                if (mAfter.size() >= NUM_RUN_BUFFERS) {
+                    return this;
+                }
+            }
+
+            return null;
+        }
+    }
+
+    private static class Level {
+        private final long mNowTS;
+        private final int mLevel1;
+        private final int mLevel2;
+
+        public Level(long nowTS, int level1, int level2) {
+            mNowTS = nowTS;
+            mLevel1 = level1;
+            mLevel2 = level2;
         }
     }
 }

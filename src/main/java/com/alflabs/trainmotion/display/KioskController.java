@@ -227,7 +227,7 @@ public class KioskController implements IStartStop {
     };
 
     public boolean processKey(char c) {
-        // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help, t=stats.
+        // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help.
         // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask.
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
         switch (c) {

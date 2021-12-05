@@ -96,8 +96,8 @@ public class CommandLineArgs {
         mOptions.addOption(Option.builder(OPT_STATS_PATH)
                 .longOpt("stats")
                 .hasArg()
-                .argName("stats.bin")
-                .desc("Path for stats output (supports 'bin' or 'json' extensions). Also enables stats collection.")
+                .argName("stats.json")
+                .desc("Path for JSON stats output (.json or .json.gz). Also enables stats collection.")
                 .build());
         Stream.of(1, 2, 3).forEach(i ->
                 mOptions.addOption(Option.builder(Integer.toString(i))
