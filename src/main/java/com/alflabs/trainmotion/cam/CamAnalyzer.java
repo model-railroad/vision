@@ -82,6 +82,9 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private double mNoisePercent;
     private int mNoiseBufferIndex;
     private double mNoiseAverage;
+    private String mKey;
+    private FpsMeasurer mFpsMeasurer;
+    private long mLastExtraMs;
 
     CamAnalyzer(
             @Provided IClock clock,
@@ -156,43 +159,46 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     }
 
     @Override
-    protected void _runInThreadLoop() {
+    protected void _beforeThreadLoop() {
         mLogger.log(TAG, "Thread loop begin");
+        mKey = String.format("%db", mCamInfo.getIndex());
+        mFpsMeasurer = mFpsMeasurerFactory.create();
+        mFpsMeasurer.setFrameRate(ANALYZER_FPS);
+        mLastExtraMs = 0;
+    }
 
-        final String key = String.format("%db", mCamInfo.getIndex());
+    @Override
+    protected void _runInThreadLoop() {
+        final long loopMs = mFpsMeasurer.getLoopMs();
 
-        FpsMeasurer fpsMeasurer = mFpsMeasurerFactory.create();
-        fpsMeasurer.setFrameRate(ANALYZER_FPS);
-        long loopMs = fpsMeasurer.getLoopMs();
-        long extraMs = -1;
+        mFpsMeasurer.startTick();
+        String info = "";
+
+        Frame frame = null;
         try {
-            while (!mQuit) {
-                fpsMeasurer.startTick();
-                String info = "";
+            frame = mPlayerFrameQueue.poll(loopMs, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ignored) {}
 
-                Frame frame = null;
-                try {
-                    frame = mPlayerFrameQueue.poll(loopMs, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
-                    if (mQuit) {
-                        break;
-                    }
-                }
-
-                long computeMs = System.currentTimeMillis();
-                if (frame != null) {
-                    info = processFrame(frame);
-                }
-
-                computeMs = mClock.elapsedRealtime() - computeMs;
-                mConsoleTask.updateLineInfo(/* B */ key,
-                        String.format(" > %2.0f fps %s [%2d%+4d ms]", fpsMeasurer.getFps(), info, computeMs, extraMs));
-
-                extraMs = fpsMeasurer.endWait();
-            }
-        } finally {
-            mSubtractor.close();
+        if (mQuit) {
+            return;
         }
+
+        long computeMs = System.currentTimeMillis();
+        if (frame != null) {
+            info = processFrame(frame);
+        }
+
+        computeMs = mClock.elapsedRealtime() - computeMs;
+        mConsoleTask.updateLineInfo(/* B */ mKey,
+                String.format(" > %2.0f fps %s [%2d%+4d ms]", mFpsMeasurer.getFps(), info, computeMs, mLastExtraMs));
+
+        mLastExtraMs = mFpsMeasurer.endWait();
+    }
+
+    @Override
+    protected void _afterThreadLoop() {
+        mLogger.log(TAG, "Loop end");
+        mSubtractor.close();
     }
 
     @Nonnull

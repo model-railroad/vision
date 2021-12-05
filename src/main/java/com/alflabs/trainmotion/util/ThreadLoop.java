@@ -62,14 +62,18 @@ public abstract class ThreadLoop implements IStartStop {
             System.out.println(
                     "ThreadLoop._runInThread [" + Thread.currentThread().getName() +
                             "] unhanlded exception: " + t);
+        } finally {
+            _afterThreadLoop();
         }
-        _afterThreadLoop();
     }
 
+    /** Called once before the first {@code _runInThreadLoop} call. */
     protected void _beforeThreadLoop() {}
 
+    /** Called in a loop as long as {@code mQuit} is false. */
     protected abstract void _runInThreadLoop();
 
+    /** Called once after the last {@code _runInThreadLoop} call. */
     protected void _afterThreadLoop() {}
 
 }
