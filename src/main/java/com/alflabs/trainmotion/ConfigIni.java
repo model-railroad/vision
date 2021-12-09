@@ -46,6 +46,7 @@ public class ConfigIni {
 
     private static final String KEY_CAM_URL = "cam%d_url";
     private static final String KEY_CAM_THRESHOLD = "cam%d_threshold";
+    private static final String KEY_SPIKE_THRESHOLD = "spike_threshold";
     private static final String KEY_PlAYLIST_ID = "playlist_id";
     private static final String KEY_PlAYLIST_DIR = "playlist_dir";
     private static final String KEY_VOLUME_PERCENT = "volume_pct";
@@ -94,14 +95,31 @@ public class ConfigIni {
     }
 
     /** Returns the threshold for cam1..cam3 if present. */
-    @Nonnull
     public double getCamThresholdN(int index, double defaultThreshold) {
         final String key = String.format(Locale.US, KEY_CAM_THRESHOLD, index);
-        if (mProps.containsKey(key)) {
-            return Double.parseDouble(mProps.getProperty(key));
-        } else {
-            return defaultThreshold;
+        String value = mProps.getProperty(key);
+        if (!Strings.isNullOrEmpty(value)) {
+            try {
+                return Double.parseDouble(value);
+            } catch (NumberFormatException e) {
+                mLogger.log(TAG, "Failed to parse value '" + value + "' for '" + key + "'");
+            }
         }
+        return defaultThreshold;
+    }
+
+    /** Returns the spike threshold if present. */
+    public double getSpikeThreshold(double defaultThreshold) {
+        final String key = KEY_SPIKE_THRESHOLD;
+        String value = mProps.getProperty(key);
+        if (!Strings.isNullOrEmpty(value)) {
+            try {
+                return Double.parseDouble(value);
+            } catch (NumberFormatException e) {
+                mLogger.log(TAG, "Failed to parse value '" + value + "' for '" + key + "'");
+            }
+        }
+        return defaultThreshold;
     }
 
     /** Returns the playlist_id or empty string if missing. */
@@ -123,7 +141,7 @@ public class ConfigIni {
             try {
                 return Integer.parseInt(volPct);
             } catch (NumberFormatException e) {
-                mLogger.log(TAG, "Failed to parse volume percentage from '" + volPct + "'");
+                mLogger.log(TAG, "Failed to parse value '" + volPct + "' for '" + KEY_VOLUME_PERCENT + "'");
             }
         }
         return defaultValue;

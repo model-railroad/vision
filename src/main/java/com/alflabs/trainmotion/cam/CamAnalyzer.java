@@ -18,6 +18,7 @@
 
 package com.alflabs.trainmotion.cam;
 
+import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.display.ConsoleTask;
 import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
@@ -57,6 +58,7 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
 @AutoFactory
 public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private final IClock mClock;
+    private final ConfigIni mConfigIni;
     private final ConsoleTask mConsoleTask;
     private final StatsCollector mStatsCollector;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
@@ -64,6 +66,9 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
     // The analyzer does not need to run at the full input/output feed fps.
     private static final int ANALYZER_FPS = 5;
+    // Delta threshold used to remove spikes
+    private static final double NOISE_SPIKE_DELTA_DEFAULT = 10;
+
 
     private final ILogger mLogger;
     private final CamInfo mCamInfo;
@@ -79,8 +84,9 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     @SuppressWarnings("FieldCanBeLocal") // Must remain scoped as a field to keep allocated
     private IplImage mOutputImage;
     private Mat mOutput;
-    private double mNoisePercent;
+    private double mLastNoisePercent;
     private int mNoiseBufferIndex;
+    private double mNoiseSpikeThreshold;
     private double mNoiseAverage;
     private String mKey;
     private FpsMeasurer mFpsMeasurer;
@@ -89,11 +95,13 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     CamAnalyzer(
             @Provided IClock clock,
             @Provided ILogger logger,
+            @Provided ConfigIni configIni,
             @Provided ConsoleTask consoleTask,
             @Provided StatsCollector statsCollector,
             @Provided FpsMeasurerFactory fpsMeasurerFactory,
             CamInfo camInfo) {
         mClock = clock;
+        mConfigIni = configIni;
         mConsoleTask = consoleTask;
         mStatsCollector = statsCollector;
         mFpsMeasurerFactory = fpsMeasurerFactory;
@@ -129,6 +137,8 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     @Override
     public void start() throws Exception {
         mLogger.log(TAG, "Start");
+
+        mNoiseSpikeThreshold = mConfigIni.getSpikeThreshold(NOISE_SPIKE_DELTA_DEFAULT);
 
         // Most JavaCV objects must be allocated on the main thread
         // and after the dagger constructor.
@@ -228,22 +238,32 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         double noisePercent2 = 100.0 * nz / npx;
 
         // Instant noise, unfiltered.
-        mNoisePercent = noisePercent2;
+        // Compute the delta with the last measurement.
+        // If larger than the spike threshold, ignore it.
+        double deltaPercent = noisePercent2 - mLastNoisePercent;
+        mLastNoisePercent = noisePercent2;
 
-        // Filter noise with a 10-sample average window
-        int index = mNoiseBufferIndex;
-        mNoiseBuffer[index] = noisePercent2;
-        int windowLen = mNoiseBuffer.length;
-        mNoiseBufferIndex = (index + 1) % windowLen;
-        double average = 0;
-        for (int i = 0; i < windowLen; i++) {
-            average += mNoiseBuffer[i];
+        double average;
+        boolean hasMotion;
+        if (deltaPercent < mNoiseSpikeThreshold) {
+            // Filter noise with a 10-sample average window
+            int index = mNoiseBufferIndex;
+            mNoiseBuffer[index] = noisePercent2;
+            int windowLen = mNoiseBuffer.length;
+            mNoiseBufferIndex = (index + 1) % windowLen;
+            average = 0;
+            for (int i = 0; i < windowLen; i++) {
+                average += mNoiseBuffer[i];
+            }
+            average /= windowLen;
+            mNoiseAverage = average;
+
+            hasMotion = average >= mMotionThreshold;
+            mMotionDetected.set(hasMotion);
+        } else {
+            average = mNoiseAverage;
+            hasMotion = mMotionDetected.get();
         }
-        average /= windowLen;
-        mNoiseAverage = average;
-
-        boolean hasMotion = average >= mMotionThreshold;
-        mMotionDetected.set(hasMotion);
 
         mStatsCollector.collect(mCamInfo.getIndex(), noisePercent2, average, hasMotion);
 
