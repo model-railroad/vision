@@ -18,6 +18,7 @@
 
 package com.alflabs.trainmotion.util;
 
+import com.alflabs.utils.IClock;
 import com.google.common.base.Strings;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -34,8 +35,11 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Send common hits to the Google Analytics Measurement Protocol v1.
@@ -43,15 +47,17 @@ import java.util.concurrent.TimeUnit;
  * https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide
  */
 @Singleton
-public class Analytics implements IStartStop {
+public class Analytics extends ThreadLoop {
     private static final String TAG = Analytics.class.getSimpleName();
 
-    private static final boolean DEBUG = false;
+    private static final boolean VERBOSE_DEBUG = false;
     private static final boolean USE_GET = false; // default is POST
+    private static final long IDLE_SLEEP_MS = 1000 / 10;
+    private static final int MAX_ERROR_NUM = 3;
 
     private static final String GA_URL =
             "https://www.google-analytics.com/"
-            + (DEBUG ? "debug/" : "")
+            + (VERBOSE_DEBUG ? "debug/" : "")
             + "collect";
 
     private static final String UTF_8 = "UTF-8";
@@ -63,8 +69,12 @@ public class Analytics implements IStartStop {
     private static final String USER_ID = "TrainMotion";     // should be made to vary per machine
 
     private final ILogger mLogger;
+    private final IClock mClock;
     private final Random mRandom;
     private final OkHttpClient mOkHttpClient;
+    private final ConcurrentLinkedDeque<Payload> mPayloads = new ConcurrentLinkedDeque<>();
+    private final AtomicBoolean mStopLoopOnceEmpty = new AtomicBoolean(false);
+    private final CountDownLatch mLatchEndLoop = new CountDownLatch(1);
     // Note: The executor is a dagger singleton, shared with the JsonSender.
     private final ScheduledExecutorService mExecutor;
 
@@ -73,19 +83,18 @@ public class Analytics implements IStartStop {
 
     @Inject
     public Analytics(ILogger logger,
+                     IClock clock,
                      Random random,
                      OkHttpClient okHttpClient,
                      @Named("SingleThreadExecutor") ScheduledExecutorService executor) {
         mLogger = logger;
+        mClock = clock;
         mRandom = random;
         mOkHttpClient = okHttpClient;
         mExecutor = executor;
     }
 
-    @Override
-    public void start() throws Exception {
-    }
-
+    /** Must be called before {@link #start()}. All events are ignore till this is set. */
     public void setAnalyticsId(@Nonnull String analyticsId) {
         // Use "#" as a comment and only take the first thing before, if any.
         analyticsId = analyticsId.replaceAll("[#\n\r].*", "");
@@ -102,6 +111,11 @@ public class Analytics implements IStartStop {
         }
     }
 
+    @Override
+    public void start() throws Exception {
+        super.start("Analytics");
+    }
+
     /**
      * Requests termination. Pending tasks will be executed, no new task is allowed.
      * Waiting time is 10 seconds max.
@@ -111,9 +125,56 @@ public class Analytics implements IStartStop {
      */
     @Override
     public void stop() throws Exception {
+        mLogger.log(TAG, "Stop");
+        mStopLoopOnceEmpty.set(true);
+        mLatchEndLoop.await(10, TimeUnit.SECONDS);
+        super.stop();
         mExecutor.shutdown();
         mExecutor.awaitTermination(10, TimeUnit.SECONDS);
-        mLogger.log(TAG, "Shutdown");
+        mLogger.log(TAG, "Stopped");
+    }
+
+    @Override
+    protected void _runInThreadLoop() throws EndLoopException {
+        final boolean isStopping = mStopLoopOnceEmpty.get();
+        final boolean isNotStopping = !isStopping;
+
+        if (mPayloads.isEmpty()) {
+            if (isStopping) {
+                throw new EndLoopException();
+            }
+        } else {
+            int errors = 0;
+            Payload payload;
+            while ((payload = mPayloads.pollFirst()) != null) {
+                if (!payload.send(mClock.elapsedRealtime())) {
+                    if (isNotStopping) {
+                        // If it fails, append the payload at the *end* of the queue to retry later
+                        // after all newer events.
+                        // Except if we fail when stopping, in that case we just drop the events.
+                        mPayloads.offerLast(payload);
+                        errors++;
+
+                        // Don't hammer the server in case of failures.
+                        if (errors >= MAX_ERROR_NUM) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        try {
+            Thread.sleep(IDLE_SLEEP_MS);
+        } catch (Exception e) {
+            mLogger.log(TAG, "Stats idle loop interrupted: " + e);
+        }
+    }
+
+    @Override
+    protected void _afterThreadLoop() {
+        mLogger.log(TAG, "End Loop");
+        mLatchEndLoop.countDown();
     }
 
     public String getAnalyticsId() {
@@ -145,55 +206,47 @@ public class Analytics implements IStartStop {
             return;
         }
 
-        mExecutor.execute(() -> {
-            try {
-                int random = mRandom.nextInt();
-                if (random < 0) {
-                    random = -random;
-                }
+        int random = mRandom.nextInt();
+        if (random < 0) {
+            random = -random;
+        }
 
-                String user = Strings.isNullOrEmpty(user_) ? USER_ID : user_;
-                String cid = UUID.nameUUIDFromBytes(user.getBytes()).toString();
+        try {
+            String user = Strings.isNullOrEmpty(user_) ? USER_ID : user_;
+            String cid = UUID.nameUUIDFromBytes(user.getBytes()).toString();
 
-                // Events keys:
-                // https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide#event
+            // Events keys:
+            // https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide#event
 
-                String payload = String.format(
-                        "v=1" +
-                                "&tid=%s" +         // tracking id
-                                "&ds=%s" +          // data source
-                                "&cid=%s" +         // anonymous cliend id
-                                "&t=event" +        // hit type == event
-                                "&ec=%s" +          // event category
-                                "&ea=%s" +          // event action
-                                "&el=%s" +          // event label
-                                "&z=%d",            // cache buster
-                        URLEncoder.encode(analyticsId, UTF_8),
-                        URLEncoder.encode(DATA_SOURCE, UTF_8),
-                        URLEncoder.encode(cid, UTF_8),
-                        URLEncoder.encode(category, UTF_8),
-                        URLEncoder.encode(action, UTF_8),
-                        URLEncoder.encode(label, UTF_8),
-                        random);
-                if (!Strings.isNullOrEmpty(value)) {
-                    payload += String.format("&ev=%s", URLEncoder.encode(value, UTF_8));
-                }
-
-                Response response = sendPayload(payload);
-
-                mLogger.log(TAG, String.format("Event [c:%s a:%s l:%s v:%s u:%s] code: %d",
-                        category, action, label, value, user, response.code()));
-
-                if (DEBUG) {
-                    mLogger.log(TAG, "Event body: " + response.body().string());
-                }
-
-                response.close();
-
-            } catch (Exception e) {
-                mLogger.log(TAG, "Event ERROR: " + e);
+            String payload = String.format(
+                    "v=1" +
+                            "&tid=%s" +         // tracking id
+                            "&ds=%s" +          // data source
+                            "&cid=%s" +         // anonymous cliend id
+                            "&t=event" +        // hit type == event
+                            "&ec=%s" +          // event category
+                            "&ea=%s" +          // event action
+                            "&el=%s" +          // event label
+                            "&z=%d",            // cache buster
+                    URLEncoder.encode(analyticsId, UTF_8),
+                    URLEncoder.encode(DATA_SOURCE, UTF_8),
+                    URLEncoder.encode(cid, UTF_8),
+                    URLEncoder.encode(category, UTF_8),
+                    URLEncoder.encode(action, UTF_8),
+                    URLEncoder.encode(label, UTF_8),
+                    random);
+            if (!Strings.isNullOrEmpty(value)) {
+                payload += String.format("&ev=%s", URLEncoder.encode(value, UTF_8));
             }
-        });
+
+            mPayloads.offerFirst(new Payload(
+                    mClock.elapsedRealtime(),
+                    payload,
+                    String.format("Event [c:%s a:%s l:%s v:%s u:%s]", category, action, label, value, user)
+            ));
+        } catch (Exception e) {
+            mLogger.log(TAG, "Event Encoding ERROR: " + e);
+        }
     }
 
     public void sendPage(
@@ -206,75 +259,110 @@ public class Analytics implements IStartStop {
             return;
         }
 
-        mExecutor.execute(() -> {
+        int random = mRandom.nextInt();
+        if (random < 0) {
+            random = -random;
+        }
+
+        try {
+
+            String user = user_;
+            if (user.length() > 0 && Character.isDigit(user.charAt(0))) {
+                user = "user" + user;
+            }
+
+            String cid = UUID.nameUUIDFromBytes(user.getBytes()).toString();
+
+            String d_url = url_ + path;
+
+            // Page keys:
+            // https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide#page
+
+            String payload = String.format(
+                    "v=1" +
+                            "&tid=%s" +         // tracking id
+                            "&ds=%s" +          // data source
+                            "&cid=%s" +         // anonymous cliend id
+                            "&t=pageview" +     // hit type == pageview
+                            "&dl=%s" +          // document location
+                            "&z=%d",            // cache buster
+                    URLEncoder.encode(analyticsId, UTF_8),
+                    URLEncoder.encode(DATA_SOURCE, UTF_8),
+                    URLEncoder.encode(cid, UTF_8),
+                    URLEncoder.encode(d_url, UTF_8),
+                    random);
+
+            mPayloads.offerFirst(new Payload(
+                    mClock.elapsedRealtime(),
+                    payload,
+                    String.format("PageView [d:%s u:%s]", d_url, user)
+            ));
+        } catch (Exception e) {
+            mLogger.log(TAG, "Page Encoding ERROR: " + e);
+        }
+    }
+
+
+    private class Payload {
+        private final long mCreatedTS;
+        private final String mPayload;
+        private final String mDebugLog;
+
+        public Payload(long createdTS, String payload, String debugLog) {
+            mCreatedTS = createdTS;
+            mPayload = payload;
+            mDebugLog = debugLog;
+        }
+
+        /** Must be executed in background thread. */
+        public boolean send(long nowTS) {
+            long deltaTS = nowTS - mCreatedTS;
+
+            // Queue Time:
+            // https://developers.google.com/analytics/devguides/collection/protocol/v1/parameters#qt
+            String payload = String.format("%s&qt=%d" /* queue_time */, mPayload, deltaTS);
+
             try {
-                int random = mRandom.nextInt();
-                if (random < 0) {
-                    random = -random;
-                }
+                Response response = _sendPayload(payload);
 
-                String user = user_;
-                if (user.length() > 0 && Character.isDigit(user.charAt(0))) {
-                    user = "user" + user;
-                }
+                int code = response.code();
+                mLogger.log(TAG, String.format("%s delta: %d ms, code: %d",
+                        mDebugLog, deltaTS, code));
 
-                String cid = UUID.nameUUIDFromBytes(user.getBytes()).toString();
-
-                String d_url = url_ + path;
-
-                // Page keys:
-                // https://developers.google.com/analytics/devguides/collection/protocol/v1/devguide#page
-
-                String payload = String.format(
-                        "v=1" +
-                                "&tid=%s" +         // tracking id
-                                "&ds=%s" +          // data source
-                                "&cid=%s" +         // anonymous cliend id
-                                "&t=pageview" +     // hit type == pageview
-                                "&dl=%s" +          // document location
-                                "&z=%d",            // cache buster
-                        URLEncoder.encode(analyticsId, UTF_8),
-                        URLEncoder.encode(DATA_SOURCE, UTF_8),
-                        URLEncoder.encode(cid, UTF_8),
-                        URLEncoder.encode(d_url, UTF_8),
-                        random);
-
-                Response response = sendPayload(payload);
-
-                mLogger.log(TAG, String.format("PageView [d:%s u:%s] code: %d",
-                        d_url, user, response.code()));
-
-                if (DEBUG) {
+                if (VERBOSE_DEBUG) {
                     mLogger.log(TAG, "Event body: " + response.body().string());
                 }
 
                 response.close();
+                return code < 400;
 
             } catch (Exception e) {
-                mLogger.log(TAG, "Page ERROR: " + e);
+                mLogger.log(TAG, "Send ERROR: " + e);
             }
-        });
-    }
 
-    // Must be executed in background thread. Caller must call Response.close().
-    private Response sendPayload(String payload) throws IOException {
-        if (DEBUG) {
-            mLogger.log(TAG, "Event Payload: " + payload);
+            return false;
         }
 
-        String url = GA_URL;
-        if (USE_GET) {
-            url += "?" + payload;
+        /** Must be executed in background thread. Caller must call Response.close(). */
+        private Response _sendPayload(String payload) throws IOException {
+            if (VERBOSE_DEBUG) {
+                mLogger.log(TAG, "Event Payload: " + payload);
+            }
+
+            String url = GA_URL;
+            if (USE_GET) {
+                url += "?" + payload;
+            }
+
+            Request.Builder builder = new Request.Builder().url(url);
+
+            if (!USE_GET) {
+                RequestBody body = RequestBody.create(MEDIA_TYPE, payload);
+                builder.post(body);
+            }
+
+            Request request = builder.build();
+            return mOkHttpClient.newCall(request).execute();
         }
-
-        Request.Builder builder = new Request.Builder().url(url);
-
-        if (!USE_GET) {
-            RequestBody body = RequestBody.create(MEDIA_TYPE, payload);
-            builder.post(body);
-        }
-
-        Request request = builder.build();
-        return mOkHttpClient.newCall(request).execute();
     }
 }

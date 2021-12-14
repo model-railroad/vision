@@ -68,7 +68,8 @@ public class StatsCollector extends ThreadLoop {
     private final CommandLineArgs mCommandLineArgs;
     private final Map<Integer, MotionRun> mMotionRuns = Collections.synchronizedMap(new HashMap<>());
     private final ConcurrentLinkedDeque<MotionRun> mCompletedRuns = new ConcurrentLinkedDeque<>();
-    private final AtomicBoolean mWriteBeforeClosing = new AtomicBoolean(false);
+    private final AtomicBoolean mStopCollect = new AtomicBoolean(false);
+    private final AtomicBoolean mStopLoopOnceEmpty = new AtomicBoolean(false);
     private final Map<Long, String> mWriteEntries = new TreeMap<>();
     private final CountDownLatch mLatchEndLoop = new CountDownLatch(1);
     private String mStatsPath;
@@ -105,8 +106,9 @@ public class StatsCollector extends ThreadLoop {
     @Override
     public void stop() throws Exception {
         mLogger.log(TAG, "Stop");
-        mWriteBeforeClosing.set(true);
+        mStopCollect.set(true);
         mCameras.forEachCamera(camInfo -> collect(camInfo.getIndex(), 0, 0, false));
+        mStopLoopOnceEmpty.set(true);
         mLatchEndLoop.await(10, TimeUnit.SECONDS);
         super.stop();
         mLogger.log(TAG, "Stopped");
@@ -118,7 +120,7 @@ public class StatsCollector extends ThreadLoop {
 
         MotionRun run = mMotionRuns.get(camIndex);
 
-        if (mWriteBeforeClosing.get()) {
+        if (mStopCollect.get()) {
             if (run != null) {
                 mMotionRuns.put(camIndex, null);
                 mCompletedRuns.offerLast(run);
@@ -153,37 +155,42 @@ public class StatsCollector extends ThreadLoop {
     }
 
     @Override
-    protected void _runInThreadLoop() {
+    protected void _runInThreadLoop() throws EndLoopException {
         mWriteEntries.clear();
 
-        if (mCompletedRuns.isEmpty()) return;
-        // mLogger.log(TAG, "Processing " + mCompletedRuns.size() + " motion runs to write"); // DEBUG
-
-        FilterOutputStream stream = mOutput;
-        if (stream == null) return;
-        MotionRun run;
-
-        while ((run = mCompletedRuns.pollFirst()) != null) {
-            int id = run.mCamId;
-            appendLevels(id, mWriteEntries, run.mBefore);
-            appendLevels(id, mWriteEntries, run.mDuring);
-            appendLevels(id, mWriteEntries, run.mAfter);
-            appendMotionSpan(id, mWriteEntries, run);
-        }
-
-        for (String entry : mWriteEntries.values()) {
-            if (!writeEntry(stream, entry)) {
-                break;
+        if (mCompletedRuns.isEmpty()) {
+            if (mStopLoopOnceEmpty.get()) {
+                throw new EndLoopException();
             }
-        }
+        } else {
+            // mLogger.log(TAG, "Processing " + mCompletedRuns.size() + " motion runs to write"); // DEBUG
 
-        try {
-            stream.flush();
-        } catch (IOException e) {
-            mLogger.log(TAG, "Error flush stream: " + e);
-        }
+            FilterOutputStream stream = mOutput;
+            if (stream == null) return;
+            MotionRun run;
 
-        mLogger.log(TAG, "Wrote " + mWriteEntries.size() + " records");
+            while ((run = mCompletedRuns.pollFirst()) != null) {
+                int id = run.mCamId;
+                appendLevels(id, mWriteEntries, run.mBefore);
+                appendLevels(id, mWriteEntries, run.mDuring);
+                appendLevels(id, mWriteEntries, run.mAfter);
+                appendMotionSpan(id, mWriteEntries, run);
+            }
+
+            for (String entry : mWriteEntries.values()) {
+                if (!writeEntry(stream, entry)) {
+                    break;
+                }
+            }
+
+            try {
+                stream.flush();
+            } catch (IOException e) {
+                mLogger.log(TAG, "Error flush stream: " + e);
+            }
+
+            mLogger.log(TAG, "Wrote " + mWriteEntries.size() + " records");
+        }
 
         try {
             Thread.sleep(IDLE_SLEEP_MS);

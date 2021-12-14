@@ -58,6 +58,8 @@ public abstract class ThreadLoop implements IStartStop {
             while (!mQuit) {
                 _runInThreadLoop();
             }
+        } catch (EndLoopException ignored) {
+            // No-logging, just end the loop.
         } catch (Throwable t) {
             System.out.println(
                     "ThreadLoop._runInThread [" + Thread.currentThread().getName() +
@@ -67,11 +69,13 @@ public abstract class ThreadLoop implements IStartStop {
         }
     }
 
+    protected class EndLoopException extends Exception {}
+
     /** Called once before the first {@code _runInThreadLoop} call. */
     protected void _beforeThreadLoop() {}
 
     /** Called in a loop as long as {@code mQuit} is false. */
-    protected abstract void _runInThreadLoop();
+    protected abstract void _runInThreadLoop() throws EndLoopException;
 
     /** Called once after the last {@code _runInThreadLoop} call. */
     protected void _afterThreadLoop() {}

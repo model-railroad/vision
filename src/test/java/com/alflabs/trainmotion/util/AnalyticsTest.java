@@ -70,6 +70,7 @@ public class AnalyticsTest {
     @Test
     public void testSendEvent() throws Exception {
         mAnalytics.setAnalyticsId("UID-1234-5");
+        mAnalytics.start();
         mAnalytics.sendEvent("CAT", "ACT", "LAB", "VAL", "USR");
         mAnalytics.stop(); // forces pending tasks to execute
 
@@ -82,8 +83,8 @@ public class AnalyticsTest {
         Buffer bodyBuffer = new Buffer();
         //noinspection ConstantConditions
         req.body().writeTo(bodyBuffer);
-        assertThat(bodyBuffer.readUtf8()).isEqualTo(
+        assertThat(bodyBuffer.readUtf8()).startsWith(
                 "v=1&tid=UID-1234-5&ds=trainmotion&cid=2b6cc9c3-0eaa-39c1-8909-1ea928529cbd" +
-                        "&t=event&ec=CAT&ea=ACT&el=LAB&z=42&ev=VAL");
+                        "&t=event&ec=CAT&ea=ACT&el=LAB&z=42&ev=VAL&qt=");
     }
 }
