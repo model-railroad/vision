@@ -2,7 +2,7 @@
 
 ## Description
 
-Source: https://bitbucket.org/ralfoide/train-motion
+Source: https://bitbucket.org/randall-railroad/train-motion
 
 This is a project created for the
 [Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), which is an automated live
@@ -123,7 +123,7 @@ Rendering for v0.1 relies on:
 
 The proper way to check out the source is:
 
-    $ git clone https://bitbucket.org/ralfoide/train-motion.git
+    $ git clone https://bitbucket.org/randall-railroad/train-motion.git
     $ ./_init.sh [-f]
 
 The `_init.sh` script checks out the git sub-repository [LibUtils](https://bitbucket.org/ralfoide/libutils)
