@@ -22,7 +22,7 @@ apply plugin: "java"
 apply plugin: "idea"
 
 group   "org.alflabs.trainmotion"
-version "0.4-SNAPSHOT"
+version "0.5-SNAPSHOT"
 
 project.ext {
     javaManifestClass = "com.alflabs.trainmotion.Main"

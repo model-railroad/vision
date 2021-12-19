@@ -184,10 +184,10 @@ The first build/run will take about forever as the dependencies gets downloaded.
 
 To run it:
 
-`$ java -jar build/libs/train-motion-0.4-SNAPSHOT-all.jar <command line options>`
+`$ java -jar build/libs/train-motion-0.5-SNAPSHOT-all.jar <command line options>`
 
 
-## Configuration and Command-line Options for v0.2
+## Configuration and Command-line Options for v0.5
 
 Configuration is done using a _config.ini_ file.
 
@@ -196,20 +196,23 @@ An example is provided in `src/main/resources/config.ini`.
 Key/values expected in the configuration file:
 
 __Input camera streams__:
-* `cam1`, `cam2`, `cam3`: The URL for the live cameras download stream.
+* `cam1_url`, `cam2_url`, `cam3_url`: The URL for the live cameras download stream.
   * The syntax varies by model/make. \
     For example for my Edimax cameras, the syntax is
     `rtsp://username:password@ipaddress:554/ipcam_h264.sdp`. \
     If you do not know the syntax for your camera model, google it or look up the documentation. \
     The path can use the magic variables $U, $P1, $P2, $P3 which are
     replaced by command-line arguments -u, -p1, -p2, -p3 respectively.
-  * For testing, a "fake live camera" generator can be invoked by using a
-    magic value in the form `fake_srgb_01ff8822` (the 32-bit hex value represent speed + RGB).
-    See `src/main/resources/config.ini` for examples to use.
-  * The numer of cameras that train-motion can handle is not limited.
-    The key parameter is `camN` where N>=1.
+  * For testing, a comma-separated list of mp4 file paths can be provided instead.
+    See `src/main/resources/config.ini` for examples of use.
+  * The number of cameras that train-motion can handle is not limited.
+    The key parameter is `camN_url` where N>=1.
     Right now the visual output is optimized for 3 cameras.
     At least one live camera is required.
+* `cam1_threshold`, `cam2_threshold`, `cam3_threshold`: The threshold for
+  detecting motion on each camera. Default is 0.3, which means 0.3% of pixels 
+  change detected between frames.
+  The key parameter is `camN_threshold` where N>=1.
 
 __Local Media Playback__:
 * `volume_pct`: The volume percentage when playing media videos. Default is 50%.
