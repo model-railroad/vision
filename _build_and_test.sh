@@ -1,14 +1,12 @@
 #!/bin/bash
 set -e
-DST="build"
-if [[ ! -d "build" ]]; then
-    DST="train-motion/$DST"
-fi
-JAR="$DST/libs/train-motion-0.5-SNAPSHOT-all.jar"
+
+# Figure the directory where this script is located (following symlinks as needed)
+PROG_DIR=$(dirname $(readlink "$BASH_SOURCE" || echo "$BASH_SOURCE"))
 
 (
-    # Change to this script direcoty (following symlinks as needed)
-    cd $(dirname $(readlink "$BASH_SOURCE" || echo "$BASH_SOURCE"))
+    # Change to this script directory (following symlinks as needed)
+    cd "$PROG_DIR"
 
     echo "JAVA_HOME=${JAVA_HOME}"
     [[ -d "$JAVA_HOME" ]] && JV="$JAVA_HOME/bin/java.exe" || JV=$(which java)
@@ -21,7 +19,12 @@ JAR="$DST/libs/train-motion-0.5-SNAPSHOT-all.jar"
     # ./gradlew --stop
 )
 
+# Note: we don't CD to the script dir to respect a local config.ini in the exec dir context.
+DST="$PROG_DIR/build"
+JAR="$DST/libs/train-motion-0.5-SNAPSHOT-all.jar"
+
 # List & run
 ls -1sh $(find $DST/ -name "*.jar")
 set -x
 java -jar $JAR --help
+
