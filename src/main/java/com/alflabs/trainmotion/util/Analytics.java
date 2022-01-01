@@ -206,12 +206,12 @@ public class Analytics extends ThreadLoop {
             return;
         }
 
-        int random = mRandom.nextInt();
-        if (random < 0) {
-            random = -random;
-        }
-
         try {
+            int random = mRandom.nextInt();
+            if (random < 0) {
+                random = -random;
+            }
+
             String user = Strings.isNullOrEmpty(user_) ? USER_ID : user_;
             String cid = UUID.nameUUIDFromBytes(user.getBytes()).toString();
 
@@ -259,12 +259,12 @@ public class Analytics extends ThreadLoop {
             return;
         }
 
-        int random = mRandom.nextInt();
-        if (random < 0) {
-            random = -random;
-        }
 
         try {
+            int random = mRandom.nextInt();
+            if (random < 0) {
+                random = -random;
+            }
 
             String user = user_;
             if (user.length() > 0 && Character.isDigit(user.charAt(0))) {
@@ -323,7 +323,7 @@ public class Analytics extends ThreadLoop {
             String payload = String.format("%s&qt=%d" /* queue_time */, mPayload, deltaTS);
 
             try {
-                Response response = _sendPayload(payload);
+                Response response = sendPayload(payload);
 
                 int code = response.code();
                 mLogger.log(TAG, String.format("%s delta: %d ms, code: %d",
@@ -344,7 +344,7 @@ public class Analytics extends ThreadLoop {
         }
 
         /** Must be executed in background thread. Caller must call Response.close(). */
-        private Response _sendPayload(String payload) throws IOException {
+        private Response sendPayload(String payload) throws IOException {
             if (VERBOSE_DEBUG) {
                 mLogger.log(TAG, "Event Payload: " + payload);
             }
