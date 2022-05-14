@@ -31,6 +31,8 @@ However development is also done under Windows with [Cygwin](https://www.cygwin.
 or [Raspbian](https://www.raspberrypi.org/software/) as needed.
 The project is designed to be reasonably portable to any similar architecture. 
 
+![Train Motion Running](https://www.alfray.com/trains/blog/randall/2020-06-14__train_motion_video_display__d300ac8f_4703d46767d4431981dc0a4def1b685777c7bb64i.png)
+
 
 ## Input
 
