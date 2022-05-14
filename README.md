@@ -152,7 +152,7 @@ right click the Run action command, and then edit the Run Configuration:
 * Use classpath of module: `train-motion.main`
 * JRE: `Default 1.8`
 
-The first build/run will take about forever as the dependencies gets downloaded.
+The first build/run will take about forever as the dependencies gets downloaded (between OpenCV, FFMpeg, and all their dependencies, we're looking at around 960 MB for the initial dependency download).
 
 See below for an explanation of the command-line options.
  
