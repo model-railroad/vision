@@ -13,7 +13,8 @@ CONFIG=""
 if [[ -f "$C_DIR/config.ini" ]]; then CONFIG="--config config.ini"; fi
 
 # Build & invoke with command line args
-if [[ $(uname) =~ CYGWIN ]]; then
+U=$(uname)
+if [[ "$U" =~ CYGWIN || "$U" =~ MSYS ]]; then
   # Windows.
   # Use the fatJar version to work around the issue of the classpath command line size limit.
   rm -f /tmp/_g
@@ -29,6 +30,6 @@ else
   rm -f /tmp/_g
   set -x
   (cd $G_DIR && ./gradlew _printRunCmdLine --console=plain | tee /tmp/_g)
-  $JV $(grep -- "-cp" /tmp/_g | head -n 1) $CONFIG $@
+  "$JV" $(grep -- "-cp" /tmp/_g | head -n 1) $CONFIG $@
 fi
 
