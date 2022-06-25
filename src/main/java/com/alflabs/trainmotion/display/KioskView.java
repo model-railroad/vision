@@ -25,6 +25,7 @@ import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.IClock;
+import com.google.common.io.Resources;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
@@ -150,6 +151,16 @@ public class KioskView {
         mMainPlayer = new EmbeddedMediaPlayerComponent();
         mMainPlayer.setBackground(BG_COLOR);
         mMainPlayer.setBounds(0, 0, width, height); // matches initial frame
+        try {
+            mMainPlayer.mediaPlayer().logo().setLocation(0, Integer.MAX_VALUE);
+            String logo = new File(Resources.getResource("logo_youtube_50pct.png").getPath()).getPath();
+            mLogger.log(TAG, "Logo: " + logo);
+            mMainPlayer.mediaPlayer().logo().setFile(logo);
+            mMainPlayer.mediaPlayer().logo().setOpacity(0.75f);
+            mMainPlayer.mediaPlayer().logo().enable(true);
+        } catch (Throwable t) {
+            mLogger.log(TAG, "Error setting logo: " + t.getMessage());
+        }
         mFrame.add(mMainPlayer);
 
         mBottomLabel = new JLabel("Please wait, initializing camera streams...");
