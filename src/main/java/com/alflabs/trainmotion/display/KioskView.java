@@ -25,6 +25,7 @@ import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.utils.IClock;
+import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
@@ -39,6 +40,7 @@ import uk.co.caprica.vlcj.player.embedded.videosurface.callback.RenderCallbackAd
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.format.RV32BufferFormat;
 
 import javax.annotation.concurrent.GuardedBy;
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.JFrame;
@@ -66,6 +68,8 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -151,16 +155,7 @@ public class KioskView {
         mMainPlayer = new EmbeddedMediaPlayerComponent();
         mMainPlayer.setBackground(BG_COLOR);
         mMainPlayer.setBounds(0, 0, width, height); // matches initial frame
-        try {
-            mMainPlayer.mediaPlayer().logo().setLocation(0, Integer.MAX_VALUE);
-            String logo = new File(Resources.getResource("logo_youtube_50pct.png").getPath()).getPath();
-            mLogger.log(TAG, "Logo: " + logo);
-            mMainPlayer.mediaPlayer().logo().setFile(logo);
-            mMainPlayer.mediaPlayer().logo().setOpacity(0.75f);
-            mMainPlayer.mediaPlayer().logo().enable(true);
-        } catch (Throwable t) {
-            mLogger.log(TAG, "Error setting logo: " + t.getMessage());
-        }
+        setupLogo();
         mFrame.add(mMainPlayer);
 
         mBottomLabel = new JLabel("Please wait, initializing camera streams...");
@@ -231,6 +226,24 @@ public class KioskView {
         }
 
         mRepaintTimer = new Timer(1000 / displayFps, this::onRepaintTimerTick);
+    }
+
+    private void setupLogo() {
+        try {
+            mMainPlayer.mediaPlayer().logo().setLocation(0, Integer.MAX_VALUE);
+            URL resource = Resources.getResource("logo_youtube_50pct.png");
+            mLogger.log(TAG, "Logo read: " + resource.getPath());
+            File tmpFile = File.createTempFile("logo_youtube_", ".png");
+            mLogger.log(TAG, "Logo write: " + tmpFile);
+            Files.write(Resources.toByteArray(resource), tmpFile);
+            tmpFile.deleteOnExit();
+
+            mMainPlayer.mediaPlayer().logo().setFile(tmpFile.getPath());
+            mMainPlayer.mediaPlayer().logo().setOpacity(0.75f);
+            mMainPlayer.mediaPlayer().logo().enable(true);
+        } catch (Throwable t) {
+            mLogger.log(TAG, "Error setting logo: " + t.getMessage());
+        }
     }
 
     public int getContentWidth() {
