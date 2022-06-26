@@ -230,8 +230,7 @@ public class KioskView {
 
     private void setupLogo() {
         try {
-            mMainPlayer.mediaPlayer().logo().setLocation(0, Integer.MAX_VALUE);
-            URL resource = Resources.getResource("logo_youtube_50pct.png");
+            URL resource = Resources.getResource("logo_youtube_75pct.png");
             mLogger.log(TAG, "Logo read: " + resource.getPath());
             File tmpFile = File.createTempFile("logo_youtube_", ".png");
             mLogger.log(TAG, "Logo write: " + tmpFile);
@@ -239,6 +238,7 @@ public class KioskView {
             tmpFile.deleteOnExit();
 
             mMainPlayer.mediaPlayer().logo().setFile(tmpFile.getPath());
+            mMainPlayer.mediaPlayer().logo().setLocation(0, Integer.MAX_VALUE);
             mMainPlayer.mediaPlayer().logo().setOpacity(0.75f);
             mMainPlayer.mediaPlayer().logo().enable(true);
         } catch (Throwable t) {
