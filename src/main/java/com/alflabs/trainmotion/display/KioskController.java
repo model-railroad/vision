@@ -86,9 +86,6 @@ public class KioskController implements IStartStop {
         void onCameraPlayerError(@Nonnull CamInfo camInfo);
         boolean showMask();
         long elapsedRealtime();
-
-        void turnDisplayOn();
-        void turnDisplayOff();
     }
 
     @Inject
@@ -209,26 +206,6 @@ public class KioskController implements IStartStop {
         }
 
         @Override
-        public void turnDisplayOn() {
-            mLogger.log(TAG, "Start playing main player");
-            playNextMain();
-            mCameras.forEachCamera(KioskController.this::playNextCamera);
-        }
-
-        @Override
-        public void turnDisplayOff() {
-            mLogger.log(TAG, "Stop playing main player");
-            mView.invokeLater(() -> {
-                if (mConsoleTask.isQuitRequested()) {
-                    return;
-                }
-
-                mView.stopMainPlayer();
-            });
-            mCameras.forEachCamera(KioskController.this::stopCamera);
-        }
-
-        @Override
         public void onCameraPlayerFinished(@Nonnull CamInfo camInfo) {
             mLogger.log(TAG, "Media Finished for Cam " + camInfo.getIndex());
             playNextCamera(camInfo);
@@ -250,6 +227,25 @@ public class KioskController implements IStartStop {
             return mClock.elapsedRealtime();
         }
     };
+
+
+    /** Invoked async from DisplayController's thread. */
+    public void onDisplayOnChanged(boolean displayOn) {
+        mDisplayOn = displayOn;
+        mView.invokeLater(() -> {
+            if (mConsoleTask.isQuitRequested()) {
+                return;
+            }
+            mLogger.log(TAG, "Display on state changed to " + mDisplayOn);
+            if (mDisplayOn) {
+                playNextMain();
+                mCameras.forEachCamera(KioskController.this::playNextCamera);
+            } else {
+                mView.stopMainPlayer();
+                mCameras.forEachCamera(KioskController.this::stopCamera);
+            }
+        });
+    }
 
     public boolean processKey(char c) {
         // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help.
@@ -283,8 +279,7 @@ public class KioskController implements IStartStop {
             return true;
         case 'o':
             // Toggle display on/off
-            mDisplayOn = !mDisplayOn;
-            mView.toggleDisplayOn(mDisplayOn);
+            onDisplayOnChanged(!mDisplayOn);
         }
 
         return false; // not consumed
@@ -306,7 +301,7 @@ public class KioskController implements IStartStop {
                 File file = next.get();
                 mLogger.log(TAG, "MAIN Player file = " + file.getAbsolutePath());
                 mAnalytics.sendEvent("PlayVideo", file.getName());
-                mConsoleTask.updateLineInfo(/* F */ "9f", " | " + file.getName().replace(".mp4", ""));
+                mConsoleTask.updateLineInfo(/* F */ "9v", " | " + file.getName().replace(".mp4", ""));
 
                 int volume = mPlayerDefaultVolume;
                 Optional<Playlist.FileProperties> props = mMainPlaylist.getProperties(file);

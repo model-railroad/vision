@@ -265,14 +265,6 @@ public class KioskView {
         mMainPlayer.revalidate();
     }
 
-    public void toggleDisplayOn(boolean displayOn) {
-        if (displayOn) {
-            mCallbacks.turnDisplayOn();
-        } else {
-            mCallbacks.turnDisplayOff();
-        }
-    }
-
     private void createVideoCanvases() {
         AtomicInteger posIndex = new AtomicInteger();
         synchronized (mCameraPlayers) {

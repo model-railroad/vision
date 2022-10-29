@@ -23,6 +23,7 @@ import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.dagger.DaggerITrainMotionComponent;
 import com.alflabs.trainmotion.dagger.ITrainMotionComponent;
 import com.alflabs.trainmotion.display.ConsoleTask;
+import com.alflabs.trainmotion.display.DisplayController;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
@@ -40,6 +41,7 @@ public class TrainMotion {
 
     private final ITrainMotionComponent mComponent;
 
+    @Inject DisplayController mDisplayController;
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject StatsCollector mStatsCollector;
     @Inject KioskController mKioskDisplay;
@@ -102,6 +104,7 @@ public class TrainMotion {
             mStatsCollector.start();
             mCameras.start();
             mKioskDisplay.initialize();
+            mDisplayController.start();
             mAnalytics.sendEvent("Start", "");
             mConsoleTask.consoleWait();
             mAnalytics.sendEvent("Stop", "");
@@ -109,6 +112,7 @@ public class TrainMotion {
             mLogger.log(TAG, e.toString());
         } finally {
             safeStop(mCameras);
+            safeStop(mDisplayController);
             safeStop(mKioskDisplay);
             safeStop(mConsoleTask);
             safeStop(mAnalytics);

@@ -27,6 +27,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
@@ -53,6 +54,8 @@ public class ConfigIni {
     private static final String KEY_WINDOW_TITLE = "window_title";
     private static final String KEY_WINDOW_MAXIMIZE = "window_maximize";
     private static final String KEY_ANALYTICS_ID = "analytics_id";
+    private static final String KEY_DISPLAY_OFF_HHMM = "display_off_hhmm";
+    private static final String KEY_DISPLAY_ON_HHMM = "display_on_hhmm";
 
     private final ILogger mLogger;
     private final FileOps mFileOps;
@@ -158,5 +161,28 @@ public class ConfigIni {
     @Nonnull
     public String getAnalyticsId() {
         return mProps.getProperty(KEY_ANALYTICS_ID, "").trim();
+    }
+
+    /** Returns the display off <em>local</em> time, if the value can be parsed. */
+    @Nonnull
+    public Optional<LocalTime> getDisplayOffTime() {
+        return parseLocalTime(KEY_DISPLAY_OFF_HHMM);
+    }
+
+    /** Returns the display on <em>local</em> time, if the value can be parsed. */
+    @Nonnull
+    public Optional<LocalTime> getDisplayOnTime() {
+        return parseLocalTime(KEY_DISPLAY_ON_HHMM);
+    }
+
+    @Nonnull
+    private Optional<LocalTime> parseLocalTime(@Nonnull String key) {
+        String hhmm = mProps.getProperty(key, "").trim();
+        try {
+            return Optional.of(LocalTime.parse(hhmm));
+        } catch (Throwable t) {
+            mLogger.log(TAG, "Failed to parse value '" + hhmm + "' for '" + key + "'");
+            return Optional.empty();
+        }
     }
 }
