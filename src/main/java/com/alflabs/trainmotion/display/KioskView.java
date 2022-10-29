@@ -40,7 +40,6 @@ import uk.co.caprica.vlcj.player.embedded.videosurface.callback.RenderCallbackAd
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.format.RV32BufferFormat;
 
 import javax.annotation.concurrent.GuardedBy;
-import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.JFrame;
@@ -68,7 +67,6 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
-import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -267,6 +265,14 @@ public class KioskView {
         mMainPlayer.revalidate();
     }
 
+    public void toggleDisplayOn(boolean displayOn) {
+        if (displayOn) {
+            mCallbacks.turnDisplayOn();
+        } else {
+            mCallbacks.turnDisplayOff();
+        }
+    }
+
     private void createVideoCanvases() {
         AtomicInteger posIndex = new AtomicInteger();
         synchronized (mCameraPlayers) {
@@ -382,12 +388,30 @@ public class KioskView {
         }
     }
 
+    public void stopMainPlayer() {
+        if (mMainPlayer != null) {
+            mMainPlayer.mediaPlayer().controls().stop();
+        }
+    }
+
     public void startCameraPlayer(CamInfo camInfo, String media) {
         synchronized (mCameraPlayers) {
             for (VlcMediaComponent canvas : mCameraPlayers) {
+                canvas.setVisible(true);
                 if (canvas.mCamInfo == camInfo) {
                     canvas.mPlayer.mediaPlayer().media().play(media);
                 }
+            }
+        }
+    }
+
+    public void stopCameraPlayer(CamInfo camInfo) {
+        synchronized (mCameraPlayers) {
+            for (VlcMediaComponent canvas : mCameraPlayers) {
+                if (canvas.mCamInfo == camInfo) {
+                    canvas.mPlayer.mediaPlayer().controls().stop();
+                }
+                canvas.setVisible(false);
             }
         }
     }

@@ -140,11 +140,11 @@ public class ConsoleTask implements IStartStop {
     public boolean processKey(char c) {
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
         // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help.
-        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask.
+        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask, o=display off.
         switch (c) {
         case '?':
         case 'h':
-            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, u=shuffle, s=sound, m=mask, t=stats");
+            mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, u=shuffle, s=sound, m=mask, o=off");
             return true;
         case 27:
         case 'q':

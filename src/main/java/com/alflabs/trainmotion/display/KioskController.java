@@ -41,7 +41,7 @@ import java.util.Optional;
 /**
  * Kiosk Display is split in 2 parts: a KioskView class encapsulates all the Swing-related APIs,
  * and this controller contains all the "business" logic. This makes it possible to test the
- * controller using a mock UI that does not uses any actual views.
+ * controller using a mock UI that does not use any actual views.
  */
 @Singleton
 public class KioskController implements IStartStop {
@@ -71,6 +71,7 @@ public class KioskController implements IStartStop {
     private int mForceZoom;
     private boolean mPlayerMuted;
     private boolean mToggleMask;
+    private boolean mDisplayOn = true;
     private int mPlayerDefaultVolume = PLAYER_VOLUME_DEFAULT;
     private long mPlayerZoomEndTS;
 
@@ -85,6 +86,9 @@ public class KioskController implements IStartStop {
         void onCameraPlayerError(@Nonnull CamInfo camInfo);
         boolean showMask();
         long elapsedRealtime();
+
+        void turnDisplayOn();
+        void turnDisplayOff();
     }
 
     @Inject
@@ -120,6 +124,7 @@ public class KioskController implements IStartStop {
     }
 
     public void initialize() {
+        mDisplayOn = true;
         // Start shuffled
         mMainPlaylist.setShuffle(true);
         // Get desired volume
@@ -204,6 +209,26 @@ public class KioskController implements IStartStop {
         }
 
         @Override
+        public void turnDisplayOn() {
+            mLogger.log(TAG, "Start playing main player");
+            playNextMain();
+            mCameras.forEachCamera(KioskController.this::playNextCamera);
+        }
+
+        @Override
+        public void turnDisplayOff() {
+            mLogger.log(TAG, "Stop playing main player");
+            mView.invokeLater(() -> {
+                if (mConsoleTask.isQuitRequested()) {
+                    return;
+                }
+
+                mView.stopMainPlayer();
+            });
+            mCameras.forEachCamera(KioskController.this::stopCamera);
+        }
+
+        @Override
         public void onCameraPlayerFinished(@Nonnull CamInfo camInfo) {
             mLogger.log(TAG, "Media Finished for Cam " + camInfo.getIndex());
             playNextCamera(camInfo);
@@ -228,7 +253,7 @@ public class KioskController implements IStartStop {
 
     public boolean processKey(char c) {
         // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help.
-        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask.
+        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask, o=display off.
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
         switch (c) {
         case 'f':
@@ -256,6 +281,10 @@ public class KioskController implements IStartStop {
             mToggleMask = !mToggleMask;
             mLogger.log(TAG, "Mask toggled " + (mToggleMask ? "on" : "off"));
             return true;
+        case 'o':
+            // Toggle display on/off
+            mDisplayOn = !mDisplayOn;
+            mView.toggleDisplayOn(mDisplayOn);
         }
 
         return false; // not consumed
@@ -263,6 +292,11 @@ public class KioskController implements IStartStop {
 
     public void playNextMain() {
         mView.invokeLater(() -> {
+            if (!mDisplayOn) {
+                mLogger.log(TAG, "Play next request ignore: display off");
+                return;
+            }
+
             if (mConsoleTask.isQuitRequested()) {
                 return;
             }
@@ -298,9 +332,20 @@ public class KioskController implements IStartStop {
             CameraPlaylist playlist = mCameraPlaylist.computeIfAbsent(camInfo, this::createCameraPlaylist);
             Optional<String> next = playlist.getNext();
             next.ifPresent(media -> {
-                mLogger.log(TAG, "Camera " + camInfo.getIndex() + " Player media = " + media);
+                mLogger.log(TAG, "Start Camera " + camInfo.getIndex() + " Player media = " + media);
                 mView.startCameraPlayer(camInfo, media);
             });
+        });
+    }
+
+    public void stopCamera(@Nonnull CamInfo camInfo) {
+        mView.invokeLater(() -> {
+            if (mConsoleTask.isQuitRequested()) {
+                return;
+            }
+
+            mLogger.log(TAG, "Stop Camera " + camInfo.getIndex());
+            mView.stopCameraPlayer(camInfo);
         });
     }
 
