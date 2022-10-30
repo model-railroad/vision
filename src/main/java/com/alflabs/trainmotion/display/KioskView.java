@@ -376,6 +376,7 @@ public class KioskView {
 
     public void startMainPlayer(File media) {
         if (mMainPlayer != null) {
+            mMainPlayer.setVisible(true);
             mMainPlayer.mediaPlayer().media().play(media.getAbsolutePath());
         }
     }
@@ -383,6 +384,7 @@ public class KioskView {
     public void stopMainPlayer() {
         if (mMainPlayer != null) {
             mMainPlayer.mediaPlayer().controls().stop();
+            mMainPlayer.setVisible(false);
         }
     }
 
