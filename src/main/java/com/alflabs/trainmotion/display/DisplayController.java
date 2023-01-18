@@ -20,6 +20,7 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.util.ILogger;
+import com.alflabs.trainmotion.util.KVController;
 import com.alflabs.trainmotion.util.ThreadLoop;
 import com.alflabs.utils.IClock;
 
@@ -42,8 +43,9 @@ public class DisplayController extends ThreadLoop {
     private final IClock mClock;
     private final ILogger mLogger;
     private final ConfigIni mConfigIni;
-    private ConsoleTask mConsoleTask;
-    private KioskController mKioskController;
+    private final ConsoleTask mConsoleTask;
+    private final KVController mKVController;
+    private final KioskController mKioskController;
     private Optional<LocalTime> mDailyTimeOff;
     private Optional<LocalTime> mDailyTimeOn;
     private boolean mDisplayOn = true;
@@ -54,11 +56,13 @@ public class DisplayController extends ThreadLoop {
             ILogger logger,
             ConfigIni configIni,
             ConsoleTask consoleTask,
+            KVController kvController,
             KioskController kioskController) {
         mClock = clock;
         mLogger = logger;
         mConfigIni = configIni;
         mConsoleTask = consoleTask;
+        mKVController = kvController;
         mKioskController = kioskController;
     }
 
@@ -90,19 +94,28 @@ public class DisplayController extends ThreadLoop {
 
     @Override
     protected void _runInThreadLoop() throws EndLoopException {
-
         LocalTime localTime = Instant
                         .ofEpochMilli(mClock.elapsedRealtime())
                         .atZone(ZoneId.systemDefault())
                         .toLocalTime();
 
-        boolean displayOn = localTime.isAfter(mDailyTimeOn.get())
+        boolean changed = false;
+        boolean timeOn = localTime.isAfter(mDailyTimeOn.get())
                 && localTime.isBefore(mDailyTimeOff.get());
-        if (displayOn != mDisplayOn) {
-            mDisplayOn = displayOn;
-            mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (displayOn ? "ON" : "OFF") );
-            mLogger.log(TAG, "State changed to " + displayOn + " at " + localTime);
-            mKioskController.onDisplayOnChanged(displayOn);
+        if (timeOn != mDisplayOn) {
+            changed = true;
+            mDisplayOn = timeOn;
+            mLogger.log(TAG, "State changed to " + timeOn + " at " + localTime);
+        }
+        boolean isKVon = mKVController.isKVConnected();
+        if (isKVon != mDisplayOn) {
+            changed = true;
+            mDisplayOn = isKVon;
+        }
+
+        if (changed) {
+            mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (mDisplayOn ? "ON" : "OFF") );
+            mKioskController.onDisplayOnChanged(mDisplayOn);
         }
 
         try {

@@ -28,6 +28,7 @@ import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
 import com.alflabs.trainmotion.display.KioskController;
+import com.alflabs.trainmotion.util.KVController;
 import com.alflabs.trainmotion.util.StatsCollector;
 
 import javax.inject.Inject;
@@ -45,6 +46,7 @@ public class TrainMotion {
     @Inject CommandLineArgs mCommandLineArgs;
     @Inject StatsCollector mStatsCollector;
     @Inject KioskController mKioskDisplay;
+    @Inject KVController mKVController;
     @Inject ConfigIni mConfigIniReader;
     @Inject ConsoleTask mConsoleTask;
     @Inject Analytics mAnalytics;
@@ -104,6 +106,7 @@ public class TrainMotion {
             mStatsCollector.start();
             mCameras.start();
             mKioskDisplay.initialize();
+            mKVController.start();
             mDisplayController.start();
             mAnalytics.sendEvent("Start", "");
             mConsoleTask.consoleWait();
@@ -113,6 +116,7 @@ public class TrainMotion {
         } finally {
             safeStop(mCameras);
             safeStop(mDisplayController);
+            safeStop(mKVController);
             safeStop(mKioskDisplay);
             safeStop(mConsoleTask);
             safeStop(mAnalytics);

@@ -56,6 +56,7 @@ public class ConfigIni {
     private static final String KEY_ANALYTICS_ID = "analytics_id";
     private static final String KEY_DISPLAY_OFF_HHMM = "display_off_hhmm";
     private static final String KEY_DISPLAY_ON_HHMM = "display_on_hhmm";
+    private static final String KEY_KV_HOST_PORT = "kv_host_port";
 
     private final ILogger mLogger;
     private final FileOps mFileOps;
@@ -161,6 +162,11 @@ public class ConfigIni {
     @Nonnull
     public String getAnalyticsId() {
         return mProps.getProperty(KEY_ANALYTICS_ID, "").trim();
+    }
+
+    @Nonnull
+    public String getKvHostPort() {
+        return mProps.getProperty(KEY_KV_HOST_PORT, "").trim();
     }
 
     /** Returns the display off <em>local</em> time, if the value can be parsed. */
