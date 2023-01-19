@@ -49,6 +49,7 @@ public class DisplayController extends ThreadLoop {
     private Optional<LocalTime> mDailyTimeOff;
     private Optional<LocalTime> mDailyTimeOn;
     private boolean mDisplayOn = true;
+    private boolean mChanged = true;
 
     @Inject
     public DisplayController(
@@ -73,11 +74,9 @@ public class DisplayController extends ThreadLoop {
         mDailyTimeOn = mConfigIni.getDisplayOnTime();
 
         if (!mDailyTimeOff.isPresent() || !mDailyTimeOn.isPresent()) {
+            // This does not abort this loop since we're also checking the KVController.
             mLogger.log(TAG, "Missing daily time on/off; will not control display.");
-            return;
-        }
-
-        if (!mDailyTimeOn.get().isBefore(mDailyTimeOff.get())) {
+        } else if (!mDailyTimeOn.get().isBefore(mDailyTimeOff.get())) {
             mLogger.log(TAG, "Daily time ON must be before time OFF; will not control display.");
             return;
         }
@@ -99,23 +98,25 @@ public class DisplayController extends ThreadLoop {
                         .atZone(ZoneId.systemDefault())
                         .toLocalTime();
 
-        boolean changed = false;
-        boolean timeOn = localTime.isAfter(mDailyTimeOn.get())
-                && localTime.isBefore(mDailyTimeOff.get());
-        if (timeOn != mDisplayOn) {
-            changed = true;
-            mDisplayOn = timeOn;
-            mLogger.log(TAG, "State changed to " + timeOn + " at " + localTime);
+        if (mDailyTimeOff.isPresent() && mDailyTimeOn.isPresent()) {
+            boolean timeOn = localTime.isAfter(mDailyTimeOn.get())
+                    && localTime.isBefore(mDailyTimeOff.get());
+            if (timeOn != mDisplayOn) {
+                mChanged = true;
+                mDisplayOn = timeOn;
+            }
         }
         boolean isKVon = mKVController.isKVConnected();
         if (isKVon != mDisplayOn) {
-            changed = true;
+            mChanged = true;
             mDisplayOn = isKVon;
         }
 
-        if (changed) {
+        if (mChanged) {
+            mLogger.log(TAG, "State mChanged to " + mDisplayOn + " at " + localTime);
             mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (mDisplayOn ? "ON" : "OFF") );
             mKioskController.onDisplayOnChanged(mDisplayOn);
+            mChanged = false;
         }
 
         try {
