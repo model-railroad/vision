@@ -1,6 +1,6 @@
 /*
- * Project: Train-Motion
- * Copyright (C) 2021 alf.labs gmail com,
+ * Project: Conductor
+ * Copyright (C) 2018 alf.labs gmail com,
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,29 +16,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.alflabs.trainmotion.dagger;
+package com.alflabs.trainmotion.util;
 
-import com.alflabs.trainmotion.util.ILocalDateTimeNowProvider;
-import com.alflabs.utils.IClock;
-import com.alflabs.utils.JavaClock;
-import dagger.Module;
-import dagger.Provides;
-
-import javax.inject.Singleton;
 import java.time.LocalDateTime;
 
-@Module
-public abstract class ClockModule {
-
-    @Singleton
-    @Provides
-    public static IClock provideClock() {
-        return new JavaClock();
-    }
-
-    @Singleton
-    @Provides
-    public static ILocalDateTimeNowProvider provideLocalDateTime() {
-        return LocalDateTime::now;
-    }
+public interface ILocalDateTimeNowProvider {
+    LocalDateTime getNow();
 }

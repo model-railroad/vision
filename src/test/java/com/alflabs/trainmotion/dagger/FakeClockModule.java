@@ -18,12 +18,14 @@
 
 package com.alflabs.trainmotion.dagger;
 
+import com.alflabs.trainmotion.util.ILocalDateTimeNowProvider;
 import com.alflabs.utils.FakeClock;
 import com.alflabs.utils.IClock;
 import dagger.Module;
 import dagger.Provides;
 
 import javax.inject.Singleton;
+import java.time.LocalDateTime;
 
 @Module
 public abstract class FakeClockModule {
@@ -47,13 +49,29 @@ public abstract class FakeClockModule {
         return clock;
     }
 
-    // Lifted from Conductor. This is not needed in this project.
-    //    @Singleton
-    //    @Provides
-    //    public static ILocalDateTimeNowProvider provideLocalDateTime() {
-    //        return () -> {
-    //            // It is permanently 1:42 PM here
-    //            return LocalDateTime.of(1901, 2, 3, HOUR, MINUTES, SECONDS);
-    //        };
-    //    }
+    @Singleton
+    @Provides
+    public static ILocalDateTimeNowProvider provideLocalDateTime(IClock clock) {
+        return () -> {
+            long nowMs = clock.elapsedRealtime();
+            // If nowMs is in the range 23:59:59:999 and 01:01:01:999, we use
+            // it to set the fake local date time. The max choice means actual epoch
+            // values cannot be matched, and the min choice means FakeClock(1000) isn't
+            // matched either.
+            // To set this value, call clock.setNow(hhmmss999)
+            if (nowMs % 1000 == 999) {
+                long s = (nowMs /     1000) % 100;
+                long m = (nowMs /   100000) % 100;
+                long h = (nowMs / 10000000) % 100;
+                if (s >= 1 && s <= 59
+                        && m >= 1 && m <= 59
+                        && h >= 1 && h <= 23) {
+                    return LocalDateTime.of(1901, 2, 3, (int) h, (int) m, (int) s);
+                }
+            }
+
+            // Otherwise by default it is permanently 1:42 PM here
+            return LocalDateTime.of(1901, 2, 3, HOUR, MINUTES, SECONDS);
+        };
+    }
 }
