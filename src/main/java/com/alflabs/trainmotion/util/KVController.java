@@ -79,6 +79,8 @@ public class KVController extends ThreadLoop {
             if (host.isEmpty()) {
                 // We don't start if the host is not defined in settings.
                 mLogger.log(TAG, "KVClient: No address host:port defined.");
+                // In that case, this should never prevent viewing.
+                mKVConnected.set(true);
                 return;
             }
             mSocketAddress = Optional.of(new InetSocketAddress(InetAddress.getByName(host), port));
