@@ -23,6 +23,7 @@ import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.KVController;
 import com.alflabs.trainmotion.util.ThreadLoop;
 import com.alflabs.utils.IClock;
+import com.alflabs.utils.RPair;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Controls whether the display should be turned on/off.
@@ -46,10 +48,14 @@ public class DisplayController extends ThreadLoop {
     private final ConsoleTask mConsoleTask;
     private final KVController mKVController;
     private final KioskController mKioskController;
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private Optional<LocalTime> mDailyTimeOff;
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private Optional<LocalTime> mDailyTimeOn;
     private boolean mDisplayOn = true;
     private boolean mChanged = true;
+    private boolean mInvertRequested = false;
+    private String mDisplayScript;
 
     @Inject
     public DisplayController(
@@ -72,6 +78,9 @@ public class DisplayController extends ThreadLoop {
         mLogger.log(TAG, "Start");
         mDailyTimeOff = mConfigIni.getDisplayOffTime();
         mDailyTimeOn = mConfigIni.getDisplayOnTime();
+        mDisplayScript = mConfigIni.getDisplayScript();
+
+        invokeScript("start");
 
         if (!mDailyTimeOff.isPresent() || !mDailyTimeOn.isPresent()) {
             // This does not abort this loop since we're also checking the KVController.
@@ -86,9 +95,21 @@ public class DisplayController extends ThreadLoop {
 
     @Override
     public void stop() throws Exception {
+        invokeScript("stop");
         mLogger.log(TAG, "Stop");
         super.stop();
         mLogger.log(TAG, "Stopped");
+    }
+
+    /**
+     * This toggles the *inversion* of the state on-off.
+     *
+     * Since the state is recomputed at each loop, what the "o" key does is truely
+     * _invert_ the result of the state check.
+     */
+    public void onInvertDisplayKey() {
+        mChanged = true;
+        mInvertRequested = !mInvertRequested;
     }
 
     @Override
@@ -98,6 +119,7 @@ public class DisplayController extends ThreadLoop {
                         .atZone(ZoneId.systemDefault())
                         .toLocalTime();
 
+        // Perform the time-range check if enabled in the config.
         if (mDailyTimeOff.isPresent() && mDailyTimeOn.isPresent()) {
             boolean timeOn = localTime.isAfter(mDailyTimeOn.get())
                     && localTime.isBefore(mDailyTimeOff.get());
@@ -106,15 +128,25 @@ public class DisplayController extends ThreadLoop {
                 mDisplayOn = timeOn;
             }
         }
-        boolean isKVon = mKVController.isKVConnected();
-        if (isKVon != mDisplayOn) {
-            mChanged = true;
-            mDisplayOn = isKVon;
+
+        // Perform the KV connection check if enabled in the config.
+        if (mKVController.isEnabled()) {
+            boolean isKVon = mKVController.isConnected();
+            if (isKVon != mDisplayOn) {
+                mChanged = true;
+                mDisplayOn = isKVon;
+            }
+        }
+
+        // Invert state when "o" console key is used.
+        if (mInvertRequested) {
+            mDisplayOn = !mDisplayOn;
         }
 
         if (mChanged) {
             mLogger.log(TAG, "State mChanged to " + mDisplayOn + " at " + localTime);
             mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (mDisplayOn ? "ON" : "OFF") );
+            invokeScript(mDisplayOn ? "on" : "off");
             mKioskController.onDisplayOnChanged(mDisplayOn);
             mChanged = false;
         }
@@ -126,4 +158,45 @@ public class DisplayController extends ThreadLoop {
         }
     }
 
+    /**
+     * Invokes the script.
+     * This is executed in the Display Controller thread loop.
+     * The script commands are expected to be short, and the display state is not expected
+     * to change very often, so we're fine with a synchronous exec for now.
+     * We give the command up to ~5 seconds to execute.
+     * In any case, we're not blocking any of the train-motion detection.
+     */
+    private void invokeScript(String state) {
+        try {
+            if (mDisplayScript.isEmpty()) {
+                return;
+            }
+
+            RPair<String, String> shell = getShell();
+            mLogger.log(TAG, String.format("Exec display script: %s %s %s %s",
+                    shell.first, shell.second, mDisplayScript, state));
+            ProcessBuilder pb = new ProcessBuilder(shell.first, shell.second, mDisplayScript, state);
+            pb.inheritIO();
+            Process p = pb.start();
+            boolean closed = p.waitFor(5, TimeUnit.SECONDS);
+            mLogger.log(TAG, "Exec display script terminated: " + closed);
+
+        } catch (Exception e) {
+            mLogger.log(TAG, "Script exec failed: " + e);
+        }
+    }
+
+    private RPair<String, String> getShell() {
+        String shell = System.getenv("SHELL");
+        if (shell != null) return RPair.create(shell, "-c");
+
+        shell = System.getenv("ComSpec");
+        if (shell != null) return RPair.create(shell, "/c");
+
+        if (System.getProperty("os.name").toLowerCase().startsWith("windows")) {
+            return RPair.create("cmd.exe", "/c");
+        } else {
+            return RPair.create("sh", "-c");
+        }
+    }
 }

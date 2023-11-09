@@ -43,8 +43,9 @@ public class KVController extends ThreadLoop {
     private final ILogger mLogger;
     private final ConfigIni mConfigIni;
     private Optional<InetSocketAddress> mSocketAddress = Optional.empty();
-    private AtomicBoolean mKVConnected = new AtomicBoolean();
     private AtomicReference<KeyValueClient> mKVClient = new AtomicReference<>();
+    private AtomicBoolean mKVConnected = new AtomicBoolean(false);
+    private AtomicBoolean mKVEnabled = new AtomicBoolean(false);
 
     @Inject
     public KVController(
@@ -56,7 +57,11 @@ public class KVController extends ThreadLoop {
         mConfigIni = configIni;
     }
 
-    public boolean isKVConnected() {
+    public boolean isEnabled() {
+        return mKVEnabled.get();
+    }
+
+    public boolean isConnected() {
         return mKVConnected.get();
     }
 
@@ -79,11 +84,13 @@ public class KVController extends ThreadLoop {
             if (host.isEmpty()) {
                 // We don't start if the host is not defined in settings.
                 mLogger.log(TAG, "KVClient: No address host:port defined.");
-                // In that case, this should never prevent viewing.
-                mKVConnected.set(true);
                 return;
             }
             mSocketAddress = Optional.of(new InetSocketAddress(InetAddress.getByName(host), port));
+
+            // The "KV connection" check service is now enabled since we have a seemingly
+            // valid configuration, whether we can connect to it or not.
+            mKVEnabled.set(true);
         } catch (Throwable t) {
             mLogger.log(TAG, "KVClient: Failed to initialize for address "
                     + host + ":" + port + ": "

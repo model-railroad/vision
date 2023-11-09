@@ -54,6 +54,7 @@ public class ConfigIni {
     private static final String KEY_WINDOW_TITLE = "window_title";
     private static final String KEY_WINDOW_MAXIMIZE = "window_maximize";
     private static final String KEY_ANALYTICS_ID = "analytics_id";
+    private static final String KEY_DISPLAY_SCRIPT = "display_on_off_script";
     private static final String KEY_DISPLAY_OFF_HHMM = "display_off_hhmm";
     private static final String KEY_DISPLAY_ON_HHMM = "display_on_hhmm";
     private static final String KEY_KV_HOST_PORT = "kv_host_port";
@@ -167,6 +168,11 @@ public class ConfigIni {
     @Nonnull
     public String getKvHostPort() {
         return mProps.getProperty(KEY_KV_HOST_PORT, "").trim();
+    }
+
+    @Nonnull
+    public String getDisplayScript() {
+        return mProps.getProperty(KEY_DISPLAY_SCRIPT, "").trim();
     }
 
     /** Returns the display off <em>local</em> time, if the value can be parsed. */

@@ -44,6 +44,7 @@ public class ConsoleTask implements IStartStop {
 
     private final IClock mClock;
     private final ILogger mLogger;
+    private final Lazy<DisplayController> mDisplayController;
     private final Lazy<StatsCollector> mStatsCollector;
     private final Lazy<KioskController> mKioskController;
     @GuardedBy("mLineInfo")
@@ -55,10 +56,12 @@ public class ConsoleTask implements IStartStop {
     public ConsoleTask(
             IClock clock,
             ILogger logger,
+            Lazy<DisplayController> displayController,
             Lazy<StatsCollector> statsCollector,
             Lazy<KioskController> kioskController) {
         mClock = clock;
         mLogger = logger;
+        mDisplayController = displayController;
         mStatsCollector = statsCollector;
         mKioskController = kioskController;
         mQuit = false;
@@ -139,12 +142,15 @@ public class ConsoleTask implements IStartStop {
 
     public boolean processKey(char c) {
         // mLogger.log(TAG, "Process key: " + c); // DEBUG
-        // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help.
-        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask, o=display off.
+        // Keys handled by the ConsoleTask: esc, q=quit // ?, h=help, o=display off.
+        // Keys handled by KioskController: f=fullscreen, s=sound, u=shuffle, n=next, m=mask.
         switch (c) {
         case '?':
         case 'h':
             mLogger.log(TAG, "Keys: ?/h=help, esc/q=quit, u=shuffle, s=sound, m=mask, o=off");
+            return true;
+        case 'o':
+            mDisplayController.get().onInvertDisplayKey();
             return true;
         case 27:
         case 'q':
