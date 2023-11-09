@@ -16,7 +16,8 @@ function screen_on() {
 
 function screen_off() {
   echo "Turn screen off"
-  /usr/bin/xset -display :0 dpms force off
+  /usr/bin/xset s on            # screensaver off, with dpms
+  /usr/bin/xset dpms 10 20 30   # dmps standby/suspend/off timeouts (seconds)
 }
 
 case "$1" in

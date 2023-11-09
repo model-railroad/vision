@@ -142,6 +142,8 @@ function do_download() {
 
 parse_flags "$@"
 parse_config
+if [[ -n "$DRY_RUN" ]]; then echo "## DRY-RUN mode. Use -f to actually run." ; fi
+
 ( do_cleanup )
 ( do_download )
 
