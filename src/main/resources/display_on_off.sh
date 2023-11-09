@@ -10,14 +10,13 @@
 
 function screen_on() {
   echo "Turn screen on"
-  # /usr/bin/xset -display :0 dpms force on
-  # /usr/bin/xset s off -dpms   # disable sleeping
+  /usr/bin/xset -display :0 dpms force on
+  /usr/bin/xset s off -dpms   # screensaver off, no dpms
 }
 
 function screen_off() {
   echo "Turn screen off"
-  # /usr/bin/xset s on -dpms
-  # /usr/bin/xset -display :0 dpms force off
+  /usr/bin/xset -display :0 dpms force off
 }
 
 case "$1" in

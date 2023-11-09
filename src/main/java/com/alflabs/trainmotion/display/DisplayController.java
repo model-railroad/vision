@@ -30,8 +30,11 @@ import javax.inject.Singleton;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Controls whether the display should be turned on/off.
@@ -173,9 +176,12 @@ public class DisplayController extends ThreadLoop {
             }
 
             RPair<String, String> shell = getShell();
-            mLogger.log(TAG, String.format("Exec display script: %s %s %s %s",
-                    shell.first, shell.second, mDisplayScript, state));
-            ProcessBuilder pb = new ProcessBuilder(shell.first, shell.second, mDisplayScript, state);
+            List<String> args = Stream
+                    .of(shell.first, shell.second, mDisplayScript, state)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            mLogger.log(TAG, "Exec display script: " + args);
+            ProcessBuilder pb = new ProcessBuilder(args);
             pb.inheritIO();
             Process p = pb.start();
             boolean closed = p.waitFor(5, TimeUnit.SECONDS);
@@ -188,7 +194,7 @@ public class DisplayController extends ThreadLoop {
 
     private RPair<String, String> getShell() {
         String shell = System.getenv("SHELL");
-        if (shell != null) return RPair.create(shell, "-c");
+        if (shell != null) return RPair.create(shell, "");
 
         shell = System.getenv("ComSpec");
         if (shell != null) return RPair.create(shell, "/c");
@@ -196,7 +202,7 @@ public class DisplayController extends ThreadLoop {
         if (System.getProperty("os.name").toLowerCase().startsWith("windows")) {
             return RPair.create("cmd.exe", "/c");
         } else {
-            return RPair.create("sh", "-c");
+            return RPair.create("sh", "");
         }
     }
 }
