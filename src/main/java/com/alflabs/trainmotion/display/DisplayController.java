@@ -19,6 +19,7 @@
 package com.alflabs.trainmotion.display;
 
 import com.alflabs.trainmotion.ConfigIni;
+import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.KVController;
 import com.alflabs.trainmotion.util.ThreadLoop;
@@ -47,6 +48,7 @@ public class DisplayController extends ThreadLoop {
 
     private final IClock mClock;
     private final ILogger mLogger;
+    private final Analytics mAnalytics;
     private final ConfigIni mConfigIni;
     private final ConsoleTask mConsoleTask;
     private final KVController mKVController;
@@ -64,12 +66,14 @@ public class DisplayController extends ThreadLoop {
     public DisplayController(
             IClock clock,
             ILogger logger,
+            Analytics analytics,
             ConfigIni configIni,
             ConsoleTask consoleTask,
             KVController kvController,
             KioskController kioskController) {
         mClock = clock;
         mLogger = logger;
+        mAnalytics = analytics;
         mConfigIni = configIni;
         mConsoleTask = consoleTask;
         mKVController = kvController;
@@ -171,6 +175,8 @@ public class DisplayController extends ThreadLoop {
      */
     private void invokeScript(String state) {
         try {
+            mAnalytics.sendEvent("Display", state);
+
             if (mDisplayScript.isEmpty()) {
                 return;
             }
