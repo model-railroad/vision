@@ -145,16 +145,16 @@ public class DisplayController extends ThreadLoop {
             }
         }
 
-        // Invert state when "o" console key is used.
-        if (mInvertRequested) {
-            mDisplayOn = !mDisplayOn;
-        }
-
         if (mChanged) {
-            mLogger.log(TAG, "State mChanged to " + mDisplayOn + " at " + localTime);
-            mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (mDisplayOn ? "ON" : "OFF") );
-            invokeScript(mDisplayOn ? "on" : "off");
-            mKioskController.onDisplayOnChanged(mDisplayOn);
+            boolean displayOn = mDisplayOn;
+            // Invert state when "o" console key is used.
+            if (mInvertRequested) {
+                displayOn = !displayOn;
+            }
+            mLogger.log(TAG, "State mChanged to " + displayOn + " at " + localTime);
+            mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (displayOn ? "ON" : "OFF") );
+            invokeScript(displayOn ? "on" : "off");
+            mKioskController.onDisplayOnChanged(displayOn);
             mChanged = false;
         }
 
