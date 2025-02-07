@@ -16,7 +16,7 @@ GIT_USER=$(sed -n '/email = /s/.*= \(.*\)@.*/\1/p' ~/.gitconfig)
 if [[ -z $GIT_USER ]]; then set +x; echo "Git user not found"; exit 1; fi
 
 if [[ ! -d $ROOT/LibUtils ]]; then
-  $DRY git submodule add git@bitbucket.org:$GIT_USER/libutils.git $ROOT/LibUtils
+  $DRY git submodule add git@github.com:$GIT_USER/libutils.git $ROOT/LibUtils
 fi
 
 $DRY git submodule update --init $ROOT/LibUtils
