@@ -5,7 +5,7 @@
 Source: https://github.com/model-railroad/vision
 
 This is a project created for the
-[Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), which is an automated live
+[Randall Museum Model Railroad](http://www.alfray.com/trains/randall), which is an automated live
 HO-sized model train exhibit in the [Randall Museum](https://randallmuseum.org/) in San Francisco.
 
 __Train Motion__ runs full screen on a laptop and plays a series of Youtube videos of the
@@ -16,13 +16,13 @@ layout cameras, showing whatever train is going by. Once the train is gone, the
 Youtube video plays full screen again.
 
 Please
-[visit this page for more information](http://ralf.alfray.com/trains/blog/randall/2020-06-14__train_motion_video_display__d300ac8f.html "Project Description")
+[visit this page for more information](http://www.alfray.com/trains/blog/randall/2020-06-14__train_motion_video_display__d300ac8f.html "Project Description")
 on this project.
 
-![Overview Architecture Graphic](http://ralf.alfray.com/trains/blog/randall/index_ccd987b50b5bb36d608ce3e10d9579132f79076fd.jpg)
+![Overview Architecture Graphic](http://www.alfray.com/trains/blog/randall/index_ccd987b50b5bb36d608ce3e10d9579132f79076fd.jpg)
 
 As usual with my train-related projects, although this project has been designed for the needs of
-the [Randall Museum Model Railroad](http://ralf.alfray.com/trains/randall), the project itself is
+the [Randall Museum Model Railroad](http://www.alfray.com/trains/randall), the project itself is
 kept generic and customizable. It is made available open source with the goal that others pick it
 up and use it too.
 
