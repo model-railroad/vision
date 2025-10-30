@@ -1,5 +1,3 @@
-import java.nio.file.Files
-
 /*
  * Project: Train-Motion
  * Copyright (C) 2021 alf.labs gmail com,
@@ -33,9 +31,15 @@ repositories {
     mavenCentral()
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(vers_java))
+    }
+}
+
 compileJava {
-    sourceCompatibility = "1.8"
-    targetCompatibility = "1.8"
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 configurations {
