@@ -42,12 +42,12 @@ echo "---- JAVA      = $JV"
 
     # Build
     set -x
-    ./gradlew test ass fatJar --console=plain --info
+    ./gradlew test ass shadowJar --console=plain --info
 )
 
 # Note: we don't CD to the script dir to respect a local config.ini in the exec dir context.
 DST="$PROG_DIR/build"
-JAR="$DST/libs/train-motion-${VERS_ARTIFACT}-all.jar"
+JAR=$(cd "$PROG_DIR" && ./gradlew ass _printRunFatJarCmdLine --console=plain | grep -- "-jar" | head -n 1 | cut -c 6- | tr -d '\r')
 
 # List & run
 ls -1sh $(find $DST/ -name "*.jar")

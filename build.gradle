@@ -19,7 +19,8 @@
 plugins {
     id "java"
     id "idea"
-    id "com.gradleup.shadow" version "8.3.9"
+    // This provides "shadowJar" to replace the home-made "fatJar" rule:
+    id "com.gradleup.shadow" version "$vers_shadowJar"
 }
 
 group   artifact_group
@@ -126,22 +127,6 @@ jar {
     }
 }
 
-// Build a "fat" jar with all the dependencies that are marked using "compile".
-// C.f. http://stackoverflow.com/questions/4871656
-// Update: this ignore these marked with the new "implementation".
-task fatJar(type: Jar) {
-    manifest.from jar.manifest
-//--RM gradle8--    classifier = "all"
-    from {
-        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    } {
-        exclude "META-INF/*.SF"
-        exclude "META-INF/*.DSA"
-        exclude "META-INF/*.RSA"
-    }
-    with jar
-}
-
 // Pass run arguments using gradlew ... -Pargs='multiple args'
 if (project.hasProperty("args")) {
     project.ext.cmdArgs = project.getProperty("args")
@@ -153,10 +138,10 @@ if (project.hasProperty("args")) {
 // Useful to share a single JAR with all embedded dependencies, and to work around the classpath
 // size limitation on Windows.
 task runFat(type: Exec) {
-    dependsOn fatJar
+    dependsOn shadowJar
     group = "Execution"
     commandLine "java",
-            "-jar", fatJar.archiveFile.get()
+            "-jar", shadowJar.archiveFile.get()
     args project.ext.cmdArgs.split()
 }
 
@@ -188,13 +173,13 @@ task _printRunCmdLine {
 
 // For Windows were we cannot run a command line with a long classpath.
 task _printRunFatJarCmdLine {
-    dependsOn jar
+    dependsOn shadowJar
     doFirst {
-        println "-jar " + fatJar.archiveFile.get()
+        println "-jar " + shadowJar.archiveFile.get()
     }
 }
 
 artifacts {
-    archives fatJar
+    archives shadowJar
 }
 
