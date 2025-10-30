@@ -17,6 +17,7 @@ if ! grep -qs "$VERS_JAVA" $("$JV" -version 2>&1) ; then
   if [[ $(uname) =~ CYGWIN_.* || $(uname) =~ MSYS_.* ]]; then
     PF=$(cygpath "$PROGRAMFILES")
     JS=$(find "$PF/Java" -type f -name javac.exe | grep "$VERS_JAVA" | sort -r | head -n 1)
+    JS=$(echo "$JS" | tr -d '\r')   # remove trailing \r if any
     JV="${JS/javac/java}"
     JS=$(cygpath -w "${JS//\/bin*/}")
   else
@@ -44,7 +45,7 @@ if [[ "$U" =~ CYGWIN || "$U" =~ MSYS ]]; then
   rm -f /tmp/_g
   set -x
   (cd $G_DIR && ./gradlew assemble _printRunFatJarCmdLine --console=plain | tee /tmp/_g)
-  JAR=$(grep -- "-jar" /tmp/_g | head -n 1 | cut -c 6- )
+  JAR=$(grep -- "-jar" /tmp/_g | head -n 1 | cut -c 6- | tr -d '\r')  # remove trailing \r if any
   "$JV" -jar "$JAR" $CONFIG $@
 else
   # Linux

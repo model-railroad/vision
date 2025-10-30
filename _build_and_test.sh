@@ -17,6 +17,7 @@ if ! grep -qs "$VERS_JAVA" $("$JV" -version 2>&1) ; then
   if [[ $(uname) =~ CYGWIN_.* || $(uname) =~ MSYS_.* ]]; then
     PF=$(cygpath "$PROGRAMFILES")
     JS=$(find "$PF/Java" -type f -name javac.exe | grep "$VERS_JAVA" | sort -r | head -n 1)
+    JS=$(echo "$JS" | tr -d '\r')   # remove trailing \r if any
     JV="${JS/javac/java}"
     JS=$(cygpath -w "${JS//\/bin*/}")
   else
@@ -51,5 +52,5 @@ JAR="$DST/libs/train-motion-${VERS_ARTIFACT}-all.jar"
 # List & run
 ls -1sh $(find $DST/ -name "*.jar")
 set -x
-"$JV" -jar $JAR --help
+"$JV" -jar "$JAR" --help
 
