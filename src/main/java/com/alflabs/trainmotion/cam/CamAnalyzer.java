@@ -57,6 +57,8 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
  */
 @AutoFactory
 public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
+    public static final String STR_CAM_ACTIVE = "⏺";
+    private static final String STR_CAM_INACTIVE = "⏸";
     private final IClock mClock;
     private final ConfigIni mConfigIni;
     private final ConsoleTask mConsoleTask;
@@ -90,7 +92,6 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     private double mNoiseAverage;
     private String mKey;
     private FpsMeasurer mFpsMeasurer;
-    private long mLastExtraMs;
 
     CamAnalyzer(
             @Provided IClock clock,
@@ -174,7 +175,6 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         mKey = String.format("%db", mCamInfo.getIndex());
         mFpsMeasurer = mFpsMeasurerFactory.create();
         mFpsMeasurer.setFrameRate(ANALYZER_FPS);
-        mLastExtraMs = 0;
     }
 
     @Override
@@ -200,9 +200,9 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
         computeMs = mClock.elapsedRealtime() - computeMs;
         mConsoleTask.updateLineInfo(/* B */ mKey,
-                String.format(" > %2.0f fps %s [%2d%+4d ms]", mFpsMeasurer.getFps(), info, computeMs, mLastExtraMs));
+                String.format(" %s [%2d ms]", info, computeMs));
 
-        mLastExtraMs = mFpsMeasurer.endWait();
+        mFpsMeasurer.endWait();
     }
 
     @Override
@@ -274,7 +274,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         }
 
         return String.format("%s %5.2f >= %.2f%%",
-                hasMotion ? "/\\" : "..",
+                hasMotion ? STR_CAM_ACTIVE : STR_CAM_INACTIVE,
                 noisePercent2,
                 mMotionThreshold
                 );

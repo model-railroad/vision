@@ -47,7 +47,7 @@ import java.util.Optional;
 public class KioskController implements IStartStop {
     private static final String TAG = KioskController.class.getSimpleName();
 
-    // Approximage FPS to update the camera videos.
+    // Approximate FPS to update the camera videos.
     private static final int DISPLAY_FPS = 15;
 
     // Player zoom minimum display duration
@@ -167,7 +167,7 @@ public class KioskController implements IStartStop {
                 return;
             }
 
-            mView.setBottomLabelText(mConsoleTask.computeLineInfo());
+            mView.setBottomStatus(mConsoleTask.getLineInfos());
 
             boolean hasHighlight = mView.updateAllHighlights();
 

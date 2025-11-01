@@ -32,7 +32,8 @@ import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.Map;
+import java.util.Collections;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
 @Singleton
@@ -48,7 +49,8 @@ public class ConsoleTask implements IStartStop {
     private final Lazy<StatsCollector> mStatsCollector;
     private final Lazy<KioskController> mKioskController;
     @GuardedBy("mLineInfo")
-    private final Map<String, String> mLineInfo = new TreeMap<>();
+    private final SortedMap<String, String> mLineInfo = new TreeMap<>();
+    private final SortedMap<String, String> mLineInfoRO = Collections.unmodifiableSortedMap(mLineInfo);
 
     private boolean mQuit;
 
@@ -101,6 +103,10 @@ public class ConsoleTask implements IStartStop {
         }
         _sTempBuf.append('\r');
         return _sTempBuf.toString();
+    }
+
+    public SortedMap<String, String> getLineInfos() {
+        return mLineInfoRO;
     }
 
     public void displayLineInfo() {

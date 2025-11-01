@@ -43,7 +43,6 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -71,6 +70,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_COLOR;
@@ -81,13 +81,13 @@ import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 /**
  * Kiosk Display is split in 2 parts: a KioskView class encapsulates all the Swing-related APIs,
  * and this controller contains all the "business" logic. This makes it possible to test the
- * controller using a mock UI that does not uses any actual views.
+ * controller using a mock UI that does not use any actual views.
  */
 @Singleton
 public class KioskView {
     private static final String TAG = KioskView.class.getSimpleName();
 
-    private static final Color BG_COLOR = Color.BLACK;
+    static final Color BG_COLOR = Color.BLACK;
     private static final Color LIVE_COLOR = Color.RED;
     private static final String LIVE_TEXT = "LIVE CAM %d";
     private static final int VIEW_GAP_PX = 2;
@@ -105,7 +105,7 @@ public class KioskView {
     private final List<VlcMediaComponent> mCameraPlayers = new ArrayList<>();
     private EmbeddedMediaPlayerComponent mMainPlayer;
     private JFrame mFrame;
-    private JLabel mBottomLabel;
+    private StatusView mBottomStatus;
     private Timer mRepaintTimer;
     private int mContentWidth;
     private int mContentHeight;
@@ -156,12 +156,9 @@ public class KioskView {
         setupLogo();
         mFrame.add(mMainPlayer);
 
-        mBottomLabel = new JLabel("Please wait, initializing camera streams...");
-        mBottomLabel.setOpaque(true);
-        mBottomLabel.setBackground(BG_COLOR);
-        mBottomLabel.setForeground(Color.LIGHT_GRAY);
-        mBottomLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        mFrame.add(mBottomLabel);
+        mBottomStatus = new StatusView("Please wait, initializing camera streams...");
+        mBottomStatus.setDefaultLayout();
+        mFrame.add(mBottomStatus);
 
         mFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         mFrame.addWindowListener(new WindowAdapter() {
@@ -301,11 +298,11 @@ public class KioskView {
             mContentWidth = mFrame.getWidth() - insets.left - insets.right;
             mContentHeight = mFrame.getHeight() - insets.top - insets.bottom;
 
-            Dimension labelSize = mBottomLabel.getPreferredSize();
+            Dimension labelSize = mBottomStatus.getPreferredSize();
             if (labelSize != null) {
                 int lh = labelSize.height;
                 mContentHeight -= lh;
-                mBottomLabel.setBounds(0, mContentHeight, mContentWidth, lh);
+                mBottomStatus.setBounds(0, mContentHeight, mContentWidth, lh);
             }
         }
     }
@@ -317,8 +314,14 @@ public class KioskView {
         mCallbacks.onRepaintTimerTick();
     }
 
-    public void setBottomLabelText(String lineInfo) {
-        mBottomLabel.setText(lineInfo);
+    public void setBottomStatus(Map<String, String> lineInfos) {
+        // Note: lineInfos is an unmodifiableSortedMap wrapper.
+        //noinspection SynchronizationOnLocalVariableOrMethodParameter
+        synchronized (lineInfos) {
+            for (Map.Entry<String, String> info : lineInfos.entrySet()) {
+                mBottomStatus.setStatus(info.getKey(), info.getValue());
+            }
+        }
     }
 
     public boolean updateAllHighlights() {
