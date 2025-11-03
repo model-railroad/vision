@@ -156,7 +156,7 @@ public class KioskView {
         setupLogo();
         mFrame.add(mMainPlayer);
 
-        mBottomStatus = new StatusView("Please wait, initializing camera streams...");
+        mBottomStatus = new StatusView(new StringInfo("Please wait, initializing camera streams..."));
         mBottomStatus.setDefaultLayout();
         mFrame.add(mBottomStatus);
 
@@ -314,11 +314,11 @@ public class KioskView {
         mCallbacks.onRepaintTimerTick();
     }
 
-    public void setBottomStatus(Map<String, String> lineInfos) {
+    public void setBottomStatus(Map<String, StringInfo> lineInfos) {
         // Note: lineInfos is an unmodifiableSortedMap wrapper.
         //noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (lineInfos) {
-            for (Map.Entry<String, String> info : lineInfos.entrySet()) {
+            for (Map.Entry<String, StringInfo> info : lineInfos.entrySet()) {
                 mBottomStatus.setStatus(info.getKey(), info.getValue());
             }
         }
@@ -550,7 +550,8 @@ public class KioskView {
             }
 
             mConsoleTask.updateLineInfo(/* A */ mKey,
-                    String.format(" [%d] %5.1f fps", mCamInfo.getIndex(), mFpsMeasurer.getFps()));
+                    new StringInfo(
+                        String.format(" [%d] %5.1f fps", mCamInfo.getIndex(), mFpsMeasurer.getFps())));
         }
 
         private void newVideoBuffer(int width, int height) {

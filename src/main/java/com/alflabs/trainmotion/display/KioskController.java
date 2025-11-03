@@ -298,7 +298,8 @@ public class KioskController implements IStartStop {
                 File file = next.get();
                 mLogger.log(TAG, "MAIN Player file = " + file.getAbsolutePath());
                 mAnalytics.sendEvent("PlayVideo", file.getName());
-                mConsoleTask.updateLineInfo(/* F */ "9v", " | " + file.getName().replace(".mp4", ""));
+                mConsoleTask.updateLineInfo(/* F */ "9v",
+                        new StringInfo(" | " + file.getName().replace(".mp4", "")));
 
                 int volume = mPlayerDefaultVolume;
                 Optional<Playlist.FileProperties> props = mMainPlaylist.getProperties(file);

@@ -152,7 +152,9 @@ public class DisplayController extends ThreadLoop {
                 displayOn = !displayOn;
             }
             mLogger.log(TAG, "State mChanged to " + displayOn + " at " + localTime);
-            mConsoleTask.updateLineInfo(/* F */ "9d", " | " + (displayOn ? "ON" : "OFF") );
+            mConsoleTask.updateLineInfo(/* F */ "9d",
+                    new StringInfo(" | " + (displayOn ? "ON" : "OFF"),
+                            displayOn ? StringInfo.Flag.On : StringInfo.Flag.Default) );
             invokeScript(displayOn ? "on" : "off");
             mKioskController.onDisplayOnChanged(displayOn);
             mChanged = false;

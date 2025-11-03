@@ -1,7 +1,24 @@
+/*
+ * Project: Train-Motion
+ * Copyright (C) 2025 alf.labs gmail com,
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package com.alflabs.trainmotion.display;
 
 import com.alflabs.annotations.NonNull;
-import com.alflabs.trainmotion.cam.CamAnalyzer;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -22,9 +39,9 @@ public class StatusView extends JComponent {
     private static final String ROOT_KEY = "@root@";
     private final Map<String, JLabel> mLabels = new TreeMap<>();
 
-    public StatusView(@NonNull String placeholderText) {
+    public StatusView(@NonNull StringInfo placeholderInfo) {
         // Display a placeholder text till we get at least one real status label
-        setStatus(ROOT_KEY, placeholderText);
+        setStatus(ROOT_KEY, placeholderInfo);
 
         addComponentListener(new ComponentAdapter() {
             @Override
@@ -39,16 +56,22 @@ public class StatusView extends JComponent {
         super.setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
     }
 
-    public void setStatus(@NonNull String key, @NonNull String status) {
+    public void setStatus(@NonNull String key, @NonNull StringInfo info) {
         JLabel label = getOrCreateLabel(key);
         if (label != null) {
-            label.setText(status);
+            label.setText(info.mMsg);
 
             // A quick hack to test coloring the label to respond to camera activty
-            label.setForeground(
-                    status.contains(CamAnalyzer.STR_CAM_ACTIVE)
-                    ? Color.YELLOW
-                    : Color.LIGHT_GRAY);
+            Color color = Color.LIGHT_GRAY;
+            switch (info.mFlag) {
+            case Active:
+                color = Color.YELLOW;
+                break;
+            case On:
+                color = Color.GREEN;
+                break;
+            }
+            label.setForeground(color);
         }
     }
 
@@ -108,4 +131,5 @@ public class StatusView extends JComponent {
             v.setPreferredSize(s);
         }
     }
+
 }

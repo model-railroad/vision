@@ -20,6 +20,7 @@ package com.alflabs.trainmotion.cam;
 
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.display.ConsoleTask;
+import com.alflabs.trainmotion.display.StringInfo;
 import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
@@ -57,8 +58,10 @@ import static org.bytedeco.opencv.global.opencv_video.createBackgroundSubtractor
  */
 @AutoFactory
 public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
-    public static final String STR_CAM_ACTIVE = "⏺";
-    private static final String STR_CAM_INACTIVE = "⏸";
+    /// U+23FA Black Circle For Record Unicode Character
+    private static final String STR_CAM_ACTIVE = "⏺";
+    /// U+233D APL FUNCTIONAL SYMBOL CIRCLE STILE
+    private static final String STR_CAM_INACTIVE = "⌽";
     private final IClock mClock;
     private final ConfigIni mConfigIni;
     private final ConsoleTask mConsoleTask;
@@ -182,7 +185,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
         final long loopMs = mFpsMeasurer.getLoopMs();
 
         mFpsMeasurer.startTick();
-        String info = "";
+        StringInfo info = StringInfo.EMPTY;
 
         Frame frame = null;
         try {
@@ -200,7 +203,7 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
 
         computeMs = mClock.elapsedRealtime() - computeMs;
         mConsoleTask.updateLineInfo(/* B */ mKey,
-                String.format(" %s [%2d ms]", info, computeMs));
+                info.withMsg(String.format(" %s [%2d ms]", info.mMsg, computeMs)));
 
         mFpsMeasurer.endWait();
     }
@@ -212,9 +215,9 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
     }
 
     @Nonnull
-    private String processFrame(@Nonnull Frame frame) {
+    private StringInfo processFrame(@Nonnull Frame frame) {
         Mat source = mMatConverter.convert(frame);
-        if (source == null) return "";
+        if (source == null) return StringInfo.EMPTY;
 
         if (mOutput == null) {
             // TODO use Mat(Size, type=CV_8UC1).
@@ -273,10 +276,12 @@ public class CamAnalyzer extends ThreadLoop implements IMotionDetector {
             mMaskFrameQueue.offer(maskFrame);
         }
 
-        return String.format("%s %5.2f >= %.2f%%",
+        return new StringInfo(
+                String.format("%s %5.2f >= %.2f%%",
                 hasMotion ? STR_CAM_ACTIVE : STR_CAM_INACTIVE,
                 noisePercent2,
                 mMotionThreshold
-                );
+                ),
+                hasMotion ? StringInfo.Flag.Active : StringInfo.Flag.Default);
     }
 }
