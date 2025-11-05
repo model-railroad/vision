@@ -42,8 +42,8 @@ java {
 }
 
 compileJava {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 configurations {
@@ -64,6 +64,7 @@ configurations {
 
 dependencies {
     runtimeCompile project(":LibUtilsJava")
+    runtimeCompile project(":LibManifest")
 
     runtimeCompile "commons-cli:commons-cli:$vers_common_cli"
     runtimeCompile "org.bytedeco:javacv-platform:$vers_javacv"

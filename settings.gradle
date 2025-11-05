@@ -18,5 +18,10 @@
 
 rootProject.name = "train-motion"
 
-include "LibUtilsJava"
+include ":LibUtilsJava"
 project(":LibUtilsJava").projectDir = new File(rootProject.projectDir, "LibUtils/LibUtilsJava")
+
+// TBD: this currently requires https://github.com/model-railroad/conductor.git
+// to be checked out next to /vision
+include ":LibManifest"
+project(":LibManifest").projectDir = new File(rootProject.projectDir, "../conductor/android/RTAC/LibManifest")
