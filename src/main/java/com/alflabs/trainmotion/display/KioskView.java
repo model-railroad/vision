@@ -106,6 +106,7 @@ public class KioskView {
     private EmbeddedMediaPlayerComponent mMainPlayer;
     private JFrame mFrame;
     private StatusView mBottomStatus;
+    private RtacPsaView mRtacPsaView;
     private Timer mRepaintTimer;
     private int mContentWidth;
     private int mContentHeight;
@@ -155,6 +156,9 @@ public class KioskView {
         mMainPlayer.setBounds(0, 0, width, height); // matches initial frame
         setupLogo();
         mFrame.add(mMainPlayer);
+
+        mRtacPsaView = new RtacPsaView();
+        mFrame.add(mRtacPsaView);
 
         mBottomStatus = new StatusView(new StringInfo("Please wait, initializing camera streams..."));
         mBottomStatus.setDefaultLayout();
@@ -303,6 +307,13 @@ public class KioskView {
                 int lh = labelSize.height;
                 mContentHeight -= lh;
                 mBottomStatus.setBounds(0, mContentHeight, mContentWidth, lh);
+            }
+
+            labelSize = mRtacPsaView.getPreferredSize();
+            if (labelSize != null) {
+                int lh = labelSize.height;
+                mContentHeight -= lh;
+                mRtacPsaView.setBounds(0, mContentHeight, mContentWidth, lh);
             }
         }
     }

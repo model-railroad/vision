@@ -38,6 +38,7 @@ public class StatusView extends JComponent {
 
     private static final String ROOT_KEY = "@root@";
     private final Map<String, JLabel> mLabels = new TreeMap<>();
+    private final Font mFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
     public StatusView(@NonNull StringInfo placeholderInfo) {
         // Display a placeholder text till we get at least one real status label
@@ -85,7 +86,7 @@ public class StatusView extends JComponent {
             label.setOpaque(true);
             label.setBackground(KioskView.BG_COLOR);
             label.setForeground(Color.LIGHT_GRAY);
-            label.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+            label.setFont(mFont);
             label.setAlignmentX(Component.CENTER_ALIGNMENT);
 
             mLabels.put(key, label);

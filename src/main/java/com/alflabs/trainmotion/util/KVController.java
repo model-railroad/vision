@@ -43,9 +43,9 @@ public class KVController extends ThreadLoop {
     private final ILogger mLogger;
     private final ConfigIni mConfigIni;
     private Optional<InetSocketAddress> mSocketAddress = Optional.empty();
-    private AtomicReference<KeyValueClient> mKVClient = new AtomicReference<>();
-    private AtomicBoolean mKVConnected = new AtomicBoolean(false);
-    private AtomicBoolean mKVEnabled = new AtomicBoolean(false);
+    private final AtomicReference<KeyValueClient> mKVClient = new AtomicReference<>();
+    private final AtomicBoolean mKVConnected = new AtomicBoolean(false);
+    private final AtomicBoolean mKVEnabled = new AtomicBoolean(false);
 
     @Inject
     public KVController(
