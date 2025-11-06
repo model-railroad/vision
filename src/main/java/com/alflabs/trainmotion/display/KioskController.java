@@ -173,25 +173,26 @@ public class KioskController implements IStartStop {
 
             // frame (window) size
             mView.setPlayerZoomed(!(mForceZoom == 2 || (hasHighlight && mForceZoom == 0)));
-            mView.computeLayout();
-            final int fw = mView.getContentWidth();
-            final int fh = mView.getContentHeight();
-            // target size for media player
-            int tw = fw, th = fh;
-            if (mForceZoom == 2 || (hasHighlight && mForceZoom == 0)) {
-                // Desired player is half size screen
-                tw = fw / 2;
-                th = fh / 2;
-            }
-            // current player size -- only update if not matching the target.
-            int pw = mView.getMediaPlayerWidth();
-            int ph = mView.getMediaPlayerHeight();
-            if (tw != pw || th != ph) {
-                if (mPlayerZoomEndTS < mClock.elapsedRealtime()) { // don't change too fast
-                    mView.setMediaPlayerSize(tw, th);
-                    mPlayerZoomEndTS = mClock.elapsedRealtime() + PLAYER_ZOOM_MIN_DURATION_MS;
-                }
-            }
+// TBD or REMOVE
+//            mView.computeLayout();
+//            final int fw = mView.getContentWidth();
+//            final int fh = mView.getContentHeight();
+//            // target size for media player
+//            int tw = fw, th = fh;
+//            if (mForceZoom == 2 || (hasHighlight && mForceZoom == 0)) {
+//                // Desired player is half size screen
+//                tw = fw / 2;
+//                th = fh / 2;
+//            }
+//            // current player size -- only update if not matching the target.
+//            int pw = mView.getMediaPlayerWidth();
+//            int ph = mView.getMediaPlayerHeight();
+//            if (tw != pw || th != ph) {
+//                if (mPlayerZoomEndTS < mClock.elapsedRealtime()) { // don't change too fast
+//                    mView.setMediaPlayerSize(tw, th);
+//                    mPlayerZoomEndTS = mClock.elapsedRealtime() + PLAYER_ZOOM_MIN_DURATION_MS;
+//                }
+//            }
         }
 
         @Override

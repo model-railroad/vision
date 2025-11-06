@@ -11,15 +11,19 @@ import uk.co.caprica.vlcj.player.base.MediaPlayer;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
 
-import javax.swing.JPanel;
-import java.awt.GridLayout;
+import javax.swing.JComponent;
+import java.awt.Dimension;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PlayersView extends JPanel {
+import static java.lang.Math.max;
+
+public class PlayersView extends JComponent {
     private static final String TAG = PlayersView.class.getSimpleName();
 
     private final ILogger mLogger;
@@ -31,8 +35,6 @@ public class PlayersView extends JPanel {
     public PlayersView(
             ILogger logger,
             KioskController.Callbacks callbacks) {
-        super(new GridLayout(2, 2), /*isDoubleBuffered=*/ false);
-        setBackground(KioskView.BG_COLOR);
         mLogger = logger;
         mCallbacks = callbacks;
 
@@ -53,6 +55,14 @@ public class PlayersView extends JPanel {
             public void error(MediaPlayer mediaPlayer) {
                 super.error(mediaPlayer);
                 mCallbacks.onMainPlayerError();
+            }
+        });
+
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                super.componentResized(event);
+                onComponentResized();
             }
         });
     }
@@ -83,11 +93,6 @@ public class PlayersView extends JPanel {
         return mMainPlayer.getHeight();
     }
 
-    public void setMediaPlayerSize(int width, int height) {
-// TBD or REMOVE        mMainPlayer.setBounds(0, 0, width, height);
-// TBD or REMOVE        mMainPlayer.revalidate();
-    }
-
     public void createVideoCanvases(
             IClock clock,
             ConsoleTask consoleTask,
@@ -111,14 +116,6 @@ public class PlayersView extends JPanel {
                 add(canvas);
                 canvas.initialize();
             });
-        }
-    }
-
-    public void resizeVideoCanvases(int width, int height) {
-        synchronized (mCameraPlayers) {
-            for (VlcMediaComponent canvas : mCameraPlayers) {
-// TBD or REMOVE                canvas.computeAbsolutePosition(width, height);
-            }
         }
     }
 
@@ -202,11 +199,76 @@ public class PlayersView extends JPanel {
     public void setPlayerZoomed(boolean playerZoomed) {
         if (mPlayerZoomed != playerZoomed) {
             mPlayerZoomed = playerZoomed;
+            System.out.println("@@ PV mPlayerZoomed = " + mPlayerZoomed);
+            System.out.println("@@ PV setPlayerZoomed Current Thread = " + Thread.currentThread());
             synchronized (mCameraPlayers) {
                 for (VlcMediaComponent canvas : mCameraPlayers) {
-                    canvas.setVisible(!playerZoomed);
+// TBD or REMOVE                    canvas.setVisible(!playerZoomed);
                 }
             }
+            onComponentResized();
         }
+    }
+
+    private void onComponentResized() {
+        int w = getWidth();
+        int h = getHeight();
+        System.out.println("@@ PV onComponentResized = " + w + "x" + h);
+
+        setMediaPlayerSize(w, h);
+        resizeVideoCanvases(w, h);
+    }
+
+    private void setMediaPlayerSize(int width, int height) {
+        int split = mPlayerZoomed ? 1 : 2;
+        mMainPlayer.setBounds(0, 0, width / split, height / split);
+        mMainPlayer.revalidate();
+        System.out.println("@@ PV mMainPlayer [" + width + "x" + height + "] ==> bounds = " + mMainPlayer.getBounds());
+    }
+
+    private void resizeVideoCanvases(int width, int height) {
+        synchronized (mCameraPlayers) {
+            for (VlcMediaComponent canvas : mCameraPlayers) {
+                canvas.computeAbsolutePosition(width, height);
+                System.out.println("@@ PV canvas [" + width + "x" + height + "] bounds = " + canvas.getBounds());
+            }
+        }
+    }
+
+    private int cachedPrefSizeW = 0;
+    private int cachedPrefSizeH = 0;
+    private Dimension cachedPrefSizeSz = null;
+
+    @Override
+    public Dimension getPreferredSize() {
+        // Preferred Size is 16/9 of the current frame
+        int prefW = max(getWidth(), 16);
+        int prefH = max(getHeight(), 9);
+
+        // This gets called repeatedly... use a cache to avoid recomputing all the time.
+        if (prefW == cachedPrefSizeW && prefH == cachedPrefSizeH && cachedPrefSizeSz != null) {
+            return cachedPrefSizeSz;
+        }
+        cachedPrefSizeW = prefW;
+        cachedPrefSizeH = prefH;
+
+        double w = prefW;
+        double h = prefH;
+
+        double desiredRatio = 16/9.;
+        double currentRatio = w / h;
+
+        if (currentRatio >= desiredRatio) {
+            // Wider. Keep H, compute W.
+            prefW = (int)(h * desiredRatio);
+        } else {
+            // Taller. Keep W, compute H.
+            prefH = (int)(w / desiredRatio);
+        }
+
+        Dimension sz = new Dimension(prefW, prefH);
+        cachedPrefSizeSz = sz;
+        System.out.println("@@ PV getPreferredSize sz = " + sz);
+        return sz;
     }
 }
