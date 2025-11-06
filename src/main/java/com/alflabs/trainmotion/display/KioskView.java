@@ -38,8 +38,6 @@ import java.awt.GridBagLayout;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -74,8 +72,6 @@ public class KioskView {
     private StatusView mBottomStatus;
     private RtacPsaView mRtacPsaView;
     private Timer mRepaintTimer;
-    private int mContentWidth;
-    private int mContentHeight;
 
     @Inject
     public KioskView(
@@ -160,13 +156,6 @@ public class KioskView {
                 mCallbacks.onWindowClosing();
             }
         });
-        mFrame.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent event) {
-                super.componentResized(event);
-                mCallbacks.onFrameResized();
-            }
-        });
         mFrame.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent keyEvent) {
@@ -199,65 +188,11 @@ public class KioskView {
                 mFpsMeasurerFactory,
                 mHighlighterFactory,
                 mCameras);
-        mCallbacks.onFrameResized();
         if (maximize) {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         }
 
         mRepaintTimer = new Timer(1000 / displayFps, this::onRepaintTimerTick);
-    }
-
-    public int getContentWidth() {
-        return mContentWidth;
-    }
-
-    public int getContentHeight() {
-        return mContentHeight;
-    }
-
-    public int getMediaPlayerWidth() {
-        return mPlayersView.getMediaPlayerWidth();
-    }
-
-    public int getMediaPlayerHeight() {
-        return mPlayersView.getMediaPlayerHeight();
-    }
-
-    public void setMediaPlayerSize(int width, int height) {
-// TBD or REMOVE
-//        mPlayersView.setMediaPlayerSize(width, height);
-    }
-
-    public void resizeVideoCanvases(int width, int height) {
-// TBD or REMOVE
-//        if (mFrame == null) {
-//            return;
-//        }
-//        mPlayersView.resizeVideoCanvases(width, height);
-//        mFrame.revalidate();
-    }
-
-    public void computeLayout() {
-// TBD or REMOVE
-//        if (mFrame != null) {
-//            Insets insets = mFrame.getInsets();
-//            mContentWidth = mFrame.getWidth() - insets.left - insets.right;
-//            mContentHeight = mFrame.getHeight() - insets.top - insets.bottom;
-//
-//            Dimension labelSize = mBottomStatus.getPreferredSize();
-//            if (labelSize != null) {
-//                int lh = labelSize.height;
-//                mContentHeight -= lh;
-//                mBottomStatus.setBounds(0, mContentHeight, mContentWidth, lh);
-//            }
-//
-//            labelSize = mRtacPsaView.getPreferredSize();
-//            if (labelSize != null) {
-//                int lh = labelSize.height;
-//                mContentHeight -= lh;
-//                mRtacPsaView.setBounds(0, mContentHeight, mContentWidth, lh);
-//            }
-//        }
     }
 
     private void onRepaintTimerTick(ActionEvent event) {
