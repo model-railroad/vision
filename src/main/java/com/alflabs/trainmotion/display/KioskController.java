@@ -172,6 +172,7 @@ public class KioskController implements IStartStop {
             boolean hasHighlight = mView.updateAllHighlights();
 
             // frame (window) size
+            mView.setPlayerZoomed(!(mForceZoom == 2 || (hasHighlight && mForceZoom == 0)));
             mView.computeLayout();
             final int fw = mView.getContentWidth();
             final int fh = mView.getContentHeight();

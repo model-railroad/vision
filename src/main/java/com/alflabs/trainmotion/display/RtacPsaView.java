@@ -30,6 +30,7 @@ public class RtacPsaView extends JLabel {
         super();
 
         setBackground(KioskView.BG_COLOR);
+        setBackground(Color.RED); // DEBUG
         setForeground(Color.LIGHT_GRAY);
         setFont(mFont);
         setAlignmentX(Component.CENTER_ALIGNMENT);
