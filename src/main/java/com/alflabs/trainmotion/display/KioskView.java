@@ -18,10 +18,16 @@
 
 package com.alflabs.trainmotion.display;
 
+import com.alflabs.kv.IKeyValue;
+import com.alflabs.manifest.Constants;
+import com.alflabs.rx.IStream;
+import com.alflabs.rx.ISubscriber;
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
+import com.alflabs.trainmotion.util.KVController;
+import com.alflabs.trainmotion.util.SwingUISchedulers;
 import com.alflabs.utils.IClock;
 
 import javax.inject.Inject;
@@ -64,6 +70,7 @@ public class KioskView {
 
     private final Cameras mCameras;
     private final ConsoleTask mConsoleTask;
+    private final KVController mKVController;
     private final HighlighterFactory mHighlighterFactory;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
 
@@ -80,12 +87,14 @@ public class KioskView {
             IClock clock,
             Cameras cameras,
             ConsoleTask consoleTask,
+            KVController kvController,
             HighlighterFactory highlighterFactory,
             FpsMeasurerFactory fpsMeasurerFactory) {
         mLogger = logger;
         mClock = clock;
         mCameras = cameras;
         mConsoleTask = consoleTask;
+        mKVController = kvController;
         mHighlighterFactory = highlighterFactory;
         mFpsMeasurerFactory = fpsMeasurerFactory;
     }
@@ -150,7 +159,7 @@ public class KioskView {
         mFrame.add(mBottomStatus, constraint(0, 2, 2, 1, 0, 0, GridBagConstraints.HORIZONTAL));
 
         // For debugging layout, add a border around views
-        if (true) {
+        if (false) {
             mPlayersView.setBorder(BorderFactory.createLineBorder(Color.GREEN, 1));
             mRtacPsaView.setBorder(BorderFactory.createLineBorder(Color.RED, 1));
             rtacDataView.setBorder(BorderFactory.createLineBorder(Color.BLUE, 1));
@@ -199,6 +208,10 @@ public class KioskView {
         if (maximize) {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         }
+
+
+        mKVController.getKeyChangedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mKeyChangedSubscriber);
+        mKVController.getConnectedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mConnectedSubscriber);
 
         mRepaintTimer = new Timer(1000 / displayFps, this::onRepaintTimerTick);
     }
@@ -271,4 +284,22 @@ public class KioskView {
     public void setPlayerZoomed(boolean playerZoomed) {
         mPlayersView.setPlayerZoomed(playerZoomed);
     }
+
+    private final ISubscriber<Boolean> mConnectedSubscriber = (stream, key) -> {
+        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
+        mRtacPsaView.updateText(null);
+    };
+
+    private final ISubscriber<String> mKeyChangedSubscriber = new ISubscriber<String>() {
+        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
+        @Override
+        public void onReceive(IStream<? extends String> stream, String key) {
+            if (!Constants.RtacPsaText.equals(key)) return;
+            IKeyValue kvClient = mKVController.getKeyValueClient();
+            if (kvClient == null) return;
+            String value = kvClient.getValue(key);
+            mRtacPsaView.updateText(value);
+        }
+    };
+
 }

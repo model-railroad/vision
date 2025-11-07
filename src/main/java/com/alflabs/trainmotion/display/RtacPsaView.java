@@ -63,7 +63,7 @@ public class RtacPsaView extends JPanel {
     private static final String TAG = RtacPsaView.class.getSimpleName();
 
     private final Font mFont1 = new Font(Font.SANS_SERIF, Font.BOLD, 48);
-    private final Font mFont2 = new Font(Font.SANS_SERIF, Font.BOLD, 16);
+    private final Font mFont2 = new Font(Font.SANS_SERIF, Font.BOLD, 24);
     private final JLabel mLine1;
     private final JLabel mLine2;
     private final ILogger mLogger;
@@ -106,7 +106,7 @@ public class RtacPsaView extends JPanel {
 
     // Source: Conductor Project
     // android/RTAC/app/src/main/java/com/alflabs/rtac/fragment/PsaTextFragment.java
-    private void updateText(@Null String text) {
+    public void updateText(@Null String text) {
         if (text == null) {
             text = "{bg:black}{b:red}{c:white}Automation Not Working";
         }
