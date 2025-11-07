@@ -26,6 +26,7 @@ import com.alflabs.utils.IClock;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
@@ -139,14 +140,21 @@ public class KioskView {
         JLabel rtacDataView = new JLabel(); // TBD
         rtacDataView.setText("placeholder");
         rtacDataView.setBackground(Color.LIGHT_GRAY);
-        mFrame.add(rtacDataView, constraint(1, 0, 1, 3, 0, 0, GridBagConstraints.VERTICAL));
+        mFrame.add(rtacDataView, constraint(1, 0, 1, 1, 0, 0, GridBagConstraints.VERTICAL));
 
-        mRtacPsaView = new RtacPsaView();
+        mRtacPsaView = new RtacPsaView(mLogger);
         mFrame.add(mRtacPsaView, constraint(0, 1, 2, 1, 0, 0, GridBagConstraints.HORIZONTAL));
 
         mBottomStatus = new StatusView(new StringInfo("Please wait, initializing camera streams..."));
         mBottomStatus.setDefaultLayout();
         mFrame.add(mBottomStatus, constraint(0, 2, 2, 1, 0, 0, GridBagConstraints.HORIZONTAL));
+
+        // For debugging layout, add a border around views
+        if (true) {
+            mPlayersView.setBorder(BorderFactory.createLineBorder(Color.GREEN, 1));
+            mRtacPsaView.setBorder(BorderFactory.createLineBorder(Color.RED, 1));
+            rtacDataView.setBorder(BorderFactory.createLineBorder(Color.BLUE, 1));
+        }
 
         mFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         mFrame.addWindowListener(new WindowAdapter() {
