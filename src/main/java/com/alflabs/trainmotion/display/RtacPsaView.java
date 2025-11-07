@@ -26,6 +26,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -62,8 +63,6 @@ import java.util.regex.Pattern;
 public class RtacPsaView extends JPanel {
     private static final String TAG = RtacPsaView.class.getSimpleName();
 
-    private final Font mFont1 = new Font(Font.SANS_SERIF, Font.BOLD, 48);
-    private final Font mFont2 = new Font(Font.SANS_SERIF, Font.BOLD, 24);
     private final JLabel mLine1;
     private final JLabel mLine2;
     private final ILogger mLogger;
@@ -73,19 +72,24 @@ public class RtacPsaView extends JPanel {
         mLogger = logger;
         setBackground(KioskView.BG_COLOR);
 
+        Font font1 = new Font(Font.SANS_SERIF, Font.BOLD, 48);
+        Font font2 = new Font(Font.SANS_SERIF, Font.BOLD, 24);
+
         mLine1 = new JLabel("", SwingConstants.CENTER);
         mLine1.setOpaque(true);
-        mLine1.setFont(mFont1);
+        mLine1.setFont(font1);
         mLine1.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(mLine1, constraint(0));
 
         mLine2 = new JLabel("", SwingConstants.CENTER);
         mLine2.setOpaque(true);
-        mLine2.setFont(mFont2);
+        mLine2.setFont(font2);
         mLine2.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(mLine2, constraint(1));
 
         updateText(null);
+        // Force the initial size computation to use both line heights.
+        mLine2.setText(" ");
     }
 
     private GridBagConstraints constraint(int gridy) {
@@ -140,7 +144,9 @@ public class RtacPsaView extends JPanel {
                     break;
                 case "bg":
                     // Root view background color -- defaults to white.
-// TBD or REMOVE                    rootColor = col;
+                    // This was used in RTAC to set the parent's view background color.
+                    // Not used in Vision where the parent frame background is always black.
+                    // rootColor = col;
                     break;
                 default:
                     mLogger.log(TAG, "Ignoring invalid PSA text formatter {" + key + "} in " + originalText);
@@ -160,7 +166,9 @@ public class RtacPsaView extends JPanel {
         if (lines.length > 1) {
             lines[0] += " " + lines[1];
         }
-        mLine1.setText(lines.length > 0 ? lines[0] : "");
+        // The first line should never be empty.
+        mLine1.setText(lines.length > 0 ? lines[0] : " ");
+        // When the second line is empty, the first line gets centered vertically.
         mLine2.setText(lines.length > 2 ? lines[2] : "");
     }
 
@@ -205,5 +213,23 @@ public class RtacPsaView extends JPanel {
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to parse color: " + val, e);
         }
+    }
+
+    private int mMaxHeight = 0;
+
+    @Override
+    public Dimension getPreferredSize() {
+        // The preferred size height depends on whether the 2nd line of text is non-empty.
+        // For consistency, we want to use the size with both lines visible. That way, when
+        // there's only one line to display, it gets centered yet the overall view has the same
+        // size and the videos players do not resize.
+
+        Dimension sz = super.getPreferredSize();
+        if (sz.height > mMaxHeight) {
+            mMaxHeight = sz.height;
+        }
+        sz.height = mMaxHeight;
+
+        return sz;
     }
 }
