@@ -21,7 +21,7 @@ if ! grep -qs "$VERS_JAVA" $("$JV" -version 2>&1) ; then
     JV="${JS/javac/java}"
     JS=$(cygpath -w "${JS//\/bin*/}")
   else
-    JS=$(ls /usr/lib/jvm/*java*$JV*/bin/javac | head -n 1)
+    JS=$(ls /usr/lib/jvm/*java*$VERS_JAVA*/bin/javac | head -n 1)
     JV="${JS/javac/java}"
     JS="${JS//\/bin*/}"
   fi

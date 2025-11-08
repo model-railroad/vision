@@ -14,7 +14,7 @@ CONFIG="config.ini"
 PLAYLIST_ID=""
 PLAYLIST_DIR=""
 DL_PLAYLIST="yes"
-YOUTUBE_DL="youtube-dl"
+YOUTUBE_DL="youtube-dl" # or yt-dlp; override this in config.ini
 FORMAT="--format mp4" # mp4 (typically 1920x1080 at 30 or 60 fps)
 
 function die() {
@@ -144,7 +144,9 @@ parse_flags "$@"
 parse_config
 if [[ -n "$DRY_RUN" ]]; then echo "## DRY-RUN mode. Use -f to actually run." ; fi
 
+date
 ( do_cleanup )
 ( do_download )
+date
 
 if [[ -n "$DRY_RUN" ]]; then echo "## DRY-RUN mode. Use -f to actually run." ; fi
