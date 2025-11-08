@@ -21,6 +21,7 @@ package com.alflabs.trainmotion.display;
 import com.alflabs.annotations.Null;
 import com.alflabs.trainmotion.util.ILogger;
 
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -70,6 +71,7 @@ public class RtacPsaPanel extends JPanel {
         super(new GridBagLayout());
         mLogger = logger;
         setBackground(KioskView.BG_COLOR);
+        setBorder(BorderFactory.createEmptyBorder(/*top*/ 10, /*left*/ 0, /*bottom*/ 0, /*right*/ 0));
 
         Font font1 = new Font(Font.SANS_SERIF, Font.BOLD, 48);
         Font font2 = new Font(Font.SANS_SERIF, Font.BOLD, 24);
@@ -88,7 +90,7 @@ public class RtacPsaPanel extends JPanel {
 
         updateText(null);
         // Force the initial size computation to use both line heights.
-        mLine2.setText(" ");
+        mLine2.setText("");
     }
 
     private GridBagConstraints constraint(int gridy) {
@@ -168,7 +170,7 @@ public class RtacPsaPanel extends JPanel {
         // The first line should never be empty.
         mLine1.setText(lines.length > 0 ? lines[0] : " ");
         // When the second line is empty, the first line gets centered vertically.
-        mLine2.setText(lines.length > 2 ? lines[2] : " ");
+        mLine2.setText(lines.length > 2 ? lines[2] : "");
     }
 
     /// Parses an HTM color name (e.g. "#RRGGBB" or "black")
