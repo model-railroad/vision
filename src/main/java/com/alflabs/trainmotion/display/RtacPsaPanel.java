@@ -60,14 +60,14 @@ import java.util.regex.Pattern;
  * first lines into one, and if there's a 3rd one place it below with a smaller font.
  */
 
-public class RtacPsaView extends JPanel {
-    private static final String TAG = RtacPsaView.class.getSimpleName();
+public class RtacPsaPanel extends JPanel {
+    private static final String TAG = RtacPsaPanel.class.getSimpleName();
 
     private final JLabel mLine1;
     private final JLabel mLine2;
     private final ILogger mLogger;
 
-    public RtacPsaView(ILogger logger) {
+    public RtacPsaPanel(ILogger logger) {
         super(new GridBagLayout());
         mLogger = logger;
         setBackground(KioskView.BG_COLOR);
