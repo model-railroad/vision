@@ -18,97 +18,71 @@
 
 package com.alflabs.trainmotion.display;
 
-import com.alflabs.trainmotion.cam.CamAnalyzer;
+import com.alflabs.kv.IKeyValue;
+import com.alflabs.manifest.Constants;
+import com.alflabs.rx.IStream;
+import com.alflabs.rx.ISubscriber;
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
-import com.alflabs.trainmotion.util.FpsMeasurer;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
+import com.alflabs.trainmotion.util.KVController;
+import com.alflabs.trainmotion.util.SwingUISchedulers;
 import com.alflabs.utils.IClock;
-import com.google.common.io.Files;
-import com.google.common.io.Resources;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.Java2DFrameConverter;
-import uk.co.caprica.vlcj.player.base.MediaPlayer;
-import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
-import uk.co.caprica.vlcj.player.component.CallbackMediaPlayerComponent;
-import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent;
-import uk.co.caprica.vlcj.player.component.callback.ScaledCallbackImagePainter;
-import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormat;
-import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormatCallbackAdapter;
-import uk.co.caprica.vlcj.player.embedded.videosurface.callback.RenderCallbackAdapter;
-import uk.co.caprica.vlcj.player.embedded.videosurface.callback.format.RV32BufferFormat;
 
-import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.Insets;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 import java.io.File;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
 
-import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_COLOR;
-import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_SIZE_MAX;
-import static com.alflabs.trainmotion.display.Highlighter.HIGHLIGHT_LINE_SIZE_MIN;
 import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 
 /**
  * Kiosk Display is split in 2 parts: a KioskView class encapsulates all the Swing-related APIs,
  * and this controller contains all the "business" logic. This makes it possible to test the
- * controller using a mock UI that does not uses any actual views.
+ * controller using a mock UI that does not use any actual views.
  */
 @Singleton
 public class KioskView {
     private static final String TAG = KioskView.class.getSimpleName();
 
-    private static final Color BG_COLOR = Color.BLACK;
-    private static final Color LIVE_COLOR = Color.RED;
-    private static final String LIVE_TEXT = "LIVE CAM %d";
-    private static final int VIEW_GAP_PX = 2;
+    static final Color BG_COLOR = Color.BLACK;
 
     private final ILogger mLogger;
     private final IClock mClock;
 
     private final Cameras mCameras;
     private final ConsoleTask mConsoleTask;
+    private final KVController mKVController;
     private final HighlighterFactory mHighlighterFactory;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
 
     private KioskController.Callbacks mCallbacks;
-    @GuardedBy("mVideoCanvas")
-    private final List<VlcMediaComponent> mCameraPlayers = new ArrayList<>();
-    private EmbeddedMediaPlayerComponent mMainPlayer;
     private JFrame mFrame;
-    private JLabel mBottomLabel;
+    private PlayersView mPlayersView;
+    private StatusView mBottomStatus;
+    private RtacPsaPanel mRtacPsaPanel;
+    private RtacDataPanel mRtacDataPanel;
     private Timer mRepaintTimer;
-    private int mContentWidth;
-    private int mContentHeight;
+
+    private final ISubscriber<String> mKeyChangedSubscriber = this::onReceiveKeyChanged;
+    private final ISubscriber<Boolean> mConnectedSubscriber = this::onReceiveConnected;
 
     @Inject
     public KioskView(
@@ -116,18 +90,46 @@ public class KioskView {
             IClock clock,
             Cameras cameras,
             ConsoleTask consoleTask,
+            KVController kvController,
             HighlighterFactory highlighterFactory,
             FpsMeasurerFactory fpsMeasurerFactory) {
         mLogger = logger;
         mClock = clock;
         mCameras = cameras;
         mConsoleTask = consoleTask;
+        mKVController = kvController;
         mHighlighterFactory = highlighterFactory;
         mFpsMeasurerFactory = fpsMeasurerFactory;
     }
 
     public void invokeLater(Runnable r) {
         SwingUtilities.invokeLater(r);
+    }
+
+    private GridBagConstraints constraint(
+            int gridx, int gridy,
+            int gridw, int gridh,
+            int weightx, int weighty,
+            int fill,
+            int anchor) {
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = gridx;
+        c.gridy = gridy;
+        c.gridwidth = gridw;
+        c.gridheight = gridh;
+        c.weightx = weightx;
+        c.weighty = weighty;
+        c.fill = fill;
+        c.anchor = anchor;
+        return c;
+    }
+
+    private GridBagConstraints constraint(
+            int gridx, int gridy,
+            int gridw, int gridh,
+            int weightx, int weighty,
+            int fill) {
+        return constraint(gridx, gridy, gridw, gridh, weightx, weighty, fill, GridBagConstraints.CENTER);
     }
 
     public void create(
@@ -150,18 +152,29 @@ public class KioskView {
             mFrame.getRootPane().getContentPane().setBackground(BG_COLOR);
         }
 
-        mMainPlayer = new EmbeddedMediaPlayerComponent();
-        mMainPlayer.setBackground(BG_COLOR);
-        mMainPlayer.setBounds(0, 0, width, height); // matches initial frame
-        setupLogo();
-        mFrame.add(mMainPlayer);
+        mFrame.setLayout(new GridBagLayout());
 
-        mBottomLabel = new JLabel("Please wait, initializing camera streams...");
-        mBottomLabel.setOpaque(true);
-        mBottomLabel.setBackground(BG_COLOR);
-        mBottomLabel.setForeground(Color.LIGHT_GRAY);
-        mBottomLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        mFrame.add(mBottomLabel);
+        mPlayersView = new PlayersView(
+                mLogger,
+                mCallbacks);
+        mFrame.add(mPlayersView, constraint(1, 0, 1, 1, 1, 1, GridBagConstraints.BOTH));
+
+        mRtacDataPanel = new RtacDataPanel(mLogger);
+        mFrame.add(mRtacDataPanel, constraint(0, 0, 1, 1, 0, 0, GridBagConstraints.VERTICAL, GridBagConstraints.NORTHWEST));
+
+        mRtacPsaPanel = new RtacPsaPanel(mLogger);
+        mFrame.add(mRtacPsaPanel, constraint(0, 1, 2, 1, 0, 0, GridBagConstraints.HORIZONTAL));
+
+        mBottomStatus = new StatusView(new StringInfo("Please wait, initializing camera streams..."));
+        mBottomStatus.setDefaultLayout();
+        mFrame.add(mBottomStatus, constraint(0, 2, 2, 1, 0, 0, GridBagConstraints.HORIZONTAL));
+
+        // For debugging layout, add a border around views
+        if (false) {
+            mPlayersView.setBorder(BorderFactory.createLineBorder(Color.GREEN, 1));
+            mRtacPsaPanel.setBorder(BorderFactory.createLineBorder(Color.RED, 1));
+            mRtacDataPanel.setBorder(BorderFactory.createLineBorder(Color.BLUE, 1));
+        }
 
         mFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         mFrame.addWindowListener(new WindowAdapter() {
@@ -171,13 +184,6 @@ public class KioskView {
                 mCallbacks.onWindowClosing();
             }
         });
-        mFrame.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent event) {
-                super.componentResized(event);
-                mCallbacks.onFrameResized();
-            }
-        });
         mFrame.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent keyEvent) {
@@ -185,20 +191,6 @@ public class KioskView {
                     keyEvent.consume();
                 }
                 super.keyPressed(keyEvent);
-            }
-        });
-
-        mMainPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
-            @Override
-            public void finished(MediaPlayer mediaPlayer) {
-                super.finished(mediaPlayer);
-                mCallbacks.onMainPlayerFinished();
-            }
-
-            @Override
-            public void error(MediaPlayer mediaPlayer) {
-                super.error(mediaPlayer);
-                mCallbacks.onMainPlayerError();
             }
         });
 
@@ -217,135 +209,46 @@ public class KioskView {
         mFrame.setVisible(true);
         // Canvases use a "buffered strategy" (to have 2 buffers) and must be created
         // after the main frame is set visible.
-        createVideoCanvases();
-        mCallbacks.onFrameResized();
+        mPlayersView.createVideoCanvases(
+                mClock,
+                mConsoleTask,
+                mFpsMeasurerFactory,
+                mHighlighterFactory,
+                mCameras);
         if (maximize) {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         }
 
+        mKVController.getKeyChangedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mKeyChangedSubscriber);
+        mKVController.getConnectedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mConnectedSubscriber);
+
         mRepaintTimer = new Timer(1000 / displayFps, this::onRepaintTimerTick);
     }
 
-    private void setupLogo() {
-        try {
-            URL resource = Resources.getResource("logo_youtube_75pct.png");
-            mLogger.log(TAG, "Logo read: " + resource.getPath());
-            File tmpFile = File.createTempFile("logo_youtube_", ".png");
-            mLogger.log(TAG, "Logo write: " + tmpFile);
-            Files.write(Resources.toByteArray(resource), tmpFile);
-            tmpFile.deleteOnExit();
-
-            mMainPlayer.mediaPlayer().logo().setFile(tmpFile.getPath());
-            mMainPlayer.mediaPlayer().logo().setLocation(0, Integer.MAX_VALUE);
-            mMainPlayer.mediaPlayer().logo().setOpacity(0.75f);
-            mMainPlayer.mediaPlayer().logo().enable(true);
-        } catch (Throwable t) {
-            mLogger.log(TAG, "Error setting logo: " + t.getMessage());
-        }
-    }
-
-    public int getContentWidth() {
-        return mContentWidth;
-    }
-
-    public int getContentHeight() {
-        return mContentHeight;
-    }
-
-    public int getMediaPlayerWidth() {
-        return mMainPlayer.getWidth();
-    }
-
-    public int getMediaPlayerHeight() {
-        return mMainPlayer.getHeight();
-    }
-
-    public void setMediaPlayerSize(int width, int height) {
-        mMainPlayer.setBounds(0, 0, width, height);
-        mMainPlayer.revalidate();
-    }
-
-    private void createVideoCanvases() {
-        AtomicInteger posIndex = new AtomicInteger();
-        synchronized (mCameraPlayers) {
-            mCameras.forEachCamera(camInfo -> {
-                VlcMediaComponent canvas = new VlcMediaComponent(
-                        posIndex.incrementAndGet(),
-                        camInfo,
-                        mHighlighterFactory.create(
-                                camInfo.getIndex(),
-                                camInfo.getAnalyzer()));
-
-                mCameraPlayers.add(canvas);
-                mFrame.add(canvas);
-                canvas.initialize();
-            });
-        }
-    }
-
-    public void resizeVideoCanvases(int width, int height) {
-        if (mFrame == null) {
-            return;
-        }
-        synchronized (mCameraPlayers) {
-            for (VlcMediaComponent canvas : mCameraPlayers) {
-                canvas.computeAbsolutePosition(width, height);
-            }
-        }
-        mFrame.revalidate();
-    }
-
-    public void computeLayout() {
-        if (mFrame != null) {
-            Insets insets = mFrame.getInsets();
-            mContentWidth = mFrame.getWidth() - insets.left - insets.right;
-            mContentHeight = mFrame.getHeight() - insets.top - insets.bottom;
-
-            Dimension labelSize = mBottomLabel.getPreferredSize();
-            if (labelSize != null) {
-                int lh = labelSize.height;
-                mContentHeight -= lh;
-                mBottomLabel.setBounds(0, mContentHeight, mContentWidth, lh);
-            }
-        }
-    }
-
     private void onRepaintTimerTick(ActionEvent event) {
-        if (mFrame == null || mMainPlayer == null) {
+        if (mFrame == null || mPlayersView == null) {
             return;
         }
         mCallbacks.onRepaintTimerTick();
     }
 
-    public void setBottomLabelText(String lineInfo) {
-        mBottomLabel.setText(lineInfo);
+    public void setBottomStatus(Map<String, StringInfo> lineInfos) {
+        //noinspection SynchronizationOnLocalVariableOrMethodParameter
+        synchronized (lineInfos) {
+            for (Map.Entry<String, StringInfo> info : lineInfos.entrySet()) {
+                mBottomStatus.setStatus(info.getKey(), info.getValue());
+            }
+        }
     }
 
     public boolean updateAllHighlights() {
-        boolean hasHighlight = false;
-        synchronized (mCameraPlayers) {
-            for (VlcMediaComponent canvas : mCameraPlayers) {
-                canvas.updateFrame();
-                hasHighlight |= canvas.mHighlighter.isHighlighted();
-            }
-        }
-        return hasHighlight;
+        return mPlayersView.updateAllHighlights();
     }
 
     public void release() {
         SwingUtilities.invokeLater(() -> {
             mRepaintTimer.stop();
-            if (mMainPlayer != null) {
-                mMainPlayer.mediaPlayer().controls().stop();
-                mMainPlayer.release();
-                mMainPlayer = null;
-            }
-            synchronized (mCameraPlayers) {
-                for (VlcMediaComponent canvas : mCameraPlayers) {
-                    canvas.release();
-                }
-                mCameraPlayers.clear();
-            }
+            mPlayersView.releaseSync();
             if (mFrame != null) {
                 mFrame.dispose();
                 mFrame = null;
@@ -359,296 +262,54 @@ public class KioskView {
     }
 
     public void setMainPlayerMute(boolean isMuted) {
-        if (mMainPlayer != null) {
-            mMainPlayer.mediaPlayer().audio().setMute(isMuted);
-        }
+        mPlayersView.setMainPlayerMute(isMuted);
     }
 
     public void setMainPlayerVolume(int percent) {
-        if (mMainPlayer != null) {
-            mMainPlayer.mediaPlayer().audio().setVolume(percent);
-        }
+        mPlayersView.setMainPlayerVolume(percent);
     }
 
     public int getMainPlayerVolume() {
-        return mMainPlayer == null ? -1 : mMainPlayer.mediaPlayer().audio().volume();
+        return mPlayersView.getMainPlayerVolume();
     }
 
     public void startMainPlayer(File media) {
-        if (mMainPlayer != null) {
-            mMainPlayer.setVisible(true);
-            mMainPlayer.mediaPlayer().media().play(media.getAbsolutePath());
-        }
+        mPlayersView.startMainPlayer(media);
     }
 
     public void stopMainPlayer() {
-        if (mMainPlayer != null) {
-            mMainPlayer.mediaPlayer().controls().stop();
-            mMainPlayer.setVisible(false);
-        }
+        mPlayersView.stopMainPlayer();
     }
 
     public void startCameraPlayer(CamInfo camInfo, String media) {
-        synchronized (mCameraPlayers) {
-            for (VlcMediaComponent canvas : mCameraPlayers) {
-                canvas.setVisible(true);
-                if (canvas.mCamInfo == camInfo) {
-                    canvas.mPlayer.mediaPlayer().media().play(media);
-                }
-            }
-        }
+        mPlayersView.startCameraPlayer(camInfo, media);
     }
 
     public void stopCameraPlayer(CamInfo camInfo) {
-        synchronized (mCameraPlayers) {
-            for (VlcMediaComponent canvas : mCameraPlayers) {
-                if (canvas.mCamInfo == camInfo) {
-                    canvas.mPlayer.mediaPlayer().controls().stop();
-                }
-                canvas.setVisible(false);
-            }
+        mPlayersView.stopCameraPlayer(camInfo);
+    }
+
+    public void setPlayerZoomed(boolean playerZoomed) {
+        mPlayersView.setPlayerZoomed(playerZoomed);
+    }
+
+    private void onReceiveKeyChanged(IStream<? extends String> stream, String key) {
+        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
+        IKeyValue kvClient = mKVController.getKeyValueClient();
+        if (kvClient == null) return;
+        String value = kvClient.getValue(key);
+
+        if (Constants.RtacPsaText.equals(key)) {
+            mRtacPsaPanel.updateText(value);
+        } else if (Constants.RoutesKey.equals(key)) {
+            mRtacDataPanel.initializeRoutes(kvClient, value);
+        } else {
+            mRtacDataPanel.onKVChanged(key, value);
         }
     }
 
-    private class VlcMediaComponent extends JPanel {
-        private final FpsMeasurer mFpsMeasurer;
-        private final String mKey;
-        private final int mPosIndex;
-        private final CamInfo mCamInfo;
-        private final Highlighter mHighlighter;
-        private final VlcOverlayHelper mOverlay;
-        private final CallbackMediaPlayerComponent mPlayer;
-        private final VlcMediaComponent mVideoSurface;
-        private final VlcRenderCallback mRenderCallback;
-        private final ScaledCallbackImagePainter mImagePainter;
-        private BufferedImage mImage;
-
-        public VlcMediaComponent(int posIndex, CamInfo camInfo, Highlighter highlighter) {
-            mPosIndex = posIndex;
-            mCamInfo = camInfo;
-            mHighlighter = highlighter;
-            setBackground(BG_COLOR);
-            mVideoSurface = this;
-            mKey = String.format("%da", mCamInfo.getIndex());
-            mFpsMeasurer = mFpsMeasurerFactory.create();
-
-            mImagePainter = new ScaledCallbackImagePainter();
-            mRenderCallback = new VlcRenderCallback();
-            VlcBufferFormatCallback bufferFormatCallback = new VlcBufferFormatCallback();
-
-            mPlayer = new CallbackMediaPlayerComponent(
-                    null /* mediaPlayerFactory */,
-                    null /* fullScreenFactory */,
-                    null /* inputEvents */,
-                    false /* lockBuffers */,
-                    null /* ignore ScaledCallbackImagePainter() */,
-                    mRenderCallback /* renderCallback */,
-                    bufferFormatCallback /* bufferFormatCallback */,
-                    mVideoSurface /* videoSurfaceComponent */
-                    );
-
-            mOverlay = new VlcOverlayHelper(camInfo, highlighter);
-        }
-
-        @Override
-        public void paint(Graphics g) {
-            Graphics2D g2 = (Graphics2D)g;
-
-            int scaledW = getWidth();
-            int scaledH = getHeight();
-            BufferedImage image = mImage;
-            if (image != null) {
-                mImagePainter.prepare(g2, this);
-                mImagePainter.paint(g2, this, image);
-
-                scaledW = image.getWidth();
-                scaledH = image.getHeight();
-            }
-
-            mOverlay.paint(g2, scaledW, scaledH);
-        }
-
-        public void initialize() {
-            setVisible(true);
-
-            mPlayer.mediaPlayer().events().addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
-                @Override
-                public void finished(MediaPlayer mediaPlayer) {
-                    super.finished(mediaPlayer);
-                    mCallbacks.onCameraPlayerFinished(mCamInfo);
-                }
-
-                @Override
-                public void error(MediaPlayer mediaPlayer) {
-                    super.error(mediaPlayer);
-                    mCallbacks.onCameraPlayerError(mCamInfo);
-                }
-            });
-        }
-
-        public void release() {
-            mPlayer.mediaPlayer().controls().stop();
-            mPlayer.release();
-            mImage = null;
-        }
-
-        public void computeAbsolutePosition(int frameW, int frameH) {
-            if (frameH <= 0 || frameW <= 0) {
-                return;
-            }
-
-            // Our videos are 16/9.
-            // If our videos are wider (our ratio > frame ratio), we want a horizontal gap between views.
-            // If our videos are taller (our ratio < frame ratio), we want a vertical gap between views.
-            final double refRatio = 16. / 9;
-            final double frameRatio = ((double) frameW) / frameH;
-            final int gapH = (refRatio >= frameRatio) ? VIEW_GAP_PX : 0;
-            final int gapV = (refRatio <= frameRatio) ? VIEW_GAP_PX : 0;
-
-            int x = mPosIndex % 2;
-            int y = mPosIndex / 2;
-            int w = frameW / 2;
-            int h = frameH / 2;
-            x *= w;
-            y *= h;
-            w -= gapH;
-            h -= gapV;
-            if (x > 0) {
-                x += gapH;
-            }
-            if (y > 0) {
-                y += gapV;
-            }
-
-            mOverlay.mHighlightLineSize = Math.max(HIGHLIGHT_LINE_SIZE_MIN, (int) Math.ceil((double) (HIGHLIGHT_LINE_SIZE_MAX * w) / (1980. / 2)));
-            mOverlay.mLiveCircleRadius = mOverlay.mHighlightLineSize;
-            mOverlay.mLiveFont = null;
-
-            this.setBounds(x, y, w, h);
-        }
-
-
-        /**
-         * Must be invoked on the Swing UI thread.
-         */
-        public void updateFrame() {
-            mHighlighter.update();
-
-            CamAnalyzer analyzer = mCamInfo.getAnalyzer();
-            if (mCallbacks.showMask()) {
-                Frame frame = analyzer.getMaskFrame();
-                mOverlay.mNoiseLevel = analyzer.getNoiseLevel();
-                if (frame != null) {
-                    mOverlay.mMaskImage = mOverlay.mConverter.getBufferedImage(frame);
-                }
-            } else if (mOverlay.mMaskImage != null) {
-                mOverlay.mMaskImage = null;
-                mOverlay.mNoiseLevel = -1;
-            }
-
-            mConsoleTask.updateLineInfo(/* A */ mKey,
-                    String.format(" [%d] %5.1f fps", mCamInfo.getIndex(), mFpsMeasurer.getFps()));
-        }
-
-        private void newVideoBuffer(int width, int height) {
-            mImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-            mRenderCallback.setImageBuffer(mImage);
-            if (mVideoSurface != null) {
-                mVideoSurface.setPreferredSize(new Dimension(width, height));
-            }
-        }
-
-        private class VlcRenderCallback extends RenderCallbackAdapter {
-
-            public VlcRenderCallback() {}
-
-            private void setImageBuffer(BufferedImage image) {
-                setBuffer(((DataBufferInt) image.getRaster().getDataBuffer()).getData());
-            }
-
-            @Override
-            protected void onDisplay(MediaPlayer mediaPlayer, int[] buffer) {
-                mFpsMeasurer.startTick();
-
-                BufferedImage image = mImage;
-                if (image != null) {
-                    mCamInfo.getAnalyzer().offerPlayerImage(image);
-                }
-                mVideoSurface.repaint();
-            }
-        }
-
-        private class VlcBufferFormatCallback extends BufferFormatCallbackAdapter {
-            @Override
-            public BufferFormat getBufferFormat(int sourceWidth, int sourceHeight) {
-                newVideoBuffer(sourceWidth, sourceHeight);
-                return new RV32BufferFormat(sourceWidth, sourceHeight);
-            }
-        }
-    }
-
-    private class VlcOverlayHelper {
-        private final Java2DFrameConverter mConverter = new Java2DFrameConverter();
-        private final String mLiveText;
-        private final Highlighter mHighlighter;
-        public int mHighlightLineSize = HIGHLIGHT_LINE_SIZE_MAX;
-        public int mLiveCircleRadius = HIGHLIGHT_LINE_SIZE_MAX;
-        public Font mLiveFont;
-        public Image mMaskImage;
-        public double mNoiseLevel = -1;
-
-        public VlcOverlayHelper(CamInfo camInfo, Highlighter highlighter) {
-            mLiveText = String.format(Locale.US, LIVE_TEXT, camInfo.getIndex());
-            mHighlighter = highlighter;
-        }
-
-        public void paint(Graphics g, int cw, int ch) {
-            drawImage(g, cw, ch, 0, 0);
-            drawContour(g, cw, ch, 0, 0);
-            drawLive(g, cw, ch, 0, 0);
-        }
-
-        private void drawImage(Graphics g, int dw, int dh, int dx, int dy) {
-            if (mMaskImage != null) {
-                g.drawImage(mMaskImage, dx, dy, dw, dh, null /* observer */);
-            }
-        }
-
-        private void drawContour(Graphics g, int dw, int dh, int dx, int dy) {
-            if (mHighlighter.isHighlighted()) {
-                g.setColor(HIGHLIGHT_LINE_COLOR);
-                g.fillRect(dx, dy, dw, mHighlightLineSize);
-                g.fillRect(dx, dy + dh - mHighlightLineSize, dw, mHighlightLineSize);
-                g.fillRect(dx, dy, mHighlightLineSize, dh);
-                g.fillRect(dx + dw - mHighlightLineSize, dy, mHighlightLineSize, dh);
-            }
-        }
-
-        private void drawLive(Graphics g, int dw, int dh, int dx, int dy) {
-            // Blink at 1 fps
-            long secondsNow = mClock.elapsedRealtime() / 1000;
-            if (mNoiseLevel < 0 && (secondsNow & 0x1) == 0) return;
-
-            final int radius = mLiveCircleRadius;
-            final int diam = 2 * mLiveCircleRadius;
-            if (mLiveFont == null) {
-                mLiveFont = new Font("Arial", Font.BOLD | Font.ITALIC, diam);
-            }
-            g.setFont(mLiveFont);
-
-            g.setColor(LIVE_COLOR);
-
-            int x = dx + 2 * mHighlightLineSize + radius;
-            int y = dy + dh - 2 * mHighlightLineSize - radius;
-
-            g.fillOval(x - radius, y - radius, diam, diam);
-
-            String s = mLiveText;
-            if (mNoiseLevel >= 0) {
-                s = String.format("%s      %.2f%%", s, mNoiseLevel);
-            }
-
-            g.drawString(s, x + diam, y + radius);
-        }
+    private void onReceiveConnected(IStream<? extends Boolean> stream, Boolean value) {
+        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
+        mRtacPsaPanel.updateText(null);
     }
 }

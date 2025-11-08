@@ -1,6 +1,6 @@
 /*
  * Project: Train-Motion
- * Copyright (C) 2021 alf.labs gmail com,
+ * Copyright (C) 2025 alf.labs gmail com,
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,12 +16,31 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-rootProject.name = "train-motion"
+package com.alflabs.trainmotion.display;
 
-include ":LibUtilsJava"
-project(":LibUtilsJava").projectDir = new File(rootProject.projectDir, "LibUtils/LibUtilsJava")
+public class StringInfo {
+    public final String mMsg;
+    public final Flag mFlag;
 
-// TBD: this currently requires https://github.com/model-railroad/conductor.git
-// to be checked out next to /vision
-include ":LibManifest"
-project(":LibManifest").projectDir = new File(rootProject.projectDir, "../conductor/android/RTAC/LibManifest")
+    public final static StringInfo EMPTY = new StringInfo("");
+
+    public enum Flag {
+        Default,
+        Active,
+        On,
+    }
+
+    public StringInfo(String msg) {
+        mMsg = msg;
+        mFlag = Flag.Default;
+    }
+
+    public StringInfo(String msg, Flag flag) {
+        mMsg = msg;
+        mFlag = flag;
+    }
+
+    public StringInfo withMsg(String msg) {
+        return new StringInfo(msg, mFlag);
+    }
+}

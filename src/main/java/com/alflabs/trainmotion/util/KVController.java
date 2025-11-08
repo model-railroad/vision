@@ -18,7 +18,14 @@
 
 package com.alflabs.trainmotion.util;
 
+import com.alflabs.annotations.NonNull;
+import com.alflabs.annotations.Null;
+import com.alflabs.kv.IKeyValue;
 import com.alflabs.kv.KeyValueClient;
+import com.alflabs.rx.IPublisher;
+import com.alflabs.rx.IStream;
+import com.alflabs.rx.Publishers;
+import com.alflabs.rx.Streams;
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.utils.IClock;
 
@@ -43,9 +50,16 @@ public class KVController extends ThreadLoop {
     private final ILogger mLogger;
     private final ConfigIni mConfigIni;
     private Optional<InetSocketAddress> mSocketAddress = Optional.empty();
-    private AtomicReference<KeyValueClient> mKVClient = new AtomicReference<>();
-    private AtomicBoolean mKVConnected = new AtomicBoolean(false);
-    private AtomicBoolean mKVEnabled = new AtomicBoolean(false);
+    private final AtomicReference<KeyValueClient> mKVClient = new AtomicReference<>();
+    private final AtomicBoolean mKVConnected = new AtomicBoolean(false);
+    private final AtomicBoolean mKVEnabled = new AtomicBoolean(false);
+
+    /** Stream that broadcasts whether the client is connected. */
+    private final IStream<Boolean> mConnectedStream = Streams.stream();
+    private final IPublisher<Boolean> mConnectedPublisher = Publishers.latest();
+    /** Stream that re-broadcasts the key changes from the KV client. */
+    private final IStream<String> mKeyChangedStream = Streams.stream();
+    private final IPublisher<String> mKeyChangedPublisher = Publishers.publisher();
 
     @Inject
     public KVController(
@@ -55,6 +69,13 @@ public class KVController extends ThreadLoop {
         mClock = clock;
         mLogger = logger;
         mConfigIni = configIni;
+        mConnectedStream.publishWith(mConnectedPublisher);
+        mKeyChangedStream.publishWith(mKeyChangedPublisher);
+    }
+
+    @Null
+    public IKeyValue getKeyValueClient() {
+        return mKVClient.get();
     }
 
     public boolean isEnabled() {
@@ -65,10 +86,23 @@ public class KVController extends ThreadLoop {
         return mKVConnected.get();
     }
 
+    /** Stream that broadcasts whether the client is connected. */
+    @NonNull
+    public IStream<Boolean> getConnectedStream() {
+        return mConnectedStream;
+    }
+
+    /** Stream that re-broadcasts the key changes from the KV client. */
+    @NonNull
+    public IStream<String> getKeyChangedStream() {
+        return mKeyChangedStream;
+    }
+
     @Override
     public void start() throws Exception {
         mLogger.log(TAG, "Start");
         mKVConnected.set(false);
+        mConnectedPublisher.publish(false);
         mKVClient.set(null);
 
         String host = "";
@@ -132,11 +166,14 @@ public class KVController extends ThreadLoop {
                     mSocketAddress.get(),
                     mStatsListener);
             mKVClient.set(kvClient);
+            kvClient.getChangedStream().subscribe((stream, key) -> mKeyChangedPublisher.publish(key));
 
             // Try to connect and stay connected.
             if (kvClient.startSync()) {
                 mLogger.log(TAG, "KVClient: Connected.");
                 mKVConnected.set(true);
+                mConnectedPublisher.publish(true);
+                kvClient.requestAllKeys();
                 kvClient.join();
             }
 
@@ -146,6 +183,7 @@ public class KVController extends ThreadLoop {
         // Not connected anymore.
         mLogger.log(TAG, "KVClient: Disconnected.");
         mKVConnected.set(false);
+        mConnectedPublisher.publish(false);
         mKVClient.set(null);
 
         try {
@@ -193,5 +231,4 @@ public class KVController extends ThreadLoop {
             // no-op
         }
     };
-
 }

@@ -47,7 +47,7 @@ import java.util.Optional;
 public class KioskController implements IStartStop {
     private static final String TAG = KioskController.class.getSimpleName();
 
-    // Approximage FPS to update the camera videos.
+    // Approximate FPS to update the camera videos.
     private static final int DISPLAY_FPS = 15;
 
     // Player zoom minimum display duration
@@ -77,7 +77,6 @@ public class KioskController implements IStartStop {
 
     public interface Callbacks {
         void onWindowClosing();
-        void onFrameResized();
         boolean onProcessKey(char keyChar);
         void onRepaintTimerTick();
         void onMainPlayerFinished();
@@ -146,17 +145,6 @@ public class KioskController implements IStartStop {
         }
 
         @Override
-        public void onFrameResized() {
-            mView.computeLayout();
-
-            final int width = mView.getContentWidth();
-            final int height = mView.getContentHeight();
-            mLogger.log(TAG, String.format("onFrameResized --> %dx%d", width, height));
-
-            mView.resizeVideoCanvases(width, height);
-        }
-
-        @Override
         public boolean onProcessKey(char keyChar) {
             return mConsoleTask.processKey(keyChar);
         }
@@ -167,30 +155,11 @@ public class KioskController implements IStartStop {
                 return;
             }
 
-            mView.setBottomLabelText(mConsoleTask.computeLineInfo());
+            mView.setBottomStatus(mConsoleTask.getLineInfos());
 
             boolean hasHighlight = mView.updateAllHighlights();
 
-            // frame (window) size
-            mView.computeLayout();
-            final int fw = mView.getContentWidth();
-            final int fh = mView.getContentHeight();
-            // target size for media player
-            int tw = fw, th = fh;
-            if (mForceZoom == 2 || (hasHighlight && mForceZoom == 0)) {
-                // Desired player is half size screen
-                tw = fw / 2;
-                th = fh / 2;
-            }
-            // current player size -- only update if not matching the target.
-            int pw = mView.getMediaPlayerWidth();
-            int ph = mView.getMediaPlayerHeight();
-            if (tw != pw || th != ph) {
-                if (mPlayerZoomEndTS < mClock.elapsedRealtime()) { // don't change too fast
-                    mView.setMediaPlayerSize(tw, th);
-                    mPlayerZoomEndTS = mClock.elapsedRealtime() + PLAYER_ZOOM_MIN_DURATION_MS;
-                }
-            }
+            mView.setPlayerZoomed(!(mForceZoom == 2 || (hasHighlight && mForceZoom == 0)));
         }
 
         @Override
@@ -298,7 +267,8 @@ public class KioskController implements IStartStop {
                 File file = next.get();
                 mLogger.log(TAG, "MAIN Player file = " + file.getAbsolutePath());
                 mAnalytics.sendEvent("PlayVideo", file.getName());
-                mConsoleTask.updateLineInfo(/* F */ "9v", " | " + file.getName().replace(".mp4", ""));
+                mConsoleTask.updateLineInfo(/* F */ "9v",
+                        new StringInfo(" | " + file.getName().replace(".mp4", "")));
 
                 int volume = mPlayerDefaultVolume;
                 Optional<Playlist.FileProperties> props = mMainPlaylist.getProperties(file);

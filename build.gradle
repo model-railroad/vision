@@ -1,5 +1,3 @@
-import java.nio.file.Files
-
 /*
  * Project: Train-Motion
  * Copyright (C) 2021 alf.labs gmail com,
@@ -18,11 +16,15 @@ import java.nio.file.Files
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-apply plugin: "java"
-apply plugin: "idea"
+plugins {
+    id "java"
+    id "idea"
+    // This provides "shadowJar" to replace the home-made "fatJar" rule:
+    id "com.gradleup.shadow" version "$vers_shadowJar"
+}
 
-group   "org.alflabs.trainmotion"
-version "0.5-SNAPSHOT"
+group   artifact_group
+version artifact_vers
 
 project.ext {
     javaManifestClass = "com.alflabs.trainmotion.Main"
@@ -33,9 +35,15 @@ repositories {
     mavenCentral()
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(vers_java))
+    }
+}
+
 compileJava {
-    sourceCompatibility = "1.8"
-    targetCompatibility = "1.8"
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 configurations {
@@ -56,26 +64,27 @@ configurations {
 
 dependencies {
     runtimeCompile project(":LibUtilsJava")
+    runtimeCompile project(":LibManifest")
 
-    runtimeCompile "commons-cli:commons-cli:1.4"
-    runtimeCompile "org.bytedeco:javacv-platform:1.5.3"
-    runtimeCompile "org.bytedeco:javacpp-platform:1.5.3"
-    runtimeCompile "uk.co.caprica:vlcj:4.7.1"
-    runtimeCompile "com.fasterxml.jackson.core:jackson-databind:2.10.2"
-    runtimeCompile "com.squareup.okhttp3:okhttp:3.10.0"
+    runtimeCompile "commons-cli:commons-cli:$vers_common_cli"
+    runtimeCompile "org.bytedeco:javacv-platform:$vers_javacv"
+    runtimeCompile "org.bytedeco:javacpp-platform:$vers_javacv"
+    runtimeCompile "uk.co.caprica:vlcj:$vers_vlcj"
+    runtimeCompile "com.fasterxml.jackson.core:jackson-databind:$vers_jackson"
+    runtimeCompile "com.squareup.okhttp3:okhttp:$vers_okhttp"
 
-    runtimeCompile          "javax.inject:javax.inject:1"
-    runtimeCompile          "com.google.dagger:dagger:2.28"
-    annotationProcessor     "com.google.dagger:dagger-compiler:2.28"
-    testAnnotationProcessor "com.google.dagger:dagger-compiler:2.28"
+    runtimeCompile          "javax.inject:javax.inject:$vers_inject"
+    runtimeCompile          "com.google.dagger:dagger:$vers_dagger"
+    annotationProcessor     "com.google.dagger:dagger-compiler:$vers_dagger"
+    testAnnotationProcessor "com.google.dagger:dagger-compiler:$vers_dagger"
 
-    runtimeCompile      "com.google.auto.factory:auto-factory:1.0.1"
-    annotationProcessor "com.google.auto.factory:auto-factory:1.0.1"
+    runtimeCompile      "com.google.auto.factory:auto-factory:$vers_auto_factory"
+    annotationProcessor "com.google.auto.factory:auto-factory:$vers_auto_factory"
 
-    testImplementation "junit:junit:4.12"
-    testImplementation "com.google.truth:truth:1.0.1"
-    testImplementation "org.mockito:mockito-core:3.3.3"
-    testImplementation "com.google.guava:guava:29.0-jre"
+    testImplementation "junit:junit:$vers_junit"
+    testImplementation "com.google.truth:truth:$vers_truth"
+    testImplementation "org.mockito:mockito-core:$vers_mockito"
+    testImplementation "com.google.guava:guava:$vers_guava"
 }
 
 // Change location of dagger generated files and map it in IJ.
@@ -119,22 +128,6 @@ jar {
     }
 }
 
-// Build a "fat" jar with all the dependencies that are marked using "compile".
-// C.f. http://stackoverflow.com/questions/4871656
-// Update: this ignore these marked with the new "implementation".
-task fatJar(type: Jar) {
-    manifest.from jar.manifest
-    classifier = "all"
-    from {
-        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    } {
-        exclude "META-INF/*.SF"
-        exclude "META-INF/*.DSA"
-        exclude "META-INF/*.RSA"
-    }
-    with jar
-}
-
 // Pass run arguments using gradlew ... -Pargs='multiple args'
 if (project.hasProperty("args")) {
     project.ext.cmdArgs = project.getProperty("args")
@@ -146,10 +139,10 @@ if (project.hasProperty("args")) {
 // Useful to share a single JAR with all embedded dependencies, and to work around the classpath
 // size limitation on Windows.
 task runFat(type: Exec) {
-    dependsOn fatJar
+    dependsOn shadowJar
     group = "Execution"
     commandLine "java",
-            "-jar", fatJar.archiveFile.get()
+            "-jar", shadowJar.archiveFile.get()
     args project.ext.cmdArgs.split()
 }
 
@@ -181,13 +174,13 @@ task _printRunCmdLine {
 
 // For Windows were we cannot run a command line with a long classpath.
 task _printRunFatJarCmdLine {
-    dependsOn jar
+    dependsOn shadowJar
     doFirst {
-        println "-jar " + fatJar.archiveFile.get()
+        println "-jar " + shadowJar.archiveFile.get()
     }
 }
 
 artifacts {
-    archives fatJar
+    archives shadowJar
 }
 
