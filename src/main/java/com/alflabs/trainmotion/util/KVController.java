@@ -173,6 +173,7 @@ public class KVController extends ThreadLoop {
                 mLogger.log(TAG, "KVClient: Connected.");
                 mKVConnected.set(true);
                 mConnectedPublisher.publish(true);
+                kvClient.requestAllKeys();
                 kvClient.join();
             }
 

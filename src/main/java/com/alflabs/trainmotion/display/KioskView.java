@@ -81,6 +81,9 @@ public class KioskView {
     private RtacDataPanel mRtacDataPanel;
     private Timer mRepaintTimer;
 
+    private final ISubscriber<String> mKeyChangedSubscriber = this::onReceiveKeyChanged;
+    private final ISubscriber<Boolean> mConnectedSubscriber = this::onReceiveConnected;
+
     @Inject
     public KioskView(
             ILogger logger,
@@ -107,7 +110,8 @@ public class KioskView {
             int gridx, int gridy,
             int gridw, int gridh,
             int weightx, int weighty,
-            int fill) {
+            int fill,
+            int anchor) {
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = gridx;
         c.gridy = gridy;
@@ -116,7 +120,16 @@ public class KioskView {
         c.weightx = weightx;
         c.weighty = weighty;
         c.fill = fill;
+        c.anchor = anchor;
         return c;
+    }
+
+    private GridBagConstraints constraint(
+            int gridx, int gridy,
+            int gridw, int gridh,
+            int weightx, int weighty,
+            int fill) {
+        return constraint(gridx, gridy, gridw, gridh, weightx, weighty, fill, GridBagConstraints.CENTER);
     }
 
     public void create(
@@ -147,7 +160,7 @@ public class KioskView {
         mFrame.add(mPlayersView, constraint(1, 0, 1, 1, 1, 1, GridBagConstraints.BOTH));
 
         mRtacDataPanel = new RtacDataPanel(mLogger);
-        mFrame.add(mRtacDataPanel, constraint(0, 0, 1, 1, 0, 0, GridBagConstraints.VERTICAL));
+        mFrame.add(mRtacDataPanel, constraint(0, 0, 1, 1, 0, 0, GridBagConstraints.VERTICAL, GridBagConstraints.NORTHWEST));
 
         mRtacPsaPanel = new RtacPsaPanel(mLogger);
         mFrame.add(mRtacPsaPanel, constraint(0, 1, 2, 1, 0, 0, GridBagConstraints.HORIZONTAL));
@@ -181,7 +194,6 @@ public class KioskView {
             }
         });
 
-
         // Create an "invalid" cursor to make the cursor transparent in the frame.
         try {
             Toolkit toolkit = mFrame.getToolkit();
@@ -207,7 +219,6 @@ public class KioskView {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         }
 
-
         mKVController.getKeyChangedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mKeyChangedSubscriber);
         mKVController.getConnectedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mConnectedSubscriber);
 
@@ -222,7 +233,6 @@ public class KioskView {
     }
 
     public void setBottomStatus(Map<String, StringInfo> lineInfos) {
-        // Note: lineInfos is an unmodifiableSortedMap wrapper.
         //noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (lineInfos) {
             for (Map.Entry<String, StringInfo> info : lineInfos.entrySet()) {
@@ -283,21 +293,23 @@ public class KioskView {
         mPlayersView.setPlayerZoomed(playerZoomed);
     }
 
-    private final ISubscriber<Boolean> mConnectedSubscriber = (stream, key) -> {
+    private void onReceiveKeyChanged(IStream<? extends String> stream, String key) {
+        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
+        IKeyValue kvClient = mKVController.getKeyValueClient();
+        if (kvClient == null) return;
+        String value = kvClient.getValue(key);
+
+        if (Constants.RtacPsaText.equals(key)) {
+            mRtacPsaPanel.updateText(value);
+        } else if (Constants.RoutesKey.equals(key)) {
+            mRtacDataPanel.initializeRoutes(kvClient, value);
+        } else {
+            mRtacDataPanel.onKVChanged(key, value);
+        }
+    }
+
+    private void onReceiveConnected(IStream<? extends Boolean> stream, Boolean value) {
         // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
         mRtacPsaPanel.updateText(null);
-    };
-
-    private final ISubscriber<String> mKeyChangedSubscriber = new ISubscriber<String>() {
-        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
-        @Override
-        public void onReceive(IStream<? extends String> stream, String key) {
-            if (!Constants.RtacPsaText.equals(key)) return;
-            IKeyValue kvClient = mKVController.getKeyValueClient();
-            if (kvClient == null) return;
-            String value = kvClient.getValue(key);
-            mRtacPsaPanel.updateText(value);
-        }
-    };
-
+    }
 }

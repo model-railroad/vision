@@ -26,7 +26,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -169,7 +168,7 @@ public class RtacPsaPanel extends JPanel {
         // The first line should never be empty.
         mLine1.setText(lines.length > 0 ? lines[0] : " ");
         // When the second line is empty, the first line gets centered vertically.
-        mLine2.setText(lines.length > 2 ? lines[2] : "");
+        mLine2.setText(lines.length > 2 ? lines[2] : " ");
     }
 
     /// Parses an HTM color name (e.g. "#RRGGBB" or "black")
@@ -213,23 +212,5 @@ public class RtacPsaPanel extends JPanel {
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to parse color: " + val, e);
         }
-    }
-
-    private int mMaxHeight = 0;
-
-    @Override
-    public Dimension getPreferredSize() {
-        // The preferred size height depends on whether the 2nd line of text is non-empty.
-        // For consistency, we want to use the size with both lines visible. That way, when
-        // there's only one line to display, it gets centered yet the overall view has the same
-        // size and the videos players do not resize.
-
-        Dimension sz = super.getPreferredSize();
-        if (sz.height > mMaxHeight) {
-            mMaxHeight = sz.height;
-        }
-        sz.height = mMaxHeight;
-
-        return sz;
     }
 }

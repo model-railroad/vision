@@ -50,8 +50,6 @@ public class ConsoleTask implements IStartStop {
     private final Lazy<KioskController> mKioskController;
     @GuardedBy("mLineInfo")
     private final SortedMap<String, StringInfo> mLineInfo = new TreeMap<>();
-    private final SortedMap<String, StringInfo> mLineInfoRO =
-            Collections.unmodifiableSortedMap(mLineInfo);
 
     private boolean mQuit;
 
@@ -107,7 +105,7 @@ public class ConsoleTask implements IStartStop {
     }
 
     public SortedMap<String, StringInfo> getLineInfos() {
-        return mLineInfoRO;
+        return mLineInfo;
     }
 
     public void displayLineInfo() {
