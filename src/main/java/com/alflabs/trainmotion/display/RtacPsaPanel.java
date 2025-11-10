@@ -55,9 +55,16 @@ import java.util.regex.Pattern;
  *
  * The original PSA text was designed for a 4:3 tablet screen. As such some texts
  * have 3 lines to make better use of the available vertical space.
- *
  * In Vision, we have a wide horizontal bar. The suggestion is to "merge" the two
  * first lines into one, and if there's a 3rd one place it below with a smaller font.
+ *
+ * For the tablet RTAC, there are 3 configurable colors:
+ * - "{bg}" is the overall screen background, so that it can be white (on) vs black (off).
+ * - "{b}" is the textview background color. When set, it allows better contrast on over the
+ *         screen. This was mostly use for red alert.
+ * - "{c}" is the textview text color.
+ * In Vision, the screen background is always going to be black, and thus {bg} is ignored,
+ * that attribute is currently only used by RTAC on the tablet.
  */
 
 public class RtacPsaPanel extends JPanel {

@@ -39,7 +39,7 @@ public class RtacDataPanel extends JPanel {
     private static final String TAG = RtacDataPanel.class.getSimpleName();
 
     private static final Color BG_COLOR = new Color(8, 8, 8);
-    private static final Font mFont1 = new Font(Font.SANS_SERIF, Font.BOLD, 24);
+    private static final Font mFont1 = new Font(Font.SANS_SERIF, Font.BOLD, 12);
     private static final Font mFont2 = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
     private static final Font mFont3 = new Font(Font.SANS_SERIF, Font.PLAIN, 8);
 
@@ -115,7 +115,6 @@ public class RtacDataPanel extends JPanel {
         private final JLabel mStatus;
         private final JLabel mDir;
         private final JLabel mSpeed;
-        private final JLabel mCounter;
 
         public RtacDataView(RouteInfo routeInfo) {
             super(new GridBagLayout());
@@ -148,11 +147,6 @@ public class RtacDataPanel extends JPanel {
             mSpeed.setFont(mFont2);
             mSpeed.setForeground(Color.LIGHT_GRAY);
             add(mSpeed, constraint(1, 3, 1));
-
-            mCounter = new JLabel(" ");
-            mCounter.setFont(mFont3);
-            mCounter.setForeground(Color.LIGHT_GRAY);
-            add(mCounter, constraint(0, 4, 2));
         }
 
         public void onKVChanged(String key, String value) {
@@ -174,9 +168,6 @@ public class RtacDataPanel extends JPanel {
                 } catch (Exception e) {
                     // Log.e(TAG, "Failed to parse speed: '" + value + "'", e);
                 }
-
-            } else if (key.equals(mRouteInfo.getCounterKey())) {
-                mCounter.setText(value + " Activations");
             }
         }
     }
