@@ -120,7 +120,7 @@ public class RtacPsaPanel extends JPanel {
     // android/RTAC/app/src/main/java/com/alflabs/rtac/fragment/PsaTextFragment.java
     public void updateText(@Null String text) {
         if (text == null) {
-            text = "{bg:black}{b:red}{c:white}Automation Not Working";
+            text = "{bg:black}{b:red}{c:white}Trains Not Running";
         }
 
         String originalText = text;
