@@ -109,6 +109,13 @@ public class RtacDataPanel extends JPanel {
         }
     }
 
+    public void onConnected(boolean connected) {
+        if (!connected) {
+            removeAll();
+            mViews.clear();
+        }
+    }
+
     private static class RtacDataView extends JPanel {
         private final RouteInfo mRouteInfo;
         private final JLabel mToggle;

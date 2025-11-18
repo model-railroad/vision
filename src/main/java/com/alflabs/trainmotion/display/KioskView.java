@@ -310,6 +310,9 @@ public class KioskView {
 
     private void onReceiveConnected(IStream<? extends Boolean> stream, Boolean value) {
         // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
-        mRtacPsaPanel.updateText(null);
+        mRtacDataPanel.onConnected(false);
+        if (!value) {
+            mRtacPsaPanel.updateText(null);
+        }
     }
 }

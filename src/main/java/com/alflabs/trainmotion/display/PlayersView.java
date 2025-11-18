@@ -216,7 +216,6 @@ public class PlayersView extends JComponent {
     public void setPlayerZoomed(boolean playerZoomed) {
         if (mPlayerZoomed != playerZoomed) {
             mPlayerZoomed = playerZoomed;
-            System.out.println("@@ PV mPlayerZoomed = " + mPlayerZoomed);
             onComponentResized();
         }
     }
@@ -224,7 +223,6 @@ public class PlayersView extends JComponent {
     private void onComponentResized() {
         int w = getWidth();
         int h = getHeight();
-        System.out.println("@@ PV onComponentResized = " + w + "x" + h);
 
         setMediaPlayerSize(w, h);
         resizeVideoCanvases(w, h);
@@ -234,14 +232,12 @@ public class PlayersView extends JComponent {
         int split = mPlayerZoomed ? 1 : 2;
         mMainPlayer.setBounds(0, 0, width / split, height / split);
         mMainPlayer.revalidate();
-        System.out.println("@@ PV mMainPlayer [" + width + "x" + height + "] ==> bounds = " + mMainPlayer.getBounds());
     }
 
     private void resizeVideoCanvases(int width, int height) {
         synchronized (mCameraPlayers) {
             for (VlcMediaComponent canvas : mCameraPlayers) {
                 canvas.computeAbsolutePosition(width, height);
-                System.out.println("@@ PV canvas [" + width + "x" + height + "] bounds = " + canvas.getBounds());
             }
         }
     }
@@ -279,7 +275,6 @@ public class PlayersView extends JComponent {
 
         Dimension sz = new Dimension(prefW, prefH);
         cachedPrefSizeSz = sz;
-        System.out.println("@@ PV getPreferredSize sz = " + sz);
         return sz;
     }
 }
