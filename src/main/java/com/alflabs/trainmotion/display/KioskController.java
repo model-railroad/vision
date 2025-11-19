@@ -18,6 +18,9 @@
 
 package com.alflabs.trainmotion.display;
 
+import com.alflabs.kv.IKeyValue;
+import com.alflabs.rx.IStream;
+import com.alflabs.rx.ISubscriber;
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.Playlist;
 import com.alflabs.trainmotion.cam.CamInfo;
@@ -25,6 +28,8 @@ import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
 import com.alflabs.trainmotion.util.IStartStop;
+import com.alflabs.trainmotion.util.KVController;
+import com.alflabs.trainmotion.util.SwingUISchedulers;
 import com.alflabs.utils.IClock;
 import com.google.common.base.Preconditions;
 
@@ -64,16 +69,18 @@ public class KioskController implements IStartStop {
     private final ConfigIni mConfigIni;
     private final Analytics mAnalytics;
     private final ConsoleTask mConsoleTask;
+    private final KVController mKVController;
     private final KioskView mView;
     private final Map<CamInfo, CameraPlaylist> mCameraPlaylist = new HashMap<>();
+
+    private final ISubscriber<String> mKeyChangedSubscriber = this::onReceiveKeyChanged;
 
     /** Force zoom: 0=default, 1=main always zoomed, 2=main never zoomed. */
     private int mForceZoom;
     private boolean mPlayerMuted;
     private boolean mToggleMask;
-    private boolean mDisplayOn = true;
+    private boolean mDisplayOn = false;
     private int mPlayerDefaultVolume = PLAYER_VOLUME_DEFAULT;
-    private long mPlayerZoomEndTS;
 
     public interface Callbacks {
         void onWindowClosing();
@@ -96,6 +103,7 @@ public class KioskController implements IStartStop {
             ConfigIni configIni,
             Analytics analytics,
             ConsoleTask consoleTask,
+            KVController kvController,
             KioskView kioskView) {
         mClock = clock;
         mLogger = logger;
@@ -104,6 +112,7 @@ public class KioskController implements IStartStop {
         mConfigIni = configIni;
         mAnalytics = analytics;
         mConsoleTask = consoleTask;
+        mKVController = kvController;
         mView = kioskView;
     }
 
@@ -120,16 +129,17 @@ public class KioskController implements IStartStop {
     }
 
     public void initialize() {
-        mDisplayOn = true;
+        mDisplayOn = false;
         // Start shuffled
         mMainPlaylist.setShuffle(true);
         // Get desired volume
         mPlayerDefaultVolume = mConfigIni.getVolumePct(PLAYER_VOLUME_DEFAULT);
 
+        mKVController.getKeyChangedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mKeyChangedSubscriber);
+
         mView.startTimer();
         mView.setMainPlayerMute(false);
-        playNextMain();
-        mCameras.forEachCamera(this::playNextCamera);
+        onDisplayOnChanged(mDisplayOn);
     }
 
     @Override
@@ -197,7 +207,6 @@ public class KioskController implements IStartStop {
         }
     };
 
-
     /** Invoked async from DisplayController's thread. */
     public void onDisplayOnChanged(boolean displayOn) {
         mDisplayOn = displayOn;
@@ -210,10 +219,20 @@ public class KioskController implements IStartStop {
                 playNextMain();
                 mCameras.forEachCamera(KioskController.this::playNextCamera);
             } else {
+                mView.disableRtacDisplay();
                 mView.stopMainPlayer();
                 mCameras.forEachCamera(KioskController.this::stopCamera);
             }
         });
+    }
+
+    private void onReceiveKeyChanged(IStream<? extends String> stream, String key) {
+        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
+        IKeyValue kvClient = mKVController.getKeyValueClient();
+        if (kvClient == null) return;
+        String value = kvClient.getValue(key);
+
+        mView.onRtacDataChanged(kvClient, key, value);
     }
 
     public boolean processKey(char c) {
@@ -223,7 +242,6 @@ public class KioskController implements IStartStop {
         switch (c) {
         case 'f':
             // Toggle Fullscreen zoom
-            mPlayerZoomEndTS = 0;
             mForceZoom = (mForceZoom + 1) % 3;
             return true;
         case 's':

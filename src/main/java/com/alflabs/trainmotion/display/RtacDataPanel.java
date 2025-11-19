@@ -109,11 +109,9 @@ public class RtacDataPanel extends JPanel {
         }
     }
 
-    public void onConnected(boolean connected) {
-        if (!connected) {
-            removeAll();
-            mViews.clear();
-        }
+    public void disableRtacDisplay() {
+        removeAll();
+        mViews.clear();
     }
 
     private static class RtacDataView extends JPanel {

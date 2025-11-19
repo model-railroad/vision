@@ -20,14 +20,10 @@ package com.alflabs.trainmotion.display;
 
 import com.alflabs.kv.IKeyValue;
 import com.alflabs.manifest.Constants;
-import com.alflabs.rx.IStream;
-import com.alflabs.rx.ISubscriber;
 import com.alflabs.trainmotion.cam.CamInfo;
 import com.alflabs.trainmotion.cam.Cameras;
 import com.alflabs.trainmotion.util.FpsMeasurerFactory;
 import com.alflabs.trainmotion.util.ILogger;
-import com.alflabs.trainmotion.util.KVController;
-import com.alflabs.trainmotion.util.SwingUISchedulers;
 import com.alflabs.utils.IClock;
 
 import javax.inject.Inject;
@@ -69,7 +65,6 @@ public class KioskView {
 
     private final Cameras mCameras;
     private final ConsoleTask mConsoleTask;
-    private final KVController mKVController;
     private final HighlighterFactory mHighlighterFactory;
     private final FpsMeasurerFactory mFpsMeasurerFactory;
 
@@ -81,23 +76,18 @@ public class KioskView {
     private RtacDataPanel mRtacDataPanel;
     private Timer mRepaintTimer;
 
-    private final ISubscriber<String> mKeyChangedSubscriber = this::onReceiveKeyChanged;
-    private final ISubscriber<Boolean> mConnectedSubscriber = this::onReceiveConnected;
-
     @Inject
     public KioskView(
             ILogger logger,
             IClock clock,
             Cameras cameras,
             ConsoleTask consoleTask,
-            KVController kvController,
             HighlighterFactory highlighterFactory,
             FpsMeasurerFactory fpsMeasurerFactory) {
         mLogger = logger;
         mClock = clock;
         mCameras = cameras;
         mConsoleTask = consoleTask;
-        mKVController = kvController;
         mHighlighterFactory = highlighterFactory;
         mFpsMeasurerFactory = fpsMeasurerFactory;
     }
@@ -219,8 +209,6 @@ public class KioskView {
             mFrame.setExtendedState(mFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         }
 
-        mKVController.getKeyChangedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mKeyChangedSubscriber);
-        mKVController.getConnectedStream().subscribe(SwingUISchedulers.swingInvokeLater(), mConnectedSubscriber);
 
         mRepaintTimer = new Timer(1000 / displayFps, this::onRepaintTimerTick);
     }
@@ -293,12 +281,7 @@ public class KioskView {
         mPlayersView.setPlayerZoomed(playerZoomed);
     }
 
-    private void onReceiveKeyChanged(IStream<? extends String> stream, String key) {
-        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
-        IKeyValue kvClient = mKVController.getKeyValueClient();
-        if (kvClient == null) return;
-        String value = kvClient.getValue(key);
-
+    public void onRtacDataChanged(IKeyValue kvClient, String key, String value) {
         if (Constants.RtacPsaText.equals(key)) {
             mRtacPsaPanel.updateText(value);
         } else if (Constants.RoutesKey.equals(key)) {
@@ -308,11 +291,8 @@ public class KioskView {
         }
     }
 
-    private void onReceiveConnected(IStream<? extends Boolean> stream, Boolean value) {
-        // This executes on the AWT UI Thread via SwingUtilities.invokeLater.
-        mRtacDataPanel.onConnected(false);
-        if (!value) {
-            mRtacPsaPanel.updateText(null);
-        }
+    public void disableRtacDisplay() {
+        mRtacDataPanel.disableRtacDisplay();
+        mRtacPsaPanel.updateText(null);
     }
 }

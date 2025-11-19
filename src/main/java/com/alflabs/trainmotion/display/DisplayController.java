@@ -18,6 +18,9 @@
 
 package com.alflabs.trainmotion.display;
 
+import com.alflabs.rx.IStream;
+import com.alflabs.rx.ISubscriber;
+import com.alflabs.rx.Schedulers;
 import com.alflabs.trainmotion.ConfigIni;
 import com.alflabs.trainmotion.util.Analytics;
 import com.alflabs.trainmotion.util.ILogger;
@@ -53,6 +56,9 @@ public class DisplayController extends ThreadLoop {
     private final ConsoleTask mConsoleTask;
     private final KVController mKVController;
     private final KioskController mKioskController;
+
+    private final ISubscriber<Boolean> mConnectedSubscriber = this::onReceiveConnected;
+
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private Optional<LocalTime> mDailyTimeOff;
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -89,6 +95,8 @@ public class DisplayController extends ThreadLoop {
 
         invokeScript("start");
 
+        mKVController.getConnectedStream().subscribe(Schedulers.sync(), mConnectedSubscriber);
+
         if (!mDailyTimeOff.isPresent() || !mDailyTimeOn.isPresent()) {
             // This does not abort this loop since we're also checking the KVController.
             mLogger.log(TAG, "Missing daily time on/off; will not control display.");
@@ -119,6 +127,14 @@ public class DisplayController extends ThreadLoop {
         mInvertRequested = !mInvertRequested;
     }
 
+    private void onReceiveConnected(IStream<? extends Boolean> stream, Boolean displayOn) {
+        // This executes directly in the KVController thread.
+        if (displayOn != mDisplayOn) {
+            mChanged = true;
+            mDisplayOn = displayOn;
+        }
+    }
+
     @Override
     protected void _runInThreadLoop() throws EndLoopException {
         LocalTime localTime = Instant
@@ -133,15 +149,6 @@ public class DisplayController extends ThreadLoop {
             if (timeOn != mDisplayOn) {
                 mChanged = true;
                 mDisplayOn = timeOn;
-            }
-        }
-
-        // Perform the KV connection check if enabled in the config.
-        if (mKVController.isEnabled()) {
-            boolean isKVon = mKVController.isConnected();
-            if (isKVon != mDisplayOn) {
-                mChanged = true;
-                mDisplayOn = isKVon;
             }
         }
 

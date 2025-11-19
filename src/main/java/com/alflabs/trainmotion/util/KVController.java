@@ -51,7 +51,6 @@ public class KVController extends ThreadLoop {
     private final ConfigIni mConfigIni;
     private Optional<InetSocketAddress> mSocketAddress = Optional.empty();
     private final AtomicReference<KeyValueClient> mKVClient = new AtomicReference<>();
-    private final AtomicBoolean mKVConnected = new AtomicBoolean(false);
     private final AtomicBoolean mKVEnabled = new AtomicBoolean(false);
 
     /** Stream that broadcasts whether the client is connected. */
@@ -82,10 +81,6 @@ public class KVController extends ThreadLoop {
         return mKVEnabled.get();
     }
 
-    public boolean isConnected() {
-        return mKVConnected.get();
-    }
-
     /** Stream that broadcasts whether the client is connected. */
     @NonNull
     public IStream<Boolean> getConnectedStream() {
@@ -101,7 +96,6 @@ public class KVController extends ThreadLoop {
     @Override
     public void start() throws Exception {
         mLogger.log(TAG, "Start");
-        mKVConnected.set(false);
         mConnectedPublisher.publish(false);
         mKVClient.set(null);
 
@@ -171,7 +165,6 @@ public class KVController extends ThreadLoop {
             // Try to connect and stay connected.
             if (kvClient.startSync()) {
                 mLogger.log(TAG, "KVClient: Connected.");
-                mKVConnected.set(true);
                 mConnectedPublisher.publish(true);
                 kvClient.requestAllKeys();
                 kvClient.join();
@@ -182,7 +175,6 @@ public class KVController extends ThreadLoop {
         }
         // Not connected anymore.
         mLogger.log(TAG, "KVClient: Disconnected.");
-        mKVConnected.set(false);
         mConnectedPublisher.publish(false);
         mKVClient.set(null);
 
